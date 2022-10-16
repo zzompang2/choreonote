@@ -24,7 +24,7 @@ module.exports = () => {
    * req.session 객체에 어떤 데이터를 저장할지 정하는 메서드.
    * 사용자 정보 객체를 세션에 id 로 저장하는 과정인 것. */
   passport.serializeUser((user, done) => {
-    console.log("passport.serializeUser:", user);
+    // console.log("passport.serializeUser:", user);
     done(null, user.id);
   });
 

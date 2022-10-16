@@ -1,9 +1,10 @@
 const express = require('express');
 const path = require('path');
+const { isLoggedIn, isNotLoggedIn } = require('./middlewares');
 
 const router = express.Router();
 
-router.get('/', async (req, res, next) => {
+router.get('/', isNotLoggedIn, async (req, res, next) => {
   try {
     res.sendFile('home.html', { root: path.join(__dirname, '../views') });
   } catch (err) {
@@ -12,7 +13,7 @@ router.get('/', async (req, res, next) => {
   }
 });
 
-router.get('/join', async (req, res, next) => {
+router.get('/join', isNotLoggedIn, async (req, res, next) => {
   try {
     res.sendFile('join.html', { root: path.join(__dirname, '../views') });
   } catch (err) {
