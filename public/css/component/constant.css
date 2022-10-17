@@ -1,0 +1,65 @@
+@font-face {
+  font-family: "GmarketSansTTFBold";
+  src: url("/assets/fonts/GmarketSansTTFBold.ttf") format("truetype");
+}
+@font-face {
+  font-family: "GmarketSansTTFMedium";
+  src: url("/assets/fonts/GmarketSansTTFMedium.ttf") format("truetype");
+}
+@font-face {
+  font-family: "GmarketSansTTFLight";
+  src: url("/assets/fonts/GmarketSansTTFLight.ttf") format("truetype");
+}
+:root {
+  --color-bg: #ffffff;
+  --color-toolbar: #1e1e1e;
+  --color-text: #151515;
+  --color-text-secondary: #757370;
+  --color-text-neg: #ffffff;
+  --color-border: #e5e5e5;
+  --color-container-10: #f5f5f5;
+  --color-container-90: #1e1e1e;
+  --text-secondary: #93918f;
+  --color-hover: #f5f5f5;
+  --color-brand: #D63F72;
+  --color-shadow: #15151599;
+  --color-white: #ffffff;
+  --color-grayLight: #dadada;
+  --color-grayMiddle: #93918f;
+  --color-grayDark: #757370;
+  --color-blackLight: #3b3b3b;
+  --color-blackMiddle: #1e1e1e;
+  --color-blackDark: #151515;
+  --color-yellow: #EF9C1C;
+  --color-yellowLight: #EF9C1C88;
+  --color-red: #D63F72;
+  --color-orange: #ff631b;
+  --color-orange-side: #c4460d;
+  --color-purple: #8249d3;
+  --color-purple-side: #4d1f8f;
+  --color-blue: #4469EB;
+  --color-blue-side: rgb(26, 60, 180);
+  --color-green: #00817a;
+  --color-green-side: #004d49;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  outline: none;
+  user-select: none;
+  font-family: GmarketSansTTFMedium;
+  box-sizing: border-box;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+}
+
+body {
+  display: flex;
+  background-color: var(--color-bg);
+}
+
+/*# sourceMappingURL=constant.css.map */

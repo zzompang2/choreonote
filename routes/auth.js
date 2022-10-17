@@ -56,7 +56,7 @@ router.post('/login', isNotLoggedIn, (req, res, next) => {
         console.error(loginError);
         return next(loginError);
       }
-      return res.redirect('/stage');
+      return res.redirect('/dashboard');
     });
   })(req, res, next); // 미들웨어 내의 미들웨어는 (..) 붙여준다
 });
@@ -66,7 +66,7 @@ router.get('/kakao', passport.authenticate('kakao'));
 router.get('/kakao/callback', passport.authenticate('kakao', {
   failureRedirect: '/',
 }), (req, res) => {
-  res.redirect('/stage');
+  res.redirect('/dashboard');
 });
 
 router.get('/logout', isLoggedIn, async (req, res) => {
@@ -85,7 +85,7 @@ router.get('/google', passport.authenticate('google', { scope: ["email", "profil
 router.get('/google/callback', passport.authenticate('google', {
   failureRedirect: '/'
 }), (req, res) => {
-  res.redirect('/stage');
+  res.redirect('/dashboard');
 });
 
 router.get('/user', async (req, res, next) => {
