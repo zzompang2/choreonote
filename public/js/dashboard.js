@@ -15,7 +15,7 @@ function createNote() {
   .then(res => {
     const { noteId } = res.data;
     console.log("새로운 노트:", noteId );
-    $("a", { href: `/stage?id=${noteId}` }).click();
+    $("a", { href: `/note?id=${noteId}` }).click();
   })
   .catch(err => {
     console.error(err);

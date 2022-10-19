@@ -6,7 +6,7 @@ const router = express.Router();
 
 router.get('/', isLoggedIn, async (req, res, next) => {
   try {
-    res.sendFile('stage.html', { root: path.join(__dirname, '../views') });
+    res.sendFile('note.html', { root: path.join(__dirname, '../views') });
   } catch (err) {
     console.error(err);
     next(err);

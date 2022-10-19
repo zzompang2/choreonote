@@ -8,7 +8,7 @@ dotenv.config();
 const homeRouter = require('./routes/home');
 const authRouter = require('./routes/auth');
 const dashboardRouter = require('./routes/dashboard');
-const stageRouter = require('./routes/stage');
+const noteRouter = require('./routes/note');
 const passportConfig = require('./passport');
 
 const app = express();
@@ -37,7 +37,7 @@ app.use(passport.session());
 app.use('/', homeRouter);
 app.use('/auth', authRouter);
 app.use('/dashboard', dashboardRouter);
-app.use('/stage', stageRouter);
+app.use('/note', noteRouter);
 
 // 에러처리 미들웨어
 app.use((err, req, res, next) => {
