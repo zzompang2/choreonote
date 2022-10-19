@@ -22,23 +22,70 @@ db();
 function executeQuerys() {
   const dropQuerys = [
     `DROP TABLE IF EXISTS user;`,
+    `DROP TABLE IF EXISTS note;`,
+    `DROP TABLE IF EXISTS dancer;`,
+    `DROP TABLE IF EXISTS time;`,
+    `DROP TABLE IF EXISTS coordinate;`,
   ];
 
   const createQuerys = [
     `
     CREATE TABLE IF NOT EXISTS user (
-    id       INT NOT NULL AUTO_INCREMENT,
-    service  CHAR(2) NOT NULL,
-    snsId    CHAR(30),
-    email    CHAR(40) NOT NULL UNIQUE,
-    nick     CHAR(20) NOT NULL DEFAULT "",
-    password CHAR(100),
-    created_at DATETIME NOT NULL DEFAULT now(),
+    id        INT NOT NULL AUTO_INCREMENT,
+    service   CHAR(2) NOT NULL,
+    snsId     CHAR(30),
+    email     CHAR(40) NOT NULL UNIQUE,
+    nick      CHAR(20) NOT NULL DEFAULT "",
+    password  CHAR(100),
+    createdAt DATETIME NOT NULL DEFAULT now(),
     PRIMARY KEY(id)
-    );`
+    );`,
+    `
+    CREATE TABLE IF NOT EXISTS note (
+    id        INT NOT NULL AUTO_INCREMENT,
+    uid       INT NOT NULL,
+    music     VARCHAR(50),
+    duration  INT NOT NULL,
+    editedAt  DATETIME NOT NULL DEFAULT now(),
+    createdAt DATETIME NOT NULL DEFAULT now(),
+    PRIMARY KEY(id),
+    FOREIGN KEY(uid) REFERENCES user(id)
+    );`,
+    `
+    CREATE TABLE IF NOT EXISTS dancer (
+    nid       INT NOT NULL,
+    id        INT NOT NULL,
+    name      INT NOT NULL,
+    color   	CHAR(6),
+    createdAt DATETIME NOT NULL DEFAULT now(),
+    PRIMARY KEY(nid, id),
+    FOREIGN KEY(nid) REFERENCES note(id)
+    );`,
+    `
+    CREATE TABLE IF NOT EXISTS time (
+    nid       INT NOT NULL,
+    id        INT NOT NULL,
+    start     INT NOT NULL,
+    duration  INT NOT NULL,
+    createdAt DATETIME NOT NULL DEFAULT now(),
+    PRIMARY KEY(nid, id),
+    FOREIGN KEY(nid) REFERENCES note(id)
+    );`,
+    `
+    CREATE TABLE IF NOT EXISTS coordinate (
+    nid       INT NOT NULL,
+    tid       INT NOT NULL,
+    did       INT NOT NULL,
+    x         INT NOT NULL,
+    y         INT NOT NULL,
+    createdAt DATETIME NOT NULL DEFAULT now(),
+    PRIMARY KEY(nid, tid, did),
+    FOREIGN KEY(nid, tid) REFERENCES time(nid, id),
+    FOREIGN KEY(nid, did) REFERENCES dancer(nid, id)
+    );`,
   ];
 
-  dropQuerys.forEach(async query => await connection.query(query));
+  dropQuerys.reverse().forEach(async query => await connection.query(query));
   createQuerys.forEach(async query => await connection.query(query));
   
   console.log("end query");
