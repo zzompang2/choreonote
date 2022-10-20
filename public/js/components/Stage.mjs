@@ -1,3 +1,4 @@
+import { STAGE_WIDTH, STAGE_HEIGHT } from "/js/constant.js";
 import Dancer from "./Dancer.mjs";
 
 const TAG = "Stage.mjs/";

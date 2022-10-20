@@ -8,7 +8,6 @@ import Toolbar from "./components/Toolbar.mjs";
 const TAG = "main.js/";
 
 /* Elements */
-const $startSection = document.getElementById("start_section");
 const $playerSection = document.getElementById("player_section");
 const $mainSection = document.getElementById("main_section");
 
@@ -19,10 +18,10 @@ let toolbar;
 let sideScreen;
 
 const state = {
-  noteName: "",
+  noteName: "test",
   dancerArray: [],
   formationArray: [],
-  musicInfo: {},
+  musicInfo: { name: "testMusic", duration: 30000},
   curTime: 0,               // millisecond
   isMusicPlaying: false,
   selectedBoxIdx: -1,
@@ -34,6 +33,8 @@ let musicFile;
 let isNoMusicNote;
 let noteLength = 10;
 let noteName;
+
+createNote();
 
 function createNote() {
   state.dancerArray = [{ id: 0, name: "햄", color: 0 }, { id: 1, name: "팡이", color: 0 }];
@@ -54,7 +55,6 @@ function createNote() {
     }
   ];
   init();
-  $startSection.style.display = "none";
 }
 
 /**
@@ -95,7 +95,6 @@ function handleFile(file) {
 function handleMusicFile(file) {
   if (file === undefined) {
     init();
-    $startSection.style.display = "none";
     return;
   }
 
@@ -136,7 +135,6 @@ function handleMusicFile(file) {
         }
       }
       init();
-      $startSection.style.display = "none";
     }
   };
 }
@@ -209,14 +207,15 @@ function init() {
   
   setCurTime(0);
 
+  /*
   const $title = document.getElementById("main_header").firstElementChild;
   $title.onclick = () => {
     if(window.confirm("초기 화면으로 돌아가시겠습니까?\n자동 저장 기능은 아직 없으니 꼭 저장해주세요!"))
-    //$startSection.style.display = "flex";
     window.location.reload();
   };
   const $saveBtn = document.getElementById("save_btn");
   $saveBtn.onclick = saveFile;
+  */
 }
 
 function saveFile() {

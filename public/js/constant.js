@@ -131,4 +131,5 @@ const floorTime = (ms) => Math.floor(ms / TIME_UNIT) * TIME_UNIT;
 const roundTime = (ms) => Math.round(ms / TIME_UNIT) * TIME_UNIT;
 const roundPos = (pos, gap) => Math.round(pos / gap) * gap;
 
-export { $ };
+export { STAGE_WIDTH, STAGE_HEIGHT, PIXEL_PER_SEC, TIMELINE_PADDING, TIME_UNIT,
+  HANDLE_WIDTH, COLOR_NUM, musicDurationFormat, floorTime, roundTime, roundPos, $ };

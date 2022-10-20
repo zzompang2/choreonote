@@ -1,3 +1,5 @@
+import { STAGE_WIDTH, STAGE_HEIGHT, PIXEL_PER_SEC, TIMELINE_PADDING, TIME_UNIT,
+HANDLE_WIDTH, COLOR_NUM, $ } from "/js/constant.js";
 import Toast from "./Toast.mjs";
 
 const TAG = "Dancer.mjs/";

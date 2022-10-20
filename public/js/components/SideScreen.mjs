@@ -1,3 +1,5 @@
+import { STAGE_WIDTH, STAGE_HEIGHT, PIXEL_PER_SEC, TIMELINE_PADDING, TIME_UNIT,
+HANDLE_WIDTH, COLOR_NUM, $ } from "/js/constant.js";
 const TAG = "SideScreen.mjs/";
 
 export default class SideScreen {
@@ -84,9 +86,10 @@ export default class SideScreen {
     });
     this.$sideScreen.appendChild($list);
 
-    document.getElementById("main_section").appendChild(this.$sideScreen);
+    // document.getElementById("main_section").appendChild(this.$sideScreen);
 
     const $rightToolbar = document.getElementById("right_toolbar");
+    if(document.getElementById("dancer_btn"))
     document.getElementById("dancer_btn").onclick = () => {
       this.screenIsShown = !this.screenIsShown;
       this.$sideScreen.style.right = this.screenIsShown ? "0" : "-240px";
