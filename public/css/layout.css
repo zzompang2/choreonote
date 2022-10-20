@@ -83,13 +83,20 @@ body {
 /****************/
 /*** SIDE BAR ***/
 /****************/
-.sidebar {
+.sidebar--left,
+.sidebar--right {
   position: fixed;
+  z-index: 90;
   width: 180px;
   height: 100%;
   padding-top: 48px;
   background-color: var(--color-bg);
   box-shadow: 1px 0 0 0 var(--color-border);
+}
+
+.sidebar--right {
+  right: 0;
+  box-shadow: -1px 0 0 0 var(--color-border);
 }
 
 .sidebar_group {

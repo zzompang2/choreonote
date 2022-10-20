@@ -1,7 +1,9 @@
 {% extends 'layout.html' %}
 
+{% set useRightSidebar = true %}
+
 {% block style %}
-<link rel="stylesheet" href="/css/style.css">
+<link rel="stylesheet" href="/css/note.css">
 {% endblock %}
 
 {% block header %}
@@ -11,39 +13,24 @@
 {% endblock %}
 
 {% block sidebar %}
-
+<div class="sidebar_group">
+  <div class="sidebar_header"><span>무대 설정</span></div>
+  <label tabindex="0" class="sidebar_button">
+    <input class="checkbox" type="checkbox" id="coordinate_btn">격자 보기</label>
+  <label tabindex="0" class="sidebar_button">
+    <input class="checkbox" type="checkbox" id="snap_btn">격자에 맞추기</label>
+  <label tabindex="0" class="sidebar_button">
+    <input class="checkbox" type="checkbox" id="dancer_name_btn">댄서 이름으로 보기</label>
+  <label tabindex="0" class="sidebar_button">
+    <input class="checkbox" type="checkbox" id="rotate_btn">무대 회전</label>
+  <label tabindex="0" class="sidebar_button">
+    <input class="checkbox" type="checkbox" id="slope_btn">무대 3D</label>
+</div>
 {% endblock %}
 
 {% block body %}
-<section id="main_section">
-  <div id="left_toolbar" class="left toolbar">
-    <div id="coordinate_btn" class="btn_text active">
-      격자<br/>보기
-    </div>
-    <div id="snap_btn" class="btn_text">
-      격자<br/>맞춤
-    </div>
-    <div id="dancer_name_btn" class="btn_text">
-      이름<br/>보기
-    </div>
-    <div id="rotate_btn" class="btn_text">
-      무대<br/>회전
-    </div>
-    <div id="slope_btn" class="btn_text">
-      무대<br/>3D
-    </div>
-  </div>
+<section id="stage_section" class="stage">
   <div id="container" class="flex_column"></div>
-  <div id="right_toolbar" class="right toolbar">
-    <div id="dancer_btn" class="btn_text">
-      <object style="width: 10px;" type="image/svg+xml" data="./assets/icons/Medium(24)/Left.svg"></object>
-      댄서
-    </div>
-    <div id="setting_btn" class="btn_text">
-      <object style="width: 10px;" type="image/svg+xml" data="./assets/icons/Medium(24)/Left.svg"></object>
-      노트<br/>설정
-    </div>
-  </div>
 </section>
 
 <div id="divider"></div>
@@ -63,8 +50,16 @@
 </audio>
 {% endblock %}
 
+{% block sidebarRight %}
+<div class="sidebar_group">
+  <div class="sidebar_header"><span>댄서</span></div>
+  <div tabindex="0" class="sidebar_button">1. 함창수</div>
+  <div tabindex="0" class="sidebar_button">2. 쫌팡이</div>
+</div>
+{% endblock %}
+
 {% block script %}
-<script src="/js/home.js" type="module"></script>
+<script src="/js/note.js" type="module"></script>
 {% endblock %}
 
 

@@ -15,7 +15,7 @@
     	{% endblock %}
     </header>
     
-    <section class="sidebar">
+    <section class="sidebar--left">
       {% block sidebar %}
     	{% endblock %}
     </section>
@@ -25,6 +25,13 @@
       {% block body %}
     	{% endblock %}
     </section>
+    
+    {% if useRightSidebar %}
+    <section class="sidebar--right">
+      {% block sidebarRight %}
+    	{% endblock %}
+    </section>
+    {% endif %}
       
   </body>
 	<script src="https://unpkg.com/axios/dist/axios.min.js"></script>

@@ -1,4 +1,5 @@
-@import './component/constant.scss';
+@import './component/root.scss';
+@import './component/variable.scss';
 
 /**************/
 
@@ -25,13 +26,19 @@
 
 /****************/
 
-.sidebar {
-  position: fixed;
+.sidebar--left,
+.sidebar--right {
+  position: fixed; z-index: 90;
   width: $var-sidebar-width; height: 100%;
   padding-top: $var-header-height;
 
   background-color: var(--color-bg);
   box-shadow: 1px 0 0 0 var(--color-border);
+}
+
+.sidebar--right {
+  right: 0;
+  box-shadow: -1px 0 0 0 var(--color-border);
 }
 
 .sidebar_group {
