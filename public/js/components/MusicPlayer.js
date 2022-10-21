@@ -1,6 +1,6 @@
 import { STAGE_WIDTH, STAGE_HEIGHT, PIXEL_PER_SEC, TIMELINE_PADDING, TIME_UNIT,
 HANDLE_WIDTH, COLOR_NUM, musicDurationFormat, $ } from "/js/constant.js";
-const TAG = "MusicPlayer.mjs/";
+const TAG = "MusicPlayer.js/";
 
 export default class MusicPlayer {
   constructor({ musicInfo, curTime, clickPlayBtn, addFormationBox }) {

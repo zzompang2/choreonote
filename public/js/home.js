@@ -1,9 +1,9 @@
-import MusicPlayer from "./components/MusicPlayer.mjs";
-import SideScreen from "./components/SideScreen.mjs";
-import Stage from "./components/Stage.mjs";
-import Timeline from "./components/Timeline.mjs";
-import Toast from "./components/Toast.mjs";
-import Toolbar from "./components/Toolbar.mjs";
+import MusicPlayer from "./components/MusicPlayer.js";
+import SideScreen from "./components/SideScreen.js";
+import Stage from "./components/Stage.js";
+import Timeline from "./components/Timeline.js";
+import Toast from "./components/Toast.js";
+import Toolbar from "./components/Toolbar.js";
 
 const TAG = "main.js/";
 

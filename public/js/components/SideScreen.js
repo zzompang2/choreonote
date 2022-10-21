@@ -1,6 +1,6 @@
 import { STAGE_WIDTH, STAGE_HEIGHT, PIXEL_PER_SEC, TIMELINE_PADDING, TIME_UNIT,
 HANDLE_WIDTH, COLOR_NUM, $ } from "/js/constant.js";
-const TAG = "SideScreen.mjs/";
+const TAG = "SideScreen.js/";
 
 export default class SideScreen {
   constructor({

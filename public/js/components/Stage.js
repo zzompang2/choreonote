@@ -1,7 +1,7 @@
 import { STAGE_WIDTH, STAGE_HEIGHT } from "/js/constant.js";
-import Dancer from "./Dancer.mjs";
+import Dancer from "./Dancer.js";
 
-const TAG = "Stage.mjs/";
+const TAG = "Stage.js/";
 
 export default class Stage {
   #curPos;
@@ -23,6 +23,7 @@ export default class Stage {
 
     this.$stageSection = document.createElement("div");
     this.$stageSection.id = "stage_section";
+    this.$stageSection.className = "stage";
 
     /* COORDINATE */
     this.$stageAxis = document.createElement("div");

@@ -1,6 +1,6 @@
 import { STAGE_WIDTH, STAGE_HEIGHT, PIXEL_PER_SEC, TIMELINE_PADDING, TIME_UNIT,
 HANDLE_WIDTH, COLOR_NUM, floorTime, roundTime, roundPos, $ } from "/js/constant.js";
-const TAG = "FormationBox.mjs/";
+const TAG = "FormationBox.js/";
 
 export default class FormationBox {
   constructor({ formationInfo, id, selectFormationBox, changeFormationTimeAndDuration }) {

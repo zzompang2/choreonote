@@ -36,156 +36,15 @@
 
 .stage {
   display: flex; flex-direction: row;
-  width: 100%; height: 460px;
+  width: 600px; height: 400px;
   
   background-color: var(--color-white);
   transition-duration: 1s;
   transition-timing-function: cubic-bezier(0.215, 0.610, 0.355, 1);
 }
 
-#container, .stage, #stage_dancer {
+.stage, #stage_dancer {
   transform-style: preserve-3d;
-}
-
-#stage_section .toolbar {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  width: 48px;
-  align-items: center;
-  z-index: 8889;
-  background-color: var(--color-blackMiddle);
-}
-
-#stage_section .left {
-  border-right: 1px solid var(--color-blackLight);
-}
-
-#stage_section .right {
-  border-left: 1px solid var(--color-blackLight);
-  width: 48px;
-  align-items: flex-start;
-  transition-duration: 1s;
-}
-
-.toolbar .btn_text {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  width: 36px;
-  height: 36px;
-  margin-top: 8px;
-  border-radius: 8px;
-  color: var(--color-grayMiddle);
-  font-size: 10px;
-  user-select: none;
-}
-
-.right .btn_text {
-  padding-right: 4px;
-}
-
-.toolbar .active {
-  color: var(--color-white);
-  background-color: var(--color-blackDark);
-}
-
-#side_screen {
-  position: absolute;
-  right: -240px;
-  width: 240px;
-  height: 460px;
-  border-left: 1px solid var(--color-blackLight);
-  z-index: 8889;
-  background-color: var(--color-blackMiddle);
-  display: flex;
-  flex-direction: column;
-  transition-duration: 1s;
-}
-
-#side_screen .header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 8px;
-}
-
-#side_screen .header .title {
-  color: var(--color-white);
-  font-size: 14px;
-}
-
-#side_screen .header .icon_btn {
-  width: 24px;
-  height: 24px;
-}
-
-#side_screen .list {
-  flex: 1;
-  overflow-y: scroll;
-  padding: 0 8px;
-}
-
-#side_screen .list::-webkit-scrollbar {
-  width: 12px;
-}
-
-#side_screen .list::-webkit-scrollbar-thumb {
-  background-color: var(--color-blackLight);
-}
-
-#side_screen .list::-webkit-scrollbar-track {
-  background-color: var(--color-blackMiddle)
-}
-
-#side_screen .elem {
-  display: flex;
-  align-items: center;
-  padding: 4px 0;
-}
-
-#side_screen .elem .did {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  border-radius: 10px;
-  font-size: 10px;
-  color: var(--color-blackMiddle);
-}
-
-#side_screen .elem .name_input {
-  flex: 1;
-  padding: 6px 8px;
-  margin: 0 4px;
-  min-width: 50px;
-  border: none;
-  border-radius: 8px;
-  font-size: 12px;
-  background-color: var(--color-blackMiddle);
-  color: var(--color-white);
-}
-
-#side_screen .elem .name_input:focus {
-  background-color: var(--color-blackDark);
-  outline-width: 0;
-}
-
-#side_screen .elem .delete_btn {
-  font-size: 10px;
-  color: var(--color-red);
-}
-
-#container {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  -webkit-perspective: 400; /* 원근법 적용 */
-  perspective: 400;
-  PADDING: 0 16px;
 }
 
 #player_section {

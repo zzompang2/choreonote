@@ -1,8 +1,8 @@
 import { STAGE_WIDTH, STAGE_HEIGHT, PIXEL_PER_SEC, TIMELINE_PADDING, TIME_UNIT,
 HANDLE_WIDTH, COLOR_NUM, $ } from "/js/constant.js";
-import Toast from "./Toast.mjs";
+import Toast from "./Toast.js";
 
-const TAG = "Dancer.mjs/";
+const TAG = "Dancer.js/";
 
 export default class Dancer {
   constructor({ dancer, position, gap }) {
