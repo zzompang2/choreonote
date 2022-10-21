@@ -1,8 +1,7 @@
-import { STAGE_WIDTH, STAGE_HEIGHT, PIXEL_PER_SEC, TIMELINE_PADDING, TIME_UNIT,
-HANDLE_WIDTH, COLOR_NUM, musicDurationFormat, floorTime, roundTime, roundPos, $ } from "/js/constant.js";
+import { PIXEL_PER_SEC, TIMELINE_PADDING,
+HANDLE_WIDTH, musicDurationFormat, roundTime, $ } from "/js/constant.js";
 import FormationBox from "./FormationBox.js";
 
-// import * as CONST from "../values/Constants.js";
 const TAG = "Timeline.js/";
 
 export default class Timeline {
@@ -19,39 +18,27 @@ export default class Timeline {
     this.formationArray = formationArray;
     this.selectFormationBox = selectFormationBox;
     this.changeFormationTimeAndDuration = changeFormationTimeAndDuration;
-    this.$timeline = document.getElementById("timeline_section");
+    this.$timeline = $("#timeline_section");
     const $container = this.$timeline.children[0];
     this.markedBoxIdx = -1;
 
     $container.style.width = musicDuration / 1000 * PIXEL_PER_SEC + TIMELINE_PADDING*2 + "px";
     /* TIMELINE */
     //[...$container.children].forEach(elem => elem.remove());
-    const $timeRuler = document.createElement("div");
-    const $timeNumber = document.createElement("div");
-    const $timeScale = document.createElement("div");
-
-    $timeRuler.id = "time_ruler";
-    $timeNumber.id = "time_number";
-    $timeScale.id = "time_scale";
+    const $timeRuler = $("#time_ruler");
+    const $timeNumber = $("#time_number");
+    const $timeScale = $("#time_scale");
     
-    this.$formationBoxSection = document.createElement("div");
-    this.$formationBoxSection.id = "formation_box_section";
+    this.$formationBoxSection = $("#formation_box_section");
 
     /* TIME MARKER */
-    this.$timeMarker = document.createElement("div");
-    this.$timeMarker.setAttribute("id", "time_marker");
+    this.$timeMarker = $("#time_marker");
     this.$timeMarker.style.left = TIMELINE_PADDING + "px";
-    const $line = document.createElement("div");
-    $line.setAttribute("id", "line");
-    $line.setAttribute("draggable", false);
-    const $handle = document.createElement("div");
-    $handle.setAttribute("id", "handle");
-    $handle.setAttribute("draggable", true);
+
+    const $handle = $("#handle");
     $handle.ondragstart = e => dragStart(e);
     $handle.ondrag = e => drag(e);
     $handle.ondragend = e => dragEnd(e);
-    this.$timeMarker.appendChild($line);
-    this.$timeMarker.appendChild($handle);
 
     let initialPos = 0;
     const emptyImg = document.createElement("img");
@@ -114,19 +101,7 @@ export default class Timeline {
       $timeScale.appendChild($wrap);
     }
 
-    const $divider = document.createElement("div");
-    $divider.id = "divider";
-
-    this.$formationBoxSection.appendChild($divider);
-
     let $fragment = document.createDocumentFragment();
-    $timeRuler.appendChild($timeNumber);
-    $timeRuler.appendChild($timeScale);
-    $fragment.appendChild($timeRuler);
-    $fragment.appendChild(this.$formationBoxSection);
-    $fragment.appendChild(this.$timeMarker);
-    $fragment.appendChild($divider);
-    $container.appendChild($fragment);
 
     $timeRuler.addEventListener("click", e => clickTimeRuler(e), true);
 

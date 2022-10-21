@@ -199,11 +199,6 @@ function init() {
     changeDancerName,
     changeDancerColor,
   });
-  const $container = document.querySelector(".body");
-  const $fragment = document.createDocumentFragment();
-  $fragment.appendChild(stage.$stageSection);
-  $fragment.appendChild(musicPlayer.$playerSection);
-  $container.prepend($fragment);
   
   setCurTime(0);
 
