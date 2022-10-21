@@ -25,17 +25,51 @@
 /*************/
 
 .stage {
-  display: flex; flex-direction: row;
-  width: 600px; height: 400px;
+	width: 600px; height: 400px;
+
+  perspective: 400px;
+}
+
+.stage__wrap {
+  width: 100%; height: 100%;
   
   background-color: var(--color-white);
+  
+  transform-style: preserve-3d;
   transition-duration: 1s;
   transition-timing-function: cubic-bezier(0.215, 0.610, 0.355, 1);
 }
 
-.stage, #stage_dancer {
+.stage__axis {
+  position: absolute;
+  width: 100%; height: 100%;
+}
+
+.axis_vertical {
+  position: absolute;
+  height: 100%;
+  width: 1px;
+  background-color: var(--color-grayLight);
+}
+
+.axis_horizontal {
+  position: absolute;
+  width: 100%;
+  height: 1px;
+  background-color: var(--color-grayLight);
+}
+
+.stage__dancer {
+  position: absolute;
+  width: 100%; height: 100%;
   transform-style: preserve-3d;
 }
+
+/**************/
+
+/*** PLAYER ***/
+
+/**************/
 
 #player_section {
   display: flex;
@@ -98,29 +132,7 @@
   color: var(--color-grayMiddle);
 }
 
-#stage_dancer, #stage_axis {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-}
 
-#stage_dancer {
-  transform-style: preserve-3d;
-}
-
-.axis_vertical {
-  position: absolute;
-  height: 100%;
-  width: 1px;
-  background-color: var(--color-grayLight);
-}
-
-.axis_horizontal {
-  position: absolute;
-  width: 100%;
-  height: 1px;
-  background-color: var(--color-grayLight);
-}
 
 .dancer {
   position: absolute;

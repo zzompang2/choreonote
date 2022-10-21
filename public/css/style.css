@@ -307,7 +307,7 @@ object {
   flex-direction: column;
   align-items: center;
   -webkit-perspective: 400; /* 원근법 적용 */
-  perspective: 400;
+  perspective: 400px;
   PADDING: 0 16px;
 }
 

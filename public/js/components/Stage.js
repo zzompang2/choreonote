@@ -1,4 +1,4 @@
-import { STAGE_WIDTH, STAGE_HEIGHT } from "/js/constant.js";
+import { STAGE_WIDTH, STAGE_HEIGHT, $ } from "/js/constant.js";
 import Dancer from "./Dancer.js";
 
 const TAG = "Stage.js/";
@@ -21,12 +21,14 @@ export default class Stage {
     this.isSnaped = false;
     this.nameIsShown = false;
 
-    this.$stageSection = document.createElement("div");
-    this.$stageSection.id = "stage_section";
-    this.$stageSection.className = "stage";
+    // this.$stageSection = document.createElement("div");
+    // this.$stageSection.id = "stage_section";
+    // this.$stageSection.className = "stage";
+    this.$stageSection = $("#stage_section");
+    this.$stageWrap = $("#stage_wrap");
 
     /* COORDINATE */
-    this.$stageAxis = document.createElement("div");
+    this.$stageAxis = $("#stage_axis");
     this.$stageAxis.setAttribute("id", "stage_axis");
 
     for(let i = 0, left = 0; left < STAGE_WIDTH/2; left += gap) {
@@ -61,10 +63,10 @@ export default class Stage {
       this.$stageAxis.appendChild($axis);
       i++;
     }
-    this.$stageSection.appendChild(this.$stageAxis);
+    // this.$stageSection.appendChild(this.$stageAxis);
 
     /* STAGE */
-    this.$stageDancer = document.createElement("div");
+    this.$stageDancer = $("#stage_dancer");
     this.$stageDancer.setAttribute("id", "stage_dancer");
     this.$stageDancer.ondragover = e => e.preventDefault();
     this.dancerArray.forEach((dancer, idx) => {
@@ -72,7 +74,7 @@ export default class Stage {
       this.dancerObjArray.push(dancerObj);
       this.$stageDancer.appendChild(dancerObj.$dancer);
     });
-    this.$stageSection.appendChild(this.$stageDancer);
+    // this.$stageSection.appendChild(this.$stageDancer);
 
     /* BUTTON */
     const $coordBtn = document.getElementById("coordinate_btn");
@@ -187,11 +189,11 @@ export default class Stage {
 
     /* ROTATE */
     if(this.isRotated) {
-      this.$stageSection.style.transform += "rotateZ(180deg)";
+      this.$stageWrap.style.transform += "rotateZ(180deg)";
     }
     /* UNROTATE */
     else {
-      this.$stageSection.style.transform = this.isSloped ? "translateY(-20px) rotateX(30deg)" : "";
+      this.$stageWrap.style.transform = this.isSloped ? "translateY(-20px) rotateX(30deg)" : "";
     }
     this.evalDraggable({});
   }
@@ -205,26 +207,26 @@ export default class Stage {
     if(this.isRotated) {
       /* ROTATE 상태에서 SLOPE */
       if(this.isSloped) {
-        this.$stageSection.style.transform += "translateY(20px) rotateX(-30deg)";
+        this.$stageWrap.style.transform += "translateY(20px) rotateX(-30deg)";
         setTimeout(() => {
-          this.$stageSection.style.transitionDuration = "0s";
-          this.$stageSection.style.transform = "translateY(-20px) rotateX(30deg) rotateZ(180deg)";
-          setTimeout(() => this.$stageSection.style.transitionDuration = "1s", 100);
+          this.$stageWrap.style.transitionDuration = "0s";
+          this.$stageWrap.style.transform = "translateY(-20px) rotateX(30deg) rotateZ(180deg)";
+          setTimeout(() => this.$stageWrap.style.transitionDuration = "1s", 100);
         }, 1000);
       }
       /* ROTATE 상태에서 UNSLOPE */
       else {
-        this.$stageSection.style.transform += "rotateX(30deg) translateY(-20px)";
+        this.$stageWrap.style.transform += "rotateX(30deg) translateY(-20px)";
         setTimeout(() => {
-          this.$stageSection.style.transitionDuration = "0s";
-          this.$stageSection.style.transform = "rotateZ(180deg)";
-          setTimeout(() => this.$stageSection.style.transitionDuration = "1s", 100);
+          this.$stageWrap.style.transitionDuration = "0s";
+          this.$stageWrap.style.transform = "rotateZ(180deg)";
+          setTimeout(() => this.$stageWrap.style.transitionDuration = "1s", 100);
         }, 1000);
       }
     }
     /* 기본 상태에서 SLOPE | UNSLOPE */
     else {
-      this.$stageSection.style.transform = this.isSloped ? "translateY(-20px) rotateX(30deg)" : "";
+      this.$stageWrap.style.transform = this.isSloped ? "translateY(-20px) rotateX(30deg)" : "";
     }
 
     /* DANCER 3D 변환 */
