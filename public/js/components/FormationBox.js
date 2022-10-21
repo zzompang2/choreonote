@@ -12,8 +12,9 @@ export default class FormationBox {
     this.$box.style.width = formationInfo.duration / 1000 * PIXEL_PER_SEC + "px";
     this.$box.style.left = TIMELINE_PADDING + formationInfo.time / 1000 * PIXEL_PER_SEC + "px";
 
+    console.log(formationInfo, formationInfo.duration / 1000 * PIXEL_PER_SEC);
     const $body = document.createElement("div");
-    $body.className = "body";
+    $body.className = "formationBox__body";
     $body.draggable = true;
     $body.onclick = e => {
       e.stopPropagation();  // $bg 클릭 방지
