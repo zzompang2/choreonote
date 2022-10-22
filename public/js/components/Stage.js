@@ -17,8 +17,6 @@ export default class Stage {
     this.isSloped = false;
     this.isBoxSelected = false;
     this.isMusicPlaying = false;
-    this.axisIsShown = true;
-    this.isSnaped = false;
     this.nameIsShown = false;
 
     this.$stageSection = $("#stage_section");
@@ -71,36 +69,11 @@ export default class Stage {
     });
 
     /* BUTTON */
-    const $coordBtn = document.getElementById("coordinate_btn");
-    $coordBtn.onclick = () => {
-      this.showAxis();
-      if(this.axisIsShown) $coordBtn.classList.add("active");
-      else $coordBtn.classList.remove("active");
-    }
-    const $snapBtn = document.getElementById("snap_btn");
-    $snapBtn.onclick = () => {
-      this.snap();
-      if(this.isSnaped) $snapBtn.classList.add("active");
-      else $snapBtn.classList.remove("active");
-    }
-    const $dancerNameBtn = document.getElementById("dancer_name_btn");
-    $dancerNameBtn.onclick = () => {
-      this.showDancerName();
-      if(this.nameIsShown) $dancerNameBtn.classList.add("active");
-      else $dancerNameBtn.classList.remove("active");
-    }
-    const $rotateBtn = document.getElementById("rotate_btn");
-    $rotateBtn.onclick = () => {
-      this.rotate();
-      if(this.isRotated) $rotateBtn.classList.add("active");
-      else $rotateBtn.classList.remove("active");
-    }
-    const $slopeBtn = document.getElementById("slope_btn");
-    $slopeBtn.onclick = () => {
-      this.slope();
-      if(this.isSloped) $slopeBtn.classList.add("active");
-      else $slopeBtn.classList.remove("active");
-    }
+    $("#coordinate_btn").onclick = e => this.showAxis(e.target.checked);
+    $("#snap_btn").onclick = e => this.snap(e.target.checked);
+    $("#dancer_name_btn").onclick = e => this.showDancerName(e.target.checked);
+    $("#rotate_btn").onclick = e => this.rotate(e.target);
+    $("#slope_btn").onclick = e => this.slope(e.target);
   }
 
   get curPosition() {
@@ -175,11 +148,14 @@ export default class Stage {
     return newPos;
   }
 
-  rotate() {
-    if(this.isBlocked) return;
+  rotate(target) {
+    if(this.isBlocked) {
+      target.checked = this.isRotated;
+      return;
+    }
     this.isBlocked = true;
     setTimeout(() => this.isBlocked = false, 1000);
-    this.isRotated = !this.isRotated;
+    this.isRotated = target.checked;
 
     /* ROTATE */
     if(this.isRotated) {
@@ -192,11 +168,14 @@ export default class Stage {
     this.evalDraggable({});
   }
 
-  slope() {
-    if(this.isBlocked) return;
+  slope(target) {
+    if(this.isBlocked) {
+      target.checked = this.isSloped;
+      return;
+    }
     this.isBlocked = true;
     setTimeout(() => this.isBlocked = false, 1200);
-    this.isSloped = !this.isSloped;
+    this.isSloped = target.checked;
 
     if(this.isRotated) {
       /* ROTATE 상태에서 SLOPE */
@@ -232,19 +211,17 @@ export default class Stage {
     this.evalDraggable({});
   }
 
-  showDancerName() {
-    this.nameIsShown = !this.nameIsShown;
+  showDancerName(bool) {
+    this.nameIsShown = bool;
     this.dancerObjArray.forEach($dancer => $dancer.showName(this.nameIsShown));
   }
 
-  showAxis() {
-    this.axisIsShown = !this.axisIsShown;
-    this.$stageAxis.style.display = this.axisIsShown ? "block" : "none";
+  showAxis(bool) {
+    this.$stageAxis.style.display = bool ? "block" : "none";
   }
 
-  snap() {
-    this.isSnaped = !this.isSnaped;
-    this.dancerObjArray.forEach(dancer => dancer.snap(this.isSnaped));
+  snap(bool) {
+    this.dancerObjArray.forEach(dancer => dancer.snap(bool));
   }
 
   changeName(id, name) {
