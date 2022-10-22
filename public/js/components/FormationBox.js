@@ -8,7 +8,7 @@ export default class FormationBox {
     this.formationInfo = formationInfo;
     this.$box = document.createElement("div");
     this.$box.id = id;
-    this.$box.className = "formation_box";
+    this.$box.className = "formationBox";
     this.$box.style.width = formationInfo.duration / 1000 * PIXEL_PER_SEC + "px";
     this.$box.style.left = TIMELINE_PADDING + formationInfo.time / 1000 * PIXEL_PER_SEC + "px";
 
@@ -43,7 +43,7 @@ export default class FormationBox {
     
     const $handlerLeft = document.createElement("div");
     $handlerLeft.draggable = true;
-    $handlerLeft.className = "handler left";
+    $handlerLeft.className = "formationBox__handler formationBox__handler--left";
     $handlerLeft.ondragstart = e => {
       initialX = e.clientX;
       /* 드래그 잔상 지우기 위해 드래그 이미지에 빈 img 태그 넣음 */
@@ -69,7 +69,7 @@ export default class FormationBox {
 
     const $handlerRight = document.createElement("div");
     $handlerRight.draggable = true;
-    $handlerRight.className = "handler right";
+    $handlerRight.className = "formationBox__handler formationBox__handler--right";
     $handlerRight.ondragstart = e => {
       initialX = e.clientX;
       /* 드래그 잔상 지우기 위해 드래그 이미지에 빈 img 태그 넣음 */
@@ -94,11 +94,11 @@ export default class FormationBox {
   }
 
   mark() {
-    this.$box.children[0].classList.add("selected");
+    this.$box.children[0].classList.add("formationBox--selected");
   }
 
   unmark() {
-    this.$box.children[0].classList.remove("selected");
+    this.$box.children[0].classList.remove("formationBox--selected");
   }
 
   setId(newId) {

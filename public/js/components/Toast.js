@@ -4,7 +4,8 @@ export default class Toast {
   constructor(msg, type) {
     const $toast = document.createElement("div");
     $toast.id = "toast";
-    $toast.className = type;
+    $toast.classList.add("toast");
+    $toast.classList.add("toast--" + type);
     $toast.innerText = msg;
     document.body.appendChild($toast);
 

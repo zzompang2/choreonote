@@ -8,7 +8,6 @@ export default class MusicPlayer {
     this.isMusicPlaying = false;
 
     // TRACK
-
     this.$progress = this.$playerSection.querySelector("#progress");
     this.$progress.style.width = "0";
 
@@ -19,11 +18,8 @@ export default class MusicPlayer {
     const $addBtn = this.$playerSection.querySelector("#add_btn");
     $addBtn.onclick = addFormationBox;
 
-    const $playBtn = this.$playerSection.querySelector("#play_btn");
-    $playBtn.onclick = clickPlayBtn;
-
-    this.$playIcon = $playBtn.children[0];
-    this.$pauseIcon = $playBtn.children[1];
+    this.$playBtn = this.$playerSection.querySelector("#play_btn");
+    this.$playBtn.onclick = clickPlayBtn;
       
     // DURATION TEXT
     const $durationText = this.$playerSection.querySelector("#duration_text");
@@ -52,8 +48,8 @@ export default class MusicPlayer {
 
   play() {
     this.$audio.play();
-    this.$playIcon.style.display = "none";
-    this.$pauseIcon.style.display = "block";
+    this.$playBtn.classList.remove("icon__play");
+    this.$playBtn.classList.add("icon__pause");
 
     this.$progress.style.transitionDuration = this.musicDuration - this._curTime + "ms";
     this.$progress.style.width = "100%";
@@ -67,8 +63,8 @@ export default class MusicPlayer {
     this.setCurTimeText(ms);
     this.$progress.style.transitionDuration = "0s";
     this.moveProgress(ms);
-    this.$playIcon.style.display = "block";
-    this.$pauseIcon.style.display = "none";
+    this.$playBtn.classList.remove("icon__pause");
+    this.$playBtn.classList.add("icon__play");
   }
 
   set curTime(ms) {

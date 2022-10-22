@@ -1,5 +1,27 @@
 @import './component/variable.scss';
 
+::-webkit-scrollbar {
+  height: 12px;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--color-blackLight);
+}
+
+::-webkit-scrollbar-track {
+  background-color: var(--color-blackMiddle)
+}
+
+/*************/
+
+/*** STAGE ***/
+
+/*************/
+
+.body {
+  background-color: var(--color-bg-dark);
+}
+
 /***************/
 
 /*** SIDEBAR ***/
@@ -8,14 +30,6 @@
 
 .checkbox {
   margin-right: 6px;
-  
-  &::after {
-    border-color: var(--color-bg-brand, #0d99ff);
-    background-color: var(--color-bg-brand, #0d99ff);
-    width: 12px;
-    height: 12px;
-    box-sizing: border-box;
-  }
 }
 
 /*************/
@@ -71,68 +85,74 @@
 
 /**************/
 
-#player_section {
-  display: flex;
-  flex-direction: column;
+.player {
+  display: flex; flex-direction: column;
   width: 600px;
 }
 
-#player_section .icon_btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-}
-
-#player_section #track {
-  width: 100%;
-  height: 6px;
+.player__track {
+  width: 100%; height: 6px;
+  
   background-color: var(--color-blackLight);
 }
 
-#player_section #progress {
+.player__progress {
   height: 100%;
+  
   background-color: var(--color-yellow);
   transition-timing-function: linear;
 }
 
-#player_section #time_and_btn {
+.player__lowerPart {
   display: flex;
+  align-items: center; justify-content: space-between;
   width: 100%;
-  align-items: center;
-  justify-content: space-between;
   padding: 8px 0;
 }
 
-#player_section #btn_container {
+.flexContainer--row {
   display: flex;
   align-items: center;
 }
 
-#play_btn {
-  width: 40px;
-  height: 40px;
+.icon--medium {
+  width: 36px; height: 36px;
 }
 
-#player_section .time_number {
+.icon__add {
+  background: url("../assets/icons/Large(32)/Add.svg") no-repeat center;
+}
+
+.icon__play {
+  background: url("../assets/icons/Large(32)/Play.svg") no-repeat center;
+}
+
+.icon__pause {
+  background: url("../assets/icons/Large(32)/Pause.svg") no-repeat center;
+}
+
+.player__timeContainer {
   display: flex;
   align-items: flex-end;
   user-select: none;
 }
 
-#player_section .min_sec {
+.player__time--large {
   font-size: 16px;
   color: var(--color-grayLight);
 }
 
-#player_section .millisec {
+.player__time--small {
   font-size: 12px;
   margin-bottom: 1px;
   color: var(--color-grayMiddle);
 }
 
+/**************/
 
+/*** DANCER ***/
+
+/**************/
 
 .dancer {
   position: absolute;
@@ -220,14 +240,20 @@
   transition-duration: 1s;
 }
 
-#divider {
+/****************/
+
+/*** TIMELINE ***/
+
+/****************/
+
+.divider {
   position: relative;
   width: 100%;
   height: 1px;
   background-color: var(--color-grayDark);
 }
 
-#timeline_section {
+.timeline {
   overflow-x: scroll;
   width: 100%;
   position: relative;
@@ -236,55 +262,29 @@
   background-color: var(--color-grayMiddle);
 }
 
-#timeline_section::-webkit-scrollbar {
-  height: 12px;
-}
-
-#timeline_section::-webkit-scrollbar-thumb {
-  background-color: var(--color-blackLight);
-}
-
-#timeline_section::-webkit-scrollbar-track {
-  background-color: var(--color-blackMiddle)
-}
-
-#timeline_section #formation_box_section {
-  width: 100%;
-  height: 140px;
-  background-color: var(--color-blackMiddle);
-  display: flex;
-  flex-direction: row;
-  padding-top: 6px;
-}
-
-#time_ruler {
+.timeline__ruler {
   /* height: FormationScreen.js */
   width: 100%;
   background-color: var(--color-blackLight);
 }
 
-#time_number,
-#time_scale {
-  display: flex;
-  flex-direction: row;
-}
-
-#time_number {
-  padding: 10px 0 6px 0;
+.timeline__rulerNumber {
+  display: flex; flex-direction: row;
+  padding: 10px 0 6px;
   pointer-events: none;
 }
 
-#time_scale {
+.timeline__rulerLine {
+  display: flex; flex-direction: row;
   align-items: flex-end;
   padding-bottom: 4px;
   pointer-events: none;
 }
 
-#time_number .number {
+.timeline__rulerNumber .number {
   text-align: center;
   font-size: 12px;
   color: var(--color-grayMiddle);
-  user-select: none;
 }
 
 .scale_wrap {
@@ -299,31 +299,16 @@
   background-color: var(--color-grayMiddle);
 }
 
-#time_marker {
-  position: absolute;
-  top: 28px;
-  height: calc(100% - 28px);
-  transition-timing-function: linear;
+.formationBoxContainer {
+  width: 100%;
+  height: 140px;
+  background-color: var(--color-blackMiddle);
+  display: flex;
+  flex-direction: row;
+  padding-top: 6px;
 }
 
-#time_marker > #line {
-  position: absolute;
-  height: 100%;
-  width: 2px;
-  left: -1px;
-  background-color: var(--color-yellow);
-}
-
-#time_marker > #handle {
-  position: absolute;
-  width: 12px;
-  height: 16px;
-  left: -6px;
-  background-color: var(--color-yellow);
-  border-radius: 0 0 6px 6px;  
-}
-
-.formation_box {
+.formationBox {
   position: absolute;
   height: 100px;
 }
@@ -339,12 +324,12 @@
   box-sizing: border-box;*/
 }
 
-.formation_box .selected {
+.formationBox--selected {
   background-color: var(--color-white);
   /*border-style: solid;*/
 }
 
-.formation_box .handler {
+.formationBox__handler {
   position: absolute;
   top: 25px;
   height: 50px;
@@ -353,26 +338,50 @@
   cursor: e-resize;
 }
 
-.formation_box .left {
+.formationBox__handler--left {
   left: -4px;
   border-radius: 10px;
 } 
 
-.formation_box .right {
+.formationBox__handler--right {
   right: -4px;
   border-radius: 10px;
-} 
-
-.time {
-  color: var(--color-white);
 }
 
-#tool_section {
+.timeMarker {
+  position: absolute;
+  top: 28px;
+  height: calc(100% - 28px);
+  transition-timing-function: linear;
+}
+.timeMarker__line {
+  position: absolute;
+  height: 100%;
+  width: 2px;
+  left: -1px;
+  background-color: var(--color-yellow);
+}
+
+.timeMarker__handle {
+  position: absolute;
+  width: 12px;
+  height: 16px;
+  left: -6px;
+  background-color: var(--color-yellow);
+  border-radius: 0 0 6px 6px;  
+}
+
+/************/
+
+/*** TOOL ***/
+
+/************/
+
+.toolbar {
   display: flex;
-
 }
 
-#tool_section .btn {
+.toolbar__button {
   color: var(--color-grayDark);
   font-size: 12px;
   background-color: var(--color-blackLight);
@@ -381,12 +390,18 @@
   border-radius: 8px;
 }
 
-#tool_section .active {
+.toolbar__button--active {
   color: var(--color-blackMiddle);
   background-color: var(--color-white);
 }
 
-#toast {
+/*************/
+
+/*** TOAST ***/
+
+/*************/
+
+.toast {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -403,10 +418,10 @@
   z-index: 9999;
 }
 
-.success {
+.toast--success {
   background-color: var(--color-green);
 }
 
-.warning {
+.toast--warning {
   background-color: var(--color-red);
 }

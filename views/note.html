@@ -41,70 +41,68 @@
   </div>
 </div>
 
-<div id="player_section">
-  <div id="track">
-  	<div id="progress" style="width: 0; transition-duration: 0s;"></div>
+<div id="player_section" class="player">
+  <div id="track" class="player__track">
+  	<div id="progress" class="player__progress" style="width: 0; transition-duration: 0s;"></div>
   </div>
-  <div id="time_and_btn">
-    <div id="curtime_text" class="time_number">
-      <div class="min_sec">0:00.</div>
-      <div class="millisec">000</div>
+  <div id="time_and_btn" class="player__lowerPart">
+    <div id="curtime_text" class="player__timeContainer">
+      <div class="player__time--large">0:00.</div>
+      <div class="player__time--small">000</div>
     </div>
-    <div id="btn_container">
-      <div id="add_btn" class="icon_btn">
-        <object id="add" type="image/svg+xml" data="./assets/icons/Large(32)/Add.svg"></object>
+    <div class="flexContainer--row">
+      <div id="add_btn" class="icon--medium icon__add">
       </div>
-      <div id="play_btn" class="icon_btn">
-        <object id="play" type="image/svg+xml" data="./assets/icons/Large(32)/Play.svg"></object>
-        <object id="pause" type="image/svg+xml" data="./assets/icons/Large(32)/Pause.svg" style="display: none;"></object>
+      <div id="play_btn" class="icon--medium icon__play">
       </div>
     </div>
-    <div id="duration_text" class="time_number">
-      <div class="min_sec">0:00.</div>
-      <div class="millisec">000</div>
+    <div id="duration_text" class="player__timeContainer">
+      <div class="player__time--large">0:00.</div>
+      <div class="player__time--small">000</div>
     </div>
   </div>
 </div>
 
 <!-- TIMELINE -->
-<section id="timeline_section">
+<section id="timeline_section" class="timeline">
   <div id="container">
     
-    <div id="time_ruler">
-      <div id="time_number">
+    <div id="time_ruler" class="timeline__ruler">
+      <div id="time_number" class="timeline__rulerNumber">
         <!-- <div style="width: ??px;"></div> -->
         <!-- <div class="number" id="0" style="width: 40px;">0:00</div> -->
       </div>
-      <div id="time_scale">
+      <div id="time_scale" class="timeline__rulerLine">
         <!-- <div style="width: ??px;"></div> -->
         <!-- <div id="0" class="scale_wrap" style="width: 10px;">
-          <div class="scale" style="height: 8px;"></div></div> -->
+          <div class="scale" style="height: 8px;"></div>
+        </div> -->
       </div>
     </div>
     
-    <div id="formation_box_section">
-      <!-- <div id="0" class="formation_box" style="width: 80px; left: 60px;">
+    <div id="formation_box_section" class="formationBoxContainer">
+      <!-- <div id="0" class="formationBox" style="width: 80px; left: 60px;">
         <div class="formationBox__body" draggable="true"></div>
-        <div draggable="true" class="handler left"></div>
-        <div draggable="true" class="handler right"></div>
+        <div draggable="true" class="formationBox__handler formationBox__handler--left"></div>
+        <div draggable="true" class="formationBox__handler formationBox__handler--right"></div>
       </div> -->
   	</div>
     
-    <div id="divider"></div>
+    <div class="divider"></div>
     
-    <div id="time_marker">
-      <div id="line" draggable="false"></div>
-      <div id="handle" draggable="true"></div>
+    <div id="time_marker" class="timeMarker">
+      <div id="line" class="timeMarker__line" draggable="false"></div>
+      <div id="handle" class="timeMarker__handle" draggable="true"></div>
     </div>
     
   </div>
   
 </section>
 
-<section id="tool_section">
-  <div id="copy_btn" class="btn">복사하기</div>
-  <div id="paste_btn" class="btn">붙여넣기</div>
-  <div id="delete_btn" class="btn">삭제</div>
+<section id="tool_section" class="toolbar">
+  <div id="copy_btn" class="toolbar__button">복사하기</div>
+  <div id="paste_btn" class="toolbar__button">붙여넣기</div>
+  <div id="delete_btn" class="toolbar__button">삭제</div>
 </section>
 
 <audio id="audio" preload="metadata">
