@@ -1,3 +1,5 @@
+import { TIME_UNIT, COLOR_NUM, floorTime, $ } from "/js/constant.js";
+
 import MusicPlayer from "./components/MusicPlayer.js";
 import SideScreen from "./components/SideScreen.js";
 import Stage from "./components/Stage.js";

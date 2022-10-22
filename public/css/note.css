@@ -124,15 +124,18 @@
 .player__timeContainer {
   display: flex;
   align-items: flex-end;
-  user-select: none;
 }
 
 .player__time--large {
+  width: 42px;
+  text-align: end;
   font-size: 16px;
   color: var(--color-grayLight);
 }
 
 .player__time--small {
+  width: 26px;
+  text-align: start;
   font-size: 12px;
   margin-bottom: 1px;
   color: var(--color-grayMiddle);
