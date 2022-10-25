@@ -20,7 +20,7 @@ let toolbar;
 let sideScreen;
 
 const state = {
-  noteName: "test",
+  noteTitle: "",
   dancerArray: [],
   formationArray: [],
   musicInfo: { name: "testMusic", duration: 30000 },
@@ -35,11 +35,21 @@ const state = {
 let musicFile;
 let isNoMusicNote;
 let noteLength = 10;
-let noteName;
 
-createNote();
+const noteId = new URL(location).searchParams.get("id");
 
-function createNote() {
+axios.get(`/note/info?id=${noteId}`)
+.then(res => {
+  const { note } = res.data;
+  console.log(note);
+  createNote(note);
+})
+.catch(err => {
+  console.error(err);
+});
+
+function createNote(note) {
+  state.noteTitle = note.title;
   state.dancerArray = [{ id: 0, name: "햄", color: "#ff631b" }, { id: 1, name: "팡이", color: "#8249d3" }];
   state.formationArray = [
     {
@@ -74,7 +84,7 @@ function handleFile(file) {
     // window.location.reload();
     return;
   }
-  state.noteName = arr[0];
+  state.noteTitle = arr[0];
 
   const reader = new FileReader();
   reader.onload = event => {
@@ -197,6 +207,7 @@ function init() {
   });
 
   sideScreen = new SideScreen({
+    noteTitle: state.noteTitle,
     dancerArray: state.dancerArray,
     addDancer,
     deleteDancer,
@@ -236,7 +247,7 @@ function saveFile() {
   const a = document.createElement("a");
   const file = new Blob([jsonData], { type: "text/plain" });
   a.href = URL.createObjectURL(file);
-  a.download = `${state.noteName}.choreo`;
+  a.download = `${state.noteTitle}.choreo`;
   a.click();
 }
 

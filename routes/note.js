@@ -50,4 +50,20 @@ router.get('/', async (req, res, next) => {
   }
 });
 
+router.get('/info', async (req, res, next) => {
+  try {
+    const { id } = req.query;
+    const [[ note ]] = await connection.query(
+      "SELECT * FROM note WHERE id = ?;",
+      [id]
+    );
+    
+    res.send({ note });
+    
+  } catch (err) {
+    console.error(err);
+    next(err);
+  }
+});
+
 module.exports = router;

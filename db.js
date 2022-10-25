@@ -44,8 +44,9 @@ function executeQuerys() {
     CREATE TABLE IF NOT EXISTS note (
     id        INT NOT NULL AUTO_INCREMENT,
     uid       INT NOT NULL,
+    title     VARCHAR(30) NOT NULL,
     music     VARCHAR(50),
-    duration  INT NOT NULL DEFAULT 10000,
+    duration  INT NOT NULL DEFAULT 30000,
     editedAt  DATETIME NOT NULL DEFAULT now(),
     createdAt DATETIME NOT NULL DEFAULT now(),
     PRIMARY KEY(id),

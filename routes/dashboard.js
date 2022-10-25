@@ -29,11 +29,18 @@ router.get('/', isLoggedIn, async (req, res, next) => {
   }
 });
 
+const getRandomTitle = () => {
+  const titleOptions = [
+    "엄청난노트", "굉장한노트", "대단한노트", "짜릿한노트", "멋진노트"
+  ];
+  return titleOptions[ Math.floor(Math.random() * 5) ];
+}
+
 router.get('/create_note', isLoggedIn, async (req, res, next) => {
   try {
   	const [ rows ] = await connection.query(
-      "INSERT INTO note (uid) VALUES (?);",
-      [req.user.id]
+      "INSERT INTO note (uid, title) VALUES (?, ?);",
+      [req.user.id, getRandomTitle() ]
     );
     res.send({ noteId: rows.insertId });
   } catch (err) {

@@ -3,6 +3,7 @@ const TAG = "SideScreen.js/";
 
 export default class SideScreen {
   constructor({
+    noteTitle,
     dancerArray,
     addDancer,
     deleteDancer,
@@ -10,6 +11,9 @@ export default class SideScreen {
     changeDancerColor,
     selectDancer,
   }) {
+    this.noteTitle = noteTitle;
+    $("#note_title_input").value = noteTitle;
+    
     this.dancerArray = dancerArray;
     this.changeDancerName = changeDancerName;
     this.deleteDancer = deleteDancer;
