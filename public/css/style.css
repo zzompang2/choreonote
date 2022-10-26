@@ -151,14 +151,6 @@ object {
   color: var(--color-yellow);
 }
 
-#main_header .btn_text {
-  padding: 8px 12px;
-  font-size: 14px;
-  border-radius: 2px;
-  color: var(--color-blackMiddle);
-  background-color: var(--color-yellow);
-}
-
 #main_section {
   display: flex;
   flex-direction: row;

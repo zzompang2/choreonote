@@ -221,9 +221,9 @@ function init() {
     if(window.confirm("초기 화면으로 돌아가시겠습니까?\n자동 저장 기능은 아직 없으니 꼭 저장해주세요!"))
     window.location.reload();
   };
-  const $saveBtn = document.getElementById("save_btn");
-  $saveBtn.onclick = saveFile;
   */
+  const $saveFileButton = $("#save_file_button");
+  $saveFileButton.onclick = saveFile;
 }
 
 function selectDancer(id) {
@@ -240,12 +240,11 @@ function selectDancer(id) {
 
 function saveFile() {
   const jsonData = JSON.stringify([state.dancerArray, state.formationArray, state.musicInfo]);
-
-  const a = document.createElement("a");
   const file = new Blob([jsonData], { type: "text/plain" });
-  a.href = URL.createObjectURL(file);
-  a.download = `${state.noteTitle}.choreo`;
-  a.click();
+  $("a", {
+    href: URL.createObjectURL(file),
+    download: `${state.noteTitle}`
+  }).click();
 }
 
 // function handleMusicFile (file) {

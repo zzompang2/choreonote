@@ -3,7 +3,7 @@
   z-index: 90;
   width: 240px;
   height: 100%;
-  padding-top: 48px;
+  padding-top: 40px;
   background-color: var(--color-bg);
   box-shadow: 1px 0 0 0 var(--color-border);
 }

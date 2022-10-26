@@ -21,6 +21,33 @@
   color: var(--color-text-neg);
 }
 
+.header__buttonContainer {
+	display: flex;  
+}
+
+.header__button {
+  display: flex; align-items: center;
+  height: 100%;
+  padding: 0 12px;
+  font-size: .8rem;
+  color: var(--color-white);
+  background-color: var(--color-transparent);
+  
+  &:hover {
+    background-color: var(--color-black);
+  }
+}
+
+.logo {
+  width: 200px; height: 60px;
+  background: url('../assets/icons/logo.svg') no-repeat center;
+  background-size: contain;
+}
+
+.logo--small {
+  width: 150px; height: 35px;
+}
+
 /************/
 
 /*** BODY ***/
