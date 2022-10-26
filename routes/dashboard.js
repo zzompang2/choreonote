@@ -81,4 +81,16 @@ router.get('/create_note', isLoggedIn, async (req, res, next) => {
   }
 });
 
+router.get('/get_notes', isLoggedIn, async (req, res, next) => {
+  try {
+  	const [ notes ] = await connection.query(
+      `SELECT *, DATE_FORMAT(createdAt, '%Y.%m.%d') AS createdAt FROM note WHERE uid = ?;`,
+      [req.user.id]);
+    res.send({ notes });
+  } catch (err) {
+    console.error(err);
+    next(err);
+  }
+});
+
 module.exports = router;

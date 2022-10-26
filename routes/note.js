@@ -41,6 +41,7 @@ const router = express.Router();
 //   }
 // });
 
+/* for debugging */
 router.get('/', async (req, res, next) => {
   try {
     res.render('note');
