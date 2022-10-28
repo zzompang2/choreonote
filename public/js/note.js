@@ -556,7 +556,7 @@ function copyFormation() {
   if(targetId == -1) return;
 
   state.copiedFormation = [];
-  stage.curPosition.forEach(pos => state.copiedFormation.push({...pos})); // deep copy
+  stage.curPosition.forEach(pos => state.copiedFormation[pos.did] = {...pos}); // deep copy
   new Toast("복사 되었습니다.", "success");
 }
 
@@ -570,7 +570,7 @@ function pasteFormation() {
   }
 
   const newPosition = [];
-  state.copiedFormation.forEach(pos => newPosition.push({...pos})); // deep copy
+  state.copiedFormation.forEach(pos => newPosition[pos.did] = {...pos}); // deep copy
   state.formations[targetId].positionsAtSameTime = newPosition;
   update();
   new Toast("붙여넣기 완료!", "success");
