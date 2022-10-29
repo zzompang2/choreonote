@@ -231,6 +231,7 @@ object {
 
 .header__buttonContainer {
   display: flex;
+  height: 100%;
 }
 
 .header__button {

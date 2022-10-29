@@ -86,6 +86,21 @@ router.get('/create_note', isLoggedIn, async (req, res, next) => {
   }
 });
 
+router.post('/delete_note', isLoggedIn, async (req, res, next) => {
+  try {
+    const { id } = req.body;
+    console.log("노트삭제", id);
+    await connection.query(
+      "UPDATE note SET hide = true WHERE id = ?;",
+      [ id ]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    next(err);
+  }
+});
+
 router.get('/get_notes', isLoggedIn, async (req, res, next) => {
   try {
   	const [ notes ] = await connection.query(`
