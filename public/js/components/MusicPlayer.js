@@ -30,8 +30,6 @@ export default class MusicPlayer {
 
     this.musicCanPlay = musicInfo.name == "" ? false : true;
     this.$audio = document.getElementById("audio");
-    // this.$audio.src = musicInfo.name;
-    //this.$audio.onloadedmetadata = () => console.log("노래길이:", this.$audio.duration);
     this._curTime = curTime;
     this.musicDuration = musicInfo.duration; // ms
   }

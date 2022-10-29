@@ -139,7 +139,6 @@ export default class SideScreen {
   }
   
   setMusicName() {
-  	console.log("setMusicName", this.noteInfo.musicname);
     $("#note_music").textContent = this.noteInfo.musicname ? this.noteInfo.musicname : "노래 없음";
   }
   

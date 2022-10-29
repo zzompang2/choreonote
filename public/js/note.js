@@ -63,7 +63,6 @@ const noteId = Number(new URL(location).searchParams.get("id"));
 axios.get(`/note/info?id=${noteId}`)
 .then(res => {
   const { note, dancers, times, postions } = res.data;
-  console.log(note, dancers, times, postions);
   createNote(note, dancers, times, postions);
 })
 .catch(err => {
@@ -209,8 +208,6 @@ $("#music_input").onchange = e => {
 }
 
 function handleMusicFile(file) {
-  console.log("handleMusicFile", file);
-  
   if (!file) return;
 
   if(file.type != "audio/mpeg") {
@@ -269,7 +266,6 @@ function handleMusicFile(file) {
         }
       }
 
-      console.log(filename, originalname);
       state.noteInfo.musicfile = filename;
       state.noteInfo.musicname = originalname;
       state.noteInfo.duration = duration;
@@ -324,9 +320,7 @@ let saveNoteDB_block = false;
 function saveNoteDB() {
   if (saveNoteDB_block) return;
   saveNoteDB_block = true;
-  
-  console.log(noteId, state.dancers, state.formations, state.noteInfo);
-  
+    
   axios.post('/note/update', {
     noteId,
     dancers: state.dancers,
@@ -339,7 +333,6 @@ function saveNoteDB() {
   .catch(err => {
     console.error(err);
   })
-  console.log(state.dancers, state.formations, state.noteInfo);
   saveNoteDB_block = false;
 }
 
@@ -363,22 +356,6 @@ function saveFile() {
     download: `${state.noteTitle}`
   }).click();
 }
-
-// function handleMusicFile (file) {
-//   if (file === undefined || file.type !== "audio/mpeg") {
-//     console.log("It's not audio/mpeg file.");
-//     return;
-//   }
-//   console.log(file);
-
-//   $audio.src = file.name;
-//   $audio.onloadedmetadata = function () {
-//     state.musicDuration = Math.ceil($audio.duration);
-//     console.log("musicDuration:", state.musicDuration);
-//     init_stage();
-//   };
-// }
-
 
 /*************
  *** MUSIC ***
@@ -538,8 +515,6 @@ function addFormationBox() {
   }
 
   const { noteInfo: { duration }, formations, curTime, selectedBoxIdx } = state;
-
-  console.log("formations", formations);
   
   /* 새로 만들 BOX의 INDEX */
   let idx = 0;
@@ -547,8 +522,6 @@ function addFormationBox() {
     if(curTime < formations[idx].start) break;
   }
   
-  console.log("새로운 index", idx);
-
   /* 선택된 BOX가 새로운 BOX보다 오른쪽인 경우 */
   if(selectedBoxIdx >= idx)
   state.selectedBoxIdx++;
@@ -645,7 +618,6 @@ function pasteFormation() {
  * FORMATION BOX 선택
  */
 function selectFormationBox(idx) {
-  console.log("selectFormationBox", idx);
   pauseMusic();
 
   // 선택된 BOX를 선택한 경우: Nothing
@@ -656,7 +628,6 @@ function selectFormationBox(idx) {
 }
 
 function changeFormationTimeAndDuration({ id, start, duration }) {
-  console.log(state.formations, id);
   // RIGHT HANDLE
   if(start == undefined) {
     if(duration <= 0) return;
@@ -747,7 +718,6 @@ function addDancer() {
 }
 
 function deleteDancer(did) {
-  console.log("deleteDancer", did);
   selectDancer(-1);
   
   state.dancers.splice(did, 1);
@@ -755,7 +725,6 @@ function deleteDancer(did) {
     if(dancer.id > did)
     dancer.id--;
   })
-  console.log(state.dancers);
   state.formations.forEach(formation => {
     formation.positionsAtSameTime.splice(did, 1);
     formation.positionsAtSameTime.forEach(pos => {
@@ -774,7 +743,6 @@ function changeDancerName(did, name) {
 
 function changeDancerColor(did, color) {
   state.dancers[did].color = color;
-  console.log(did, color, state.dancers);
   stage.changeColor(did);
 }
 

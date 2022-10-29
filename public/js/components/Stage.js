@@ -237,7 +237,6 @@ export default class Stage {
   }
 
   changeColor(did) {
-    console.log(did, this.dancerObjArray);
     this.dancerObjArray[did].changeColor();
   }
 

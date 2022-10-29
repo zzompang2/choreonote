@@ -16,7 +16,6 @@ export default class FormationBox {
     $body.draggable = true;
     $body.onclick = e => {
       e.stopPropagation();  // $bg 클릭 방지
-      console.log("box 클릭", this.id);
       selectFormationBox(this.id);
     }
 
