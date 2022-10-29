@@ -10,9 +10,14 @@ export default class SideScreen {
     changeDancerName,
     changeDancerColor,
     selectDancer,
+    changeNoteTitle,
   }) {
     this.noteInfo = noteInfo;
-    $("#note_title_input").value = noteInfo.title;
+    this.changeNoteTitle();
+    
+    $("#note_title_input").onchange = e => {
+      changeNoteTitle(e.target.value);
+    }
     
     this.setMusicName();
     
@@ -135,5 +140,9 @@ export default class SideScreen {
   setMusicName() {
   	console.log("setMusicName", this.noteInfo.musicname);
     $("#note_music").textContent = this.noteInfo.musicname ? this.noteInfo.musicname : "노래 없음";
+  }
+  
+  changeNoteTitle() {
+    $("#note_title_input").value = this.noteInfo.title;
   }
 }

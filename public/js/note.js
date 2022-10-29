@@ -63,6 +63,7 @@ const noteId = Number(new URL(location).searchParams.get("id"));
 axios.get(`/note/info?id=${noteId}`)
 .then(res => {
   const { note, dancers, times, postions } = res.data;
+  console.log(note, dancers, times, postions);
   createNote(note, dancers, times, postions);
 })
 .catch(err => {
@@ -144,6 +145,7 @@ function init() {
     changeDancerName,
     changeDancerColor,
     selectDancer,
+    changeNoteTitle,
   });
   
   setCurTime(0);
@@ -157,6 +159,13 @@ function init() {
   */
   $("#save_file_button").onclick = saveFile;
   $("#save_button").onclick = saveNoteDB; 
+}
+
+function changeNoteTitle(newTitle) {
+	if (newTitle.trim() !== "") {
+    state.noteInfo.title = newTitle.trim();
+  }
+  sideScreen.changeNoteTitle();
 }
 
 /**
@@ -310,10 +319,12 @@ function saveNoteDB() {
   if (saveNoteDB_block) return;
   saveNoteDB_block = true;
   
+  console.log(noteId, state.dancers, state.formations, state.noteInfo);
+  
   axios.post('/note/update', {
     noteId,
-    dancerArray: state.dancers,
-    formationArray: state.formations,
+    dancers: state.dancers,
+    formations: state.formations,
     noteInfo: state.noteInfo
   })
   .then(res => {

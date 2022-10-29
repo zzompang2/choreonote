@@ -59,6 +59,8 @@ router.get('/info', async (req, res, next) => {
       "SELECT * FROM note WHERE noteId = ? AND hide = false;",
       [id]
     );
+    
+    console.log("노트아이디:", id, "인덱스:", note.id);
     const [ dancers ] = await connection.query(
       "SELECT id, name, color FROM dancer WHERE nid = ?;",
       [note.id]
@@ -82,7 +84,7 @@ router.get('/info', async (req, res, next) => {
 
 router.post('/update', isLoggedIn, async (req, res, next) => {
   try {
-    const { noteId, dancerArray, formationArray, noteInfo } = req.body;
+    const { noteId, dancers, formations, noteInfo } = req.body;
 
     // 기존 노트 정보 가져오기
     const [[ originNote ]] = await connection.query(
@@ -90,32 +92,37 @@ router.post('/update', isLoggedIn, async (req, res, next) => {
       [ noteId, false ]
     );
     
-    console.log("originNote", originNote);
+    // console.log("originNote", originNote);
     
     const [{ insertId: newId }] = await connection.query(
-      "INSERT INTO note (noteId, uid, title, createdAt) VALUES (?, ?, ?, ?);",
-      [ noteId, req.user.id, originNote.title, originNote.createdAt ]
+      "INSERT INTO note (noteId, uid, title, musicfile, musicname, duration, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?);",
+      [ noteId, req.user.id, noteInfo.title, noteInfo.musicfile, noteInfo.musicname, noteInfo.duration, originNote.createdAt ]
     );
     
-    dancerArray.forEach(async dancer => {
+    console.log("새로운 아이디:", newId);
+    
+    for(let i=1; i < dancers.length; i++) {
+      const dancer = dancers[i];
       await connection.query(
         "INSERT INTO dancer (nid, id, name, color) VALUES (?, ?, ?, ?);",
         [ newId, dancer.id, dancer.name, dancer.color ]
       );
-    });
-    
-    formationArray.forEach(async formation => {
+    }
+
+    formations.forEach(async formation => {
+      console.log("formation", formation);
       await connection.query(
         "INSERT INTO time (nid, id, start, duration) VALUES (?, ?, ?, ?);",
-        [ newId, formation.id, formation.time, formation.duration ]
+        [ newId, formation.id, formation.start, formation.duration ]
       );
 
-      formation.positionsAtSameTime.forEach(async pos => {
+      for(let i=1; i < formation.positionsAtSameTime.length; i++) {
+      	const pos = formation.positionsAtSameTime[i];
         await connection.query(
           "INSERT INTO pos (nid, tid, did, x, y) VALUES (?, ?, ?, ?, ?);",
           [ newId, pos.tid, pos.did, pos.x, pos.y ]
         );
-      });
+      }
     });
     
     await connection.query(
