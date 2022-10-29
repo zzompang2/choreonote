@@ -328,7 +328,7 @@ function saveNoteDB() {
     noteInfo: state.noteInfo
   })
   .then(res => {
-    console.log(res.data);
+    console.log("저장 완료");
   })
   .catch(err => {
     console.error(err);
@@ -742,6 +742,8 @@ function addDancer() {
 
 function deleteDancer(did) {
   console.log("deleteDancer", did);
+  selectDancer(-1);
+  
   state.dancers.splice(did, 1);
   state.dancers.forEach(dancer => {
     if(dancer.id > did)

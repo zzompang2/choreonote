@@ -1,16 +1,16 @@
+import { $ } from "/js/constant.js";
+
 const TAG = "Toast.js/";
 
 export default class Toast {
   constructor(msg, type) {
-    const $toast = document.createElement("div");
-    $toast.id = "toast";
-    $toast.classList.add("toast");
+    const $toast = $("div#toast.toast");
     $toast.classList.add("toast--" + type);
     $toast.innerText = msg;
-    document.body.appendChild($toast);
+    $(".body")[0].append($toast);
 
     setTimeout(() => $toast.style.opacity = 1, 10);
     setTimeout(() => $toast.style.opacity = 0, 1500);
-    setTimeout(() => document.body.removeChild($toast), 3000);
+    setTimeout(() => $toast.remove(), 3000);
   }
 }

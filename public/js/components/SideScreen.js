@@ -83,7 +83,8 @@ export default class SideScreen {
       }
 
       const $deleteButton = $("div.sidebar_button__deleteButton");
-      $deleteButton.onclick = () => {
+      $deleteButton.onclick = e => {
+        e.stopPropagation();
         if(window.confirm("정말 삭제하시겠습니까? 되돌릴 수 없어요!"))
         deleteDancer(dancer.id);
       }
