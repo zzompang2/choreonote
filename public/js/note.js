@@ -283,6 +283,12 @@ function handleMusicFile(file) {
         selectFormationBox,
         changeFormationTimeAndDuration,
       });
+      musicPlayer = new MusicPlayer({
+        musicInfo: state.noteInfo,
+        curTime: state.curTime,
+        clickPlayBtn,
+        addFormationBox,
+      });
       sideScreen.setMusicName();
       setCurTime(0);
     };
