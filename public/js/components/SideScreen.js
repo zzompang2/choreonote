@@ -3,7 +3,7 @@ const TAG = "SideScreen.js/";
 
 export default class SideScreen {
   constructor({
-    noteTitle,
+    noteInfo,
     dancerArray,
     addDancer,
     deleteDancer,
@@ -11,8 +11,10 @@ export default class SideScreen {
     changeDancerColor,
     selectDancer,
   }) {
-    this.noteTitle = noteTitle;
-    $("#note_title_input").value = noteTitle;
+    this.noteInfo = noteInfo;
+    $("#note_title_input").value = noteInfo.title;
+    
+    this.setMusicName();
     
     this.dancerArray = dancerArray;
     this.changeDancerName = changeDancerName;
@@ -128,5 +130,10 @@ export default class SideScreen {
   select(id) {
     $("#dancer_list").children[id-1].classList.add("sidebar_button--selected");
     // $("#dancer_list").children[id].append(this.editDancerListItem);
+  }
+  
+  setMusicName() {
+  	console.log("setMusicName", this.noteInfo.musicname);
+    $("#note_music").textContent = this.noteInfo.musicname ? this.noteInfo.musicname : "노래 없음";
   }
 }

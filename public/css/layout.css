@@ -188,6 +188,10 @@ object {
   border-radius: 4px;
   padding: 4px;
   background-color: rgba(0, 0, 0, 0);
+  /* 한 줄 제한 */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .sidebar_input:focus {
   background-color: var(--color-white);

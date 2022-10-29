@@ -102,6 +102,11 @@
   padding: 4px;
   background-color: #00000000;
   
+  /* 한 줄 제한 */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  
   &:focus {
     background-color: var(--color-white);
     border-color: var(--color-border);

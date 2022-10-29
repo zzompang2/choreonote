@@ -57,9 +57,8 @@ class State {
 
 let musicFile;
 let isNoMusicNote;
-let noteLength = 10;
 
-const noteId = new URL(location).searchParams.get("id");
+const noteId = Number(new URL(location).searchParams.get("id"));
 
 axios.get(`/note/info?id=${noteId}`)
 .then(res => {
@@ -99,6 +98,14 @@ function createNote(note, dancers, times, postions) {
 
 function init() {
   // state.curTime = 0;
+  
+  if (state.noteInfo.musicfile) {
+    const $audio = $("#audio");
+    $audio.src = "assets/music/" + state.noteInfo.musicfile;
+    $audio.onloadedmetadata = () => {
+      
+    };
+  }
 
   stage = new Stage({
     dancerArray: state.dancers,
@@ -130,7 +137,7 @@ function init() {
   });
 
   sideScreen = new SideScreen({
-    noteTitle: state.noteInfo.title,
+    noteInfo: state.noteInfo,
     dancerArray: state.dancers,
     addDancer,
     deleteDancer,
@@ -151,7 +158,6 @@ function init() {
   $("#save_file_button").onclick = saveFile;
   $("#save_button").onclick = saveNoteDB; 
 }
-
 
 /**
  * 불러온 DATABASE 파일 검사 및 분석
@@ -188,35 +194,58 @@ function handleFile(file) {
   reader.readAsText(file);
 }
 
+
+$("#music_input").onchange = e => {
+  handleMusicFile(e.target.files[0]);
+}
+
 function handleMusicFile(file) {
-  if (file === undefined) {
-    init();
-    return;
-  }
+  console.log("handleMusicFile", file);
+  
+  if (!file) return;
 
   if(file.type != "audio/mpeg") {
     window.alert("노래 파일이 아닙니다.");
-    window.location.reload();
     return;
   }
-
-  const $audio = document.getElementById("audio");
-  const blobURL = window.URL.createObjectURL(file);
-  $audio.src = blobURL;
-  $audio.onloadedmetadata = () => {
-    const duration = floorTime($audio.duration * 1000);
-    if(duration < 10 || 1200 < noteLength) {
-      window.alert("노래는 최소 10초, 최대 2분 길이여야 합니다.");
-      window.location.reload();
-      return;
-    }
-    else {
-      if(duration != state.noteInfo.duration) {
-        if(!window.confirm("노래 길이가 다릅니다. 계속 진행하시겠습니까?\n노래가 짧아진 경우, 기존 대열 일부가 삭제됩니다.")) {
-          window.location.reload();
+  
+  if(file.size >= 20 * 1024 * 1024) {
+    window.alert("파일 크기가 너무 큽니다(최대 20MB).");
+    return;
+  }
+  
+  const formData = new FormData();
+  const config = {
+    header: { 'content-type': 'multipart/form-data' },
+  };
+  
+  formData.append('musicFile', file);		// 이름이 upload.single() 매개변수와 같아야 함
+  
+  // 파일 업로드
+  axios.post('/note/musicfile', formData, config)
+  .then(res => {
+    // location.reload();
+    const { filename, originalname } = res.data;
+    
+    // 노래 길이 구하고 DB 업데이트
+    const $audio = $("#audio");
+    $audio.src = "assets/music/" + filename;
+    $audio.onloadedmetadata = () => {
+      const duration = floorTime($audio.duration * 1000);
+      
+      console.log("새로운 노래 길이:", duration);
+      
+      if(duration < 10000 || 600000 < duration) {
+        window.alert("노래는 최소 10초, 최대 10분 길이여야 합니다.");
+        // window.location.reload(); // 새로고침
+        return;
+      }
+      
+      if(duration < state.noteInfo.duration) {
+        if(!window.confirm("노래 길이가 기존보다 짧습니다. 계속 진행하시겠습니까?\n기존 대열 일부가 삭제됩니다.")) {
           return;
         }
-        state.noteInfo.duration = duration;
+                
         // 노래 길이 넘어가는 박스 삭제하기
         let id = 0;
         for(; id < state.formations.length; id++) {
@@ -230,9 +259,28 @@ function handleMusicFile(file) {
           state.formations = state.formations.splice(id);
         }
       }
-      init();
-    }
-  };
+
+      console.log(filename, originalname);
+      state.noteInfo.musicfile = filename;
+      state.noteInfo.musicname = originalname;
+      state.noteInfo.duration = duration;
+      
+      
+      timeline = new Timeline({
+        musicDuration: state.noteInfo.duration,
+        formationArray: state.formations,
+        pauseMusic,
+        setCurTime,
+        selectFormationBox,
+        changeFormationTimeAndDuration,
+      });
+      sideScreen.setMusicName();
+      setCurTime(0);
+    };
+  })
+  .catch(err => {
+    console.error(err);
+  });
 }
 
 /**
@@ -241,15 +289,15 @@ function handleMusicFile(file) {
  * @returns 
  */
 function checkDB(result) {
-  const [dancerArray, formationArray, noteInfo] = result;
+  const [dancers, formations, noteInfo] = result;
 
-  // dancerArray, formationArray, noteInfo 3개가 있어야 함
+  // dancers, formations, noteInfo 3개가 있어야 함
   if(result.length != 3) {
     console.log("Length is not 3.");
     return false;
   }
 
-  if(dancerArray == undefined || formationArray == undefined || noteInfo == undefined) {
+  if(dancers == undefined || formations == undefined || noteInfo == undefined) {
     console.log("Some array are undefined.");
     return true;
   }

@@ -29,6 +29,12 @@ export default class Timeline {
     const $timeNumber = $("#time_number");
     const $timeScale = $("#time_scale");
     
+    while ($timeNumber.hasChildNodes())
+      $timeNumber.removeChild($timeNumber.firstChild);
+    
+    while ($timeScale.hasChildNodes())
+      $timeScale.removeChild($timeScale.firstChild);
+    
     this.$formationBoxSection = $("#formation_box_section");
 
     /* TIME MARKER */

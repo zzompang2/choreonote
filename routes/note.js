@@ -1,6 +1,7 @@
 const express = require('express');
 const path = require('path');
 const mysql = require('mysql2/promise');
+const multer = require("multer");
 const { isLoggedIn, isNotLoggedIn } = require('./middlewares');
 
 let connection;
@@ -124,6 +125,66 @@ router.post('/update', isLoggedIn, async (req, res, next) => {
 
     res.json({ success: true });
     
+  } catch (err) {
+    console.error(err);
+    next(err);
+  }
+});
+
+const upload = multer({
+  storage: multer.diskStorage({
+    destination(req, file, done) {
+      console.log("여기:", file);
+      done(null, "public/assets/music/");
+    },
+    filename(req, file, done) {
+      const filename = `${req.user.id}_${Date.now()}${path.extname(file.originalname)}`;
+      done(null, filename);
+      req.body.data = { filename };
+    },
+  }),
+  limits: { filesize: 20 * 1024 * 1024 },
+});
+
+/* 노래 파일 업로드만 하고 DB 업데이트는 안 함 */
+router.post('/musicfile', upload.single('musicFile'), async (req, res, next) => {
+  try {
+    const { filename, originalname } = req.file;
+    
+    console.log("파일, 노래:", filename, originalname);
+    res.json({ filename, originalname });
+    res.redirect('/');
+  } catch (err) {
+    console.error(err);
+    next(err);
+  }
+});
+
+router.post('/updatemusic', isLoggedIn, async (req, res, next) => {
+  try {
+    const { noteId, filename, originalname, duration } = req.body;
+  	
+    console.log(noteId, filename, originalname, duration);
+  	console.log(path.basename(originalname, path.extname(originalname)));
+    
+    let musicname = path.basename(originalname, path.extname(originalname));
+    musicname = musicname.slice(0, 40) + path.extname(originalname);
+    
+    const [rows, fields] = await connection.query(`
+      UPDATE note
+      SET musicfile = ?, musicname = ?, duration = ?
+      WHERE noteId = ? AND uid = ? AND hide = false;`,
+      [filename, musicname, duration, noteId, req.user.id]
+    );
+    
+    const [[ noteInfo ]] = await connection.query(`
+      SELECT * FROM note WHERE noteId = ? AND hide = false;`,
+      [noteId]
+    );
+    
+    res.json({ noteInfo });
+    
+    res.redirect('/');
   } catch (err) {
     console.error(err);
     next(err);
