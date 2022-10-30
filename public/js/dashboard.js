@@ -6,8 +6,6 @@ window.onload = () => {
 
 $("#create_note_btn").onclick = createNote;
 
-const $noteContextMenu = $("#note_contextMenu");
-
 /****************/
 /*** FUNCTION ***/
 /****************/
@@ -25,6 +23,8 @@ function createNote() {
 }
 
 let selectedNote = null;
+const $noteContextMenu = $("#note_contextMenu");
+const $profileContextMenu = $("#profile_contextMenu");
 
 axios.get('/dashboard/get_notes')
 .then(res => {
@@ -89,4 +89,10 @@ function deleteNote(id) {
 document.onclick = () => {
   selectedNote = null;
   $noteContextMenu.style.display = "none";
+  $profileContextMenu.style.display = "none";
+}
+
+$("#profile_button").onclick = e => {
+  e.stopPropagation();
+  $profileContextMenu.style.display = "flex";
 }

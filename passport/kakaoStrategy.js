@@ -35,7 +35,7 @@ module.exports = () => {
       // 회원가입하지 않은 사용자인 경우
       else {
         await connection.query(
-          `INSERT INTO user (service, email, snsId) VALUES ("kk", ?, ?);`,
+          `INSERT INTO user (service, email, snsId, nick) VALUES ("kk", ?, ?, "닉네임");`,
           [
             profile._json && profile._json.kakao_account.email,
             profile.id,

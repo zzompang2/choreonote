@@ -10,6 +10,7 @@ const homeRouter = require('./routes/home');
 const authRouter = require('./routes/auth');
 const dashboardRouter = require('./routes/dashboard');
 const noteRouter = require('./routes/note');
+const profileRouter = require('./routes/profile');
 const passportConfig = require('./passport');
 
 const app = express();
@@ -48,6 +49,7 @@ app.use('/', homeRouter);
 app.use('/auth', authRouter);
 app.use('/dashboard', dashboardRouter);
 app.use('/note', noteRouter);
+app.use('/profile', profileRouter);
 
 // 에러처리 미들웨어
 app.use((err, req, res, next) => {

@@ -43,7 +43,7 @@ module.exports = () => {
       // 회원가입하지 않은 사용자인 경우
       else {
         await connection.query(
-          `INSERT INTO user (service, email, snsId, nick) VALUES ("gg", ?, ?);`,
+          `INSERT INTO user (service, email, snsId, nick) VALUES ("gg", ?, ?, "닉네임");`,
           [
             profile.emails[0].value,
             profile.id,

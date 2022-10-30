@@ -212,6 +212,31 @@ object {
   background: url("../assets/icons/Medium(24)/Delete.svg");
 }
 
+.toast {
+  position: absolute;
+  bottom: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 160px;
+  height: 32px;
+  border-radius: 20px;
+  padding: 4px 20px;
+  font-size: 12px;
+  color: var(--color-white);
+  transition-duration: 500ms;
+  opacity: 0;
+  z-index: 9999;
+}
+
+.toast--success {
+  background-color: var(--color-green);
+}
+
+.toast--warning {
+  background-color: var(--color-red);
+}
+
 /**************/
 /*** HEADER ***/
 /**************/

@@ -21,31 +21,21 @@ db();
 
 const router = express.Router();
 
-// router.get('/', isLoggedIn, async (req, res, next) => {
-//   try {
-//     const { id } = req.query;
-    
-//     const [[ note ]] = await connection.query(
-//       "SELECT uid FROM note WHERE id = ?;",
-//       [id]
-//     );
-    
-//     console.log(note);
-    
-//     if (note.uid == req.user.id)
-//     	res.render('note');
-//     else
-//       res.render('dashboard');
-//   } catch (err) {
-//     console.error(err);
-//     next(err);
-//   }
-// });
-
-/* for debugging */
-router.get('/', async (req, res, next) => {
+router.get('/', isLoggedIn, async (req, res, next) => {
   try {
-    res.render('note');
+    const { id } = req.query;
+    
+    const [[ note ]] = await connection.query(
+      "SELECT uid FROM note WHERE id = ?;",
+      [id]
+    );
+    
+    console.log(note);
+    
+    if (note.uid == req.user.id)
+    	res.render('note');
+    else
+      res.render('dashboard');
   } catch (err) {
     console.error(err);
     next(err);

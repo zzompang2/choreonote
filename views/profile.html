@@ -1,0 +1,73 @@
+{% extends 'layout.html' %}
+
+{% block style %}
+<link rel="stylesheet" href="/css/dashboard.css">
+<link rel="stylesheet" href="/css/profile.css">
+{% endblock %}
+
+{% block header %}
+<div class="logo logo--small"></div>
+<div id="profile_button" class="header__button">님</div>
+{% endblock %}
+
+{% block sidebar %}
+<div class="sidebar_group">
+  <div class="sidebar_header"><span>노트 모음</span></div>
+  <div tabindex="0" class="sidebar_button">모든 노트</div>
+  <div tabindex="0" class="sidebar_button">즐겨찾는 노트</div>
+</div>
+<div class="sidebar_group">
+  <div class="sidebar_header"><span>커뮤니티</span></div>
+  <div tabindex="0" class="sidebar_button">설명서</div>
+  <a tabindex="0" class="sidebar_button" href="https://blog.naver.com/zzompang2/222732715519" target="_blank">방명록</a>
+</div>
+{% endblock %}
+
+{% block body %}
+<div class="profile_section">
+  <label class="profile__row">
+  	<div class="profile__label">닉네임</div>
+    <div id="profile_nickname_container" class="profile__inputContainer">
+    	<input id="profile_nickname" class="profile__input" placeholder="닉네임" disabled>
+      <div id="edit_nickname" class="profile__editInput">수정하기</div>
+      <div id="complete_nickname" class="profile__editInput" style="display: none">완료</div>
+    </div>
+  </label>
+  <label class="profile__row">
+  	<div class="profile__label">이메일</div>
+    <div class="profile__inputContainer">
+      <div id="profile_service" class="profile__serviceTag"></div>
+    	<div id="profile_email" class="profile__input"></div>
+    </div>
+  </label>
+  
+  <div class="profile__row">
+  	<div class="profile__label">비밀번호</div>
+    <div id="password_input_container" class="profile__inputContainer">
+    	<input id="password_input" type="password" class="profile__input" placeholder="현재 비밀번호" value="****" disabled>
+      <div id="edit_password" class="profile__editInput" style="display: none">수정하기</div>
+    </div>
+    <div id="new_password_input_container" class="profile__inputContainer" style="display: none">
+    	<input id="new_password_input" type="password" class="profile__input" placeholder="새로운 비밀번호">
+    </div>
+    <div id="new_password_check_input_container" class="profile__inputContainer" style="display: none">
+    	<input id="new_password_check_input" type="password" class="profile__input" placeholder="새로운 비밀번호 확인">
+    </div>
+    <div id="complete_password" class="profile__editInput" style="display: none">완료</div>
+  </div>
+</div>
+
+<div id="profile_contextMenu" class="dropdown" style="display: none">
+  <a class="dropdown__item" href="/profile">
+    <div class="dropdown__item_text">프로필 수정</div>
+  </a>
+  <a class="dropdown__item" href="/auth/logout">
+    <div class="dropdown__item_text">로그아웃</div>
+  </a>
+</div>
+{% endblock %}
+
+{% block script %}
+<script type="module" src="/js/dashboard.js"></script>
+<script type="module" src="/js/profile.js"></script>
+{% endblock %}

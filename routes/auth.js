@@ -89,7 +89,12 @@ router.get('/google/callback', passport.authenticate('google', {
 });
 
 router.get('/user', async (req, res, next) => {
-  res.send({ user: req.user });
+
+  res.send({
+    nick: req.user.nick,
+    email: req.user.email,
+    service: req.user.service,
+  });
 });
 
 module.exports = router;
