@@ -104,7 +104,7 @@ router.post('/delete_note', isLoggedIn, async (req, res, next) => {
 router.get('/get_notes', isLoggedIn, async (req, res, next) => {
   try {
   	const [ notes ] = await connection.query(`
-    	SELECT *, DATE_FORMAT(createdAt, '%Y.%m.%d') AS createdAt
+    	SELECT *, DATE_FORMAT(createdAt, '%Y.%m.%d %H:%i') AS createdAt
       FROM note WHERE uid = ? AND hide = ?;`,
       [req.user.id, false]);
     res.send({ notes });
