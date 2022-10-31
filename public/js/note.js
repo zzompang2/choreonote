@@ -746,6 +746,10 @@ function changeDancerColor(did, color) {
   stage.changeColor(did);
 }
 
+$("#header_logo").onclick = () => {
+  window.open('/dashboard');
+}
+
 /**
  * TODO
  * 

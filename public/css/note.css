@@ -371,4 +371,17 @@
   background-color: var(--color-bg-dark);
 }
 
+.header__iconButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  aspect-ratio: 1;
+}
+
+.icon_back {
+  background: no-repeat center url("../assets/icons/Medium(24)/Left.svg");
+  background-size: 32px;
+}
+
 /*# sourceMappingURL=note.css.map */
