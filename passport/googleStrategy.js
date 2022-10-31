@@ -21,7 +21,7 @@ const googleCredentials = {
   "web":{
     "client_id": process.env.GOOGLE_ID,
     "client_secret": process.env.GOOGLE_SECRET,
-    "redirect_uris":["https://lunatic.run.goorm.io/auth/google/callback"]
+    "redirect_uris":["https://choreonote.run.goorm.io/auth/google/callback"]
   }
 }
 
