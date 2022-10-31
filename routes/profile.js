@@ -22,7 +22,7 @@ const router = express.Router();
 
 router.get('/', isLoggedIn, async (req, res, next) => {
   try {    
-    res.render('profile');
+    res.render('profile', { nickname: req.user.nick });
   } catch (err) {
     console.error(err);
     next(err);

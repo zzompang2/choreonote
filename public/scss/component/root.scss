@@ -96,3 +96,8 @@ object {
   /* OBJECT 태그, 심지어 감싸는 div의 onclick도 안 되는 문제 해결 */
   pointer-events: none;
 }
+
+a {
+  text-decoration: none; /* 링크의 밑줄 제거 */
+  color: inherit;        /* 링크의 색상 제거 */
+}

@@ -24,7 +24,6 @@ function createNote() {
 
 let selectedNote = null;
 const $noteContextMenu = $("#note_contextMenu");
-const $profileContextMenu = $("#profile_contextMenu");
 
 axios.get('/dashboard/get_notes')
 .then(res => {
@@ -84,15 +83,4 @@ function deleteNote(id) {
   .catch(err => {
     console.error(err);
   });
-}
-
-document.onclick = () => {
-  selectedNote = null;
-  $noteContextMenu.style.display = "none";
-  $profileContextMenu.style.display = "none";
-}
-
-$("#profile_button").onclick = e => {
-  e.stopPropagation();
-  $profileContextMenu.style.display = "flex";
 }

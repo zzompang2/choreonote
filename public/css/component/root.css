@@ -87,4 +87,9 @@ object {
   pointer-events: none;
 }
 
+a {
+  text-decoration: none; /* 링크의 밑줄 제거 */
+  color: inherit; /* 링크의 색상 제거 */
+}
+
 /*# sourceMappingURL=root.css.map */

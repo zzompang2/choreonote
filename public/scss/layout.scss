@@ -2,6 +2,7 @@
 @import './component/variable.scss';
 @import './component/sidebar.scss';
 @import './component/toast.scss';
+@import './component/dropdown.scss';
 
 /**************/
 
@@ -23,14 +24,19 @@
 }
 
 .header__buttonContainer {
-	display: flex;
+	display: flex; align-items: center;
   height: 100%;
 }
 
 .header__button {
   display: flex; align-items: center;
-  height: 100%;
-  padding: 0 12px;
+  padding: 6px 12px;
+  height: max-content;
+  margin-left: 8px;
+  
+  border-radius: 20px;
+  border: 1px solid var(--color-border);
+  
   font-size: .8rem;
   color: var(--color-white);
   background-color: var(--color-transparent);

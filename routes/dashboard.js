@@ -22,7 +22,7 @@ db();
 
 router.get('/', isLoggedIn, async (req, res, next) => {
   try {
-    res.render('dashboard');
+    res.render('dashboard', { nickname: req.user.nick });
   } catch (err) {
     console.error(err);
     next(err);

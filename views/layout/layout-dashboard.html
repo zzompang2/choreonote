@@ -1,0 +1,50 @@
+{% extends 'layout/layout.html' %}
+
+{% block style %}
+<link rel="stylesheet" href="/css/layout-dashboard.css">
+
+{% block innerstyle %}
+{% endblock %}
+
+{% endblock %}
+
+{% block header %}
+<div class="logo logo--small"></div>
+<div id="profile_button" class="header__button">{{ nickname }}</div>
+{% endblock %}
+
+{% block sidebar %}
+<div class="sidebar_group">
+  <div class="sidebar_header"><span>노트 모음</span></div>
+  <a tabindex="0" class="sidebar_button" href="/dashboard">모든 노트</a>
+  <div tabindex="0" class="sidebar_button">즐겨찾는 노트</div>
+</div>
+<div class="sidebar_group">
+  <div class="sidebar_header"><span>커뮤니티</span></div>
+  <div tabindex="0" class="sidebar_button">설명서</div>
+  <a tabindex="0" class="sidebar_button" href="https://blog.naver.com/zzompang2/222732715519" target="_blank">방명록</a>
+</div>
+{% endblock %}
+
+{% block body %}
+
+{% block innerbody %}
+{% endblock %}
+
+<div id="profile_contextMenu" class="dropdown" style="display: none">
+  <a class="dropdown__item" href="/profile">
+    <div class="dropdown__item_text">프로필 수정</div>
+  </a>
+  <a class="dropdown__item" href="/auth/logout">
+    <div class="dropdown__item_text">로그아웃</div>
+  </a>
+</div>
+{% endblock %}
+
+{% block script %}
+<script type="module" src="/js/layout-dashboard.js"></script>
+
+{% block innerscript %}
+{% endblock %}
+
+{% endblock %}
