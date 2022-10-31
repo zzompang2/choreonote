@@ -19,20 +19,10 @@ let timeline;
 let toolbar;
 let sideScreen;
 
-// const state = {
-//   noteTitle: "",
-//   dancerArray: [],
-//   formationArray: [],
-//   musicInfo: { name: "testMusic", duration: 30000 },
-//   curTime: 0,               // millisecond
-//   isMusicPlaying: false,
-//   selectedBoxIdx: -1,
-//   gap: 30,
-//   copiedFormation: [],
-//   selectedDancer: -1,
-// }
-
 class State {
+  #currentTime = 0;
+  #isPlaying = false;
+  
   constructor({ noteInfo, dancers, times, postions }) {
     this.noteInfo = noteInfo;
     this.dancers = [];
@@ -46,12 +36,28 @@ class State {
       this.formations[index].positionsAtSameTime[position.did] = position;
     });
     
-    this.curTime = 0;
-    this.isMusicPlaying = false;
     this.selectedBoxIdx = -1;
     this.selectedDancer = -1;
     this.gap = 30;
     this.copiedFormation = [];
+  }
+  
+  get currentTime() {
+    return this.#currentTime;
+  }
+  
+  set currentTime(val) {
+    console.log("currentTime", val);
+    this.#currentTime = val;
+  }
+  
+  get isPlaying() {
+    return this.#isPlaying;
+  }
+  
+  set isPlaying(val) {
+    console.log("isPlaying", val);
+    this.#isPlaying = val;
   }
 }
 
@@ -100,7 +106,7 @@ function createNote(noteInfo, dancers, times, postions) {
 }
 
 function init() {
-  // state.curTime = 0;
+  // state.currentTime = 0;
   
   const $audio = $("#audio");
   $audio.src = null;
@@ -120,7 +126,7 @@ function init() {
 
   musicPlayer = new MusicPlayer({
     musicInfo: state.noteInfo,
-    curTime: state.curTime,
+    curTime: state.currentTime,
     clickPlayBtn,
     addFormationBox,
   });
@@ -258,7 +264,7 @@ function handleMusicFile(file) {
       });
       musicPlayer = new MusicPlayer({
         musicInfo: state.noteInfo,
-        curTime: state.curTime,
+        curTime: state.currentTime,
         clickPlayBtn,
         addFormationBox,
       });
@@ -318,14 +324,14 @@ function saveFile() {
  *************/
 
 function clickPlayBtn() {
-  state.isMusicPlaying ? setCurTime(state.curTime) : play();
+  state.isPlaying ? setCurTime(state.currentTime) : play();
 }
 
 let interval = null;
 
 function play() {
-  state.isMusicPlaying = true;
-  const startMusicTime = state.curTime;
+  state.isPlaying = true;
+  const startMusicTime = state.currentTime;
 
   // DANCER DRAG 막기
   state.selectedBoxIdx = -1;
@@ -360,7 +366,7 @@ function play() {
     // const newCurTime = musicPlayer.audioCurTime;
     const newCurTime = startMusicTime + floorTime(new Date().getTime() - startDate);
 
-    if(state.curTime == newCurTime) return;
+    if(state.currentTime == newCurTime) return;
 
     /* 다음 TIME_UNIT에 도달한 경우 */
 
@@ -371,7 +377,7 @@ function play() {
     }
     /** 노래 아직 안 끝남 */
     else {
-      state.curTime = newCurTime;
+      state.currentTime = newCurTime;
       musicPlayer.setCurTimeText(newCurTime);
 
       // 더이상 움직일 게 없는 경우
@@ -397,14 +403,14 @@ function play() {
  */
 function pauseMusic(ms) {
   if(ms != undefined) {
-    state.curTime = ms;
+    state.currentTime = ms;
   }
-  if(state.isMusicPlaying) {
-    state.isMusicPlaying = false;
+  if(state.isPlaying) {
+    state.isPlaying = false;
     clearInterval(interval);
-    timeline.pause(state.curTime);
-    musicPlayer.pause(state.curTime);
-    stage.stopAndSetPosition(state.curTime);
+    timeline.pause(state.currentTime);
+    musicPlayer.pause(state.currentTime);
+    stage.stopAndSetPosition(state.currentTime);
   }
   stage.evalDraggable({ isMusicPlaying: false });
 }
@@ -414,7 +420,7 @@ function setCurTime(ms) {
   pauseMusic();
 
   // state 업데이트
-  state.curTime = ms;
+  state.currentTime = ms;
   // TIME MARKER 이동
   timeline.moveTimeMarker(ms);
   // MUSIC PLAYER 업데이트
@@ -424,14 +430,14 @@ function setCurTime(ms) {
 }
 
 function update() {
-  stage.stopAndSetPosition(state.curTime);
+  stage.stopAndSetPosition(state.currentTime);
 
   // BOX 안으로 들어왔는지 검사
   let id = 0;
   for(; id < state.formations.length; id++) {
-    if(state.curTime <= state.formations[id].start + state.formations[id].duration) {
+    if(state.currentTime <= state.formations[id].start + state.formations[id].duration) {
       // BOX 안으로 들어온 경우: DRAGGABLE=true
-      if(state.formations[id].start <= state.curTime) {
+      if(state.formations[id].start <= state.currentTime) {
         state.selectedBoxIdx = id;
         stage.evalDraggable({ isBoxSelected: true });
       }
@@ -459,7 +465,7 @@ function update() {
  *********************/
 
 function addFormationBox() {
-  if(state.isMusicPlaying) {
+  if(state.isPlaying) {
     new Toast("노래 재생중입니다.", "warning");
     return;
   }
@@ -655,7 +661,7 @@ function changeFormationTimeAndDuration({ id, start, duration }) {
 }
 
 function addDancer() {
-  if(state.isMusicPlaying) {
+  if(state.isPlaying) {
     new Toast("노래 재생중입니다.", "warning");
     return;
   }
@@ -668,7 +674,7 @@ function addDancer() {
   state.formations.forEach(formation => {
     formation.positionsAtSameTime.push({ tid: formation.id, did, x: 0, y: 0 });
   });
-  stage.stopAndSetPosition(state.curTime);
+  stage.stopAndSetPosition(state.currentTime);
   stage.addDancer(did);
   sideScreen.addDancer(did);
 }
@@ -701,14 +707,3 @@ function changeDancerColor(did, color) {
   state.dancers[did].color = color;
   stage.changeColor(did);
 }
-
-/**
- * TODO
- * 
- * 박스 사이에서 play 한 경우
- * 박스 위치/길이 조절
- * 박스 추가
- * play 중 스크롤 이동
- * 플레이 중 다른 이벤트들 막기
- * 노래 재생 중 스크롤 자동 이동
- */
