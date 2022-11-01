@@ -45,26 +45,25 @@ router.get('/', isLoggedIn, async (req, res, next) => {
 router.get('/info', async (req, res, next) => {
   try {
     const { id } = req.query;
-    const [[ note ]] = await connection.query(
+    const [[ noteInfo ]] = await connection.query(
       "SELECT * FROM note WHERE noteId = ? AND hide = false;",
       [id]
     );
     
-    console.log("노트아이디:", id, "인덱스:", note.id);
     const [ dancers ] = await connection.query(
       "SELECT id, name, color FROM dancer WHERE nid = ? ORDER BY id;",
-      [note.id]
+      [noteInfo.id]
     );
     const [ times ] = await connection.query(
       "SELECT id, start, duration FROM time WHERE nid = ? ORDER BY start;",
-      [note.id]
+      [noteInfo.id]
     );
     const [ postions ] = await connection.query(
       "SELECT tid, did, x, y FROM pos WHERE nid = ?;",
-      [note.id]
+      [noteInfo.id]
     );
     
-    res.send({ note, dancers, times, postions });
+    res.send({ noteInfo, dancers, times, postions });
     
   } catch (err) {
     console.error(err);

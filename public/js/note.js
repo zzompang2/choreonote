@@ -8,109 +8,103 @@ import Timeline from "./components/Timeline.js";
 import Toast from "./components/Toast.js";
 import Toolbar from "./components/Toolbar.js";
 
+let state;
 let stage;
 let musicPlayer;
 let timeline;
 let toolbar;
 let sideScreen;
 
-const noteId = Number(new URL(location).searchParams.get("id"));
+const NOTE_ID = Number(new URL(location).searchParams.get("id"));
 
-axios.get(`/note/info?id=${noteId}`)
-.then(res => {
-  const { note, dancers, times, postions } = res.data;
-  createNote(note, dancers, times, postions);
-})
-.catch(err => {
-  console.error(err);
-});
+/************/
 
-let state;
+/*** MAIN ***/
 
-function createNote(noteInfo, dancers, times, postions) {
-  console.log(noteInfo, dancers, times, postions);
-  state = new State({
-    noteInfo,
-    dancers,
-    times,
-    postions,
+/************/
+
+initializeNote();
+
+/****************/
+
+/*** FUNCTION ***/
+
+/****************/
+
+function initializeNote() {
+  axios.get(`/note/info?id=${NOTE_ID}`)
+  .then(res => {
+    const { noteInfo, dancers, times, postions } = res.data;
+    state = new State({ noteInfo, dancers, times, postions });
+    init();
+  })
+  .catch(err => {
+    console.error(err);
   });
   
-  init();
-}
+  function init() {
 
-function init() {
-  // state.currentTime = 0;
-  
-  const $audio = $("#audio");
-  $audio.src = null;
-  
-  if (state.noteInfo.musicfile) {
-    $audio.src = "assets/music/" + state.noteInfo.musicfile;
-    $audio.onloadedmetadata = () => {
-    };
+    const $audio = $("#audio");
+    $audio.src = null;
+
+    if (state.noteInfo.musicfile) {
+      $audio.src = "assets/music/" + state.noteInfo.musicfile;
+      $audio.onloadedmetadata = () => {
+      };
+    }
+
+    stage = new Stage({
+      dancerArray: state.dancers,
+      formationArray: state.formations,
+      gap: state.gap,
+      selectDancer
+    });
+
+    musicPlayer = new MusicPlayer({
+      musicInfo: state.noteInfo,
+      curTime: state.currentTime,
+      clickPlayBtn,
+      addFormationBox,
+    });
+
+    timeline = new Timeline({
+      musicDuration: state.noteInfo.duration,
+      formationArray: state.formations,
+      pauseMusic,
+      setCurTime,
+      selectFormationBox,
+      changeFormationTimeAndDuration,
+    });
+
+    toolbar = new Toolbar({
+      copyFormation,
+      pasteFormation,
+      deleteFormationBox
+    });
+
+    sideScreen = new SideScreen({
+      noteInfo: state.noteInfo,
+      dancerArray: state.dancers,
+      addDancer,
+      deleteDancer,
+      changeDancerName,
+      changeDancerColor,
+      selectDancer,
+      changeNoteTitle,
+    });
+
+    setCurTime(0);
+
+    $("#header_logo").onclick = e => {
+      e.stopPropagation();
+      $("#logo_contextMenu").style.display = "flex";
+      $("#logo_contextMenu").style.left = 0;
+    }
+
+    $("#open_dashboard_button").onclick = () => window.open('/dashboard');
+    $("#save_file_button").onclick = saveFile;
+    $("#save_button").onclick = saveNoteDB;
   }
-
-  stage = new Stage({
-    dancerArray: state.dancers,
-    formationArray: state.formations,
-    gap: state.gap,
-    selectDancer
-  });
-
-  musicPlayer = new MusicPlayer({
-    musicInfo: state.noteInfo,
-    curTime: state.currentTime,
-    clickPlayBtn,
-    addFormationBox,
-  });
-
-  timeline = new Timeline({
-    musicDuration: state.noteInfo.duration,
-    formationArray: state.formations,
-    pauseMusic,
-    setCurTime,
-    selectFormationBox,
-    changeFormationTimeAndDuration,
-  });
-
-  toolbar = new Toolbar({
-    copyFormation,
-    pasteFormation,
-    deleteFormationBox
-  });
-
-  sideScreen = new SideScreen({
-    noteInfo: state.noteInfo,
-    dancerArray: state.dancers,
-    addDancer,
-    deleteDancer,
-    changeDancerName,
-    changeDancerColor,
-    selectDancer,
-    changeNoteTitle,
-  });
-  
-  setCurTime(0);
-
-  /*
-  const $title = document.getElementById("main_header").firstElementChild;
-  $title.onclick = () => {
-    if(window.confirm("초기 화면으로 돌아가시겠습니까?\n자동 저장 기능은 아직 없으니 꼭 저장해주세요!"))
-    window.location.reload();
-  };
-  */
-  
-  $("#header_logo").onclick = e => {
-    e.stopPropagation();
-    $("#logo_contextMenu").style.display = "flex";
-    $("#logo_contextMenu").style.left = 0;
-  }
-
-  $("#open_dashboard_button").onclick = () => window.open('/dashboard');
-  $("#save_file_button").onclick = saveFile;
-  $("#save_button").onclick = saveNoteDB;
-  
 }
 
 function changeNoteTitle(newTitle) {
@@ -217,7 +211,7 @@ function saveNoteDB() {
   saveNoteDB_block = true;
     
   axios.post('/note/update', {
-    noteId,
+    noteId: NOTE_ID,
     dancers: state.dancers,
     formations: state.formations,
     noteInfo: state.noteInfo
