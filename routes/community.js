@@ -31,14 +31,16 @@ router.get('/', isLoggedIn, async (req, res, next) => {
 router.get('/post', isLoggedIn, async (req, res, next) => {
   try {
     const [ posts ] = await connection.query(`
-    	SELECT u.nick, c.body, COUNT(l.uid) AS likeNumber, DATE_FORMAT(c.createdAt, '%Y.%m.%d %H:%i') AS createdAt
+    	SELECT c.id, u.nick, c.body, l.likeNumber, ul.isLike, DATE_FORMAT(c.createdAt, '%Y.%m.%d %H:%i') AS createdAt
       FROM (SELECT * FROM community WHERE hide = false) AS c
       INNER JOIN user AS u
       ON u.id = c.uid
-      LEFT JOIN community_like AS l
+      LEFT JOIN (SELECT cid, COUNT(uid) AS likeNumber FROM community_like GROUP BY cid) AS l
       ON l.cid = c.id
-      GROUP BY c.id
-      ORDER BY createdAt DESC;`);
+      LEFT JOIN (SELECT cid, COUNT(uid) AS isLike FROM community_like WHERE uid = ? GROUP BY cid) AS ul
+      ON ul.cid = c.id
+      ORDER BY createdAt DESC;`, [ req.user.id ]);
+        
     res.send({ posts });    
   } catch (err) {
     console.error(err);
@@ -58,12 +60,43 @@ router.post('/post', isLoggedIn, async (req, res, next) => {
         [ req.user.id, body ]
       );
       const [[ post ]] = await connection.query(`
-    	SELECT body, DATE_FORMAT(createdAt, '%Y.%m.%d %H:%i') AS createdAt
+    	SELECT id, body, DATE_FORMAT(createdAt, '%Y.%m.%d %H:%i') AS createdAt
       FROM community
       WHERE id = ?;`, [ insertId ]);
       res.json({ post: { ...post, nick: req.user.nick, likeNumber: 0 } }); 
     }
 
+  } catch (err) {
+    console.error(err);
+    next(err);
+  }
+});
+
+router.post('/post_like', isLoggedIn, async (req, res, next) => {
+  try {
+    let { cid, isLike } = req.body;
+
+    const [[ result ]] = await connection.query(
+    	"SELECT * FROM community_like WHERE cid = ? AND uid =?;",
+      [ cid, req.user.id ]);
+    
+    if (isLike) {
+      if (!result) {  
+        await connection.query(
+          "INSERT INTO community_like (cid, uid) VALUES (?, ?);",
+          [ cid, req.user.id ]
+        );
+      }
+    }
+    else {
+      if (result) {
+        await connection.query(
+          "DELETE FROM community_like WHERE cid = ? AND uid = ?;",
+          [ cid, req.user.id ]
+        );
+      }
+    }
+    res.json({ success: true });
   } catch (err) {
     console.error(err);
     next(err);

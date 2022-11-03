@@ -90,6 +90,10 @@
   background-size: 20px;
 }
 
+.community__post_like--clicked {
+  background: no-repeat center url("../assets/icons/Medium(24)/Like-fill.svg");
+}
+
 .community__post_likeNumber {
   font-size: 0.8rem;
 }

@@ -17,12 +17,14 @@ window.onload = () => {
 }
 
 const $communityForm = $("#community_form");
+const $communityInput = $communityForm.querySelector("[name=body]");
 $communityForm.querySelector("button").onclick = e => {
   axios.post("/community/post", {
-    body: $communityForm.querySelector("[name=body]").value
+    body: $communityInput.value
   })
   .then(res => {
     const { post } = res.data;
+    $communityInput.value = "";
     
     if (post)
     	$("#post_section").prepend(createPostElem(post));
@@ -32,7 +34,7 @@ $communityForm.querySelector("button").onclick = e => {
   });
 }
 
-function createPostElem({ nick, body, createdAt, likeNumber }) {
+function createPostElem({ id, nick, body, createdAt, likeNumber, isLike }) {
   const result = createElemWithHtml(`
   <div class="community__postContainer">
     <div class="community__topPart">
@@ -42,10 +44,48 @@ function createPostElem({ nick, body, createdAt, likeNumber }) {
     <div class="community__post_body">${body}</div>
     <div class="community__bottomPart">
       <div class="community__post_like"></div>
-      <div class="community__post_likeNumber">${likeNumber}</div>
+      <div class="community__post_likeNumber">${likeNumber ?? 0}</div>
     </div>
   </div>
   `);
+  
+  let block = false;
+  const $likeButton = result.querySelector(".community__post_like");
+  const $likeNumber = result.querySelector(".community__post_likeNumber");
+  
+  if (isLike) {
+    $likeButton.classList.add("community__post_like--clicked");
+  }
+  
+  $likeButton.onclick = () => {
+    if (block) return;
+    block = true;
+    
+    $likeButton.classList.toggle("community__post_like--clicked");
+    const isLike = $likeButton.classList.contains("community__post_like--clicked");
+    if (isLike) {
+      $likeNumber.textContent = Number($likeNumber.textContent) + 1;
+    }
+    else {
+      $likeNumber.textContent = Number($likeNumber.textContent) - 1;
+    }
+    
+    axios.post("/community/post_like", { cid: id, isLike })
+  	.then(res => {
+      block = false;
+    })
+    .catch(err => {
+      console.error(err);
+      $likeButton.classList.toggle("community__post_like--clicked");
+      if ($likeButton.classList.contains("community__post_like--clicked")) {
+        $likeNumber.textContent = Number($likeNumber.textContent) + 1;
+      }
+      else {
+        $likeNumber.textContent = Number($likeNumber.textContent) - 1;
+      }
+      block = false;
+    });
+  }
   
   return result;
 }
