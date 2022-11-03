@@ -26,6 +26,8 @@ function executeQuerys() {
     `DROP TABLE IF EXISTS dancer;`,
     `DROP TABLE IF EXISTS time;`,
     `DROP TABLE IF EXISTS pos;`,
+    `DROP TABLE IF EXISTS community;`,
+    `DROP TABLE IF EXISTS community_like;`,
   ];
 
   const createQuerys = [
@@ -86,6 +88,25 @@ function executeQuerys() {
     PRIMARY KEY(nid, tid, did),
     FOREIGN KEY(nid, tid) REFERENCES time(nid, id),
     FOREIGN KEY(nid, did) REFERENCES dancer(nid, id)
+    );`,
+    `
+    CREATE TABLE IF NOT EXISTS community (
+    id        INT NOT NULL AUTO_INCREMENT,
+    uid       INT NOT NULL,
+    body      VARCHAR(510) NOT NULL,
+    createdAt DATETIME NOT NULL DEFAULT now(),
+    hide      BOOLEAN DEFAULT false,
+    PRIMARY KEY(id),
+    FOREIGN KEY(uid) REFERENCES user(id)
+    );`,
+    `
+    CREATE TABLE IF NOT EXISTS community_like (
+    cid       INT NOT NULL,
+    uid       INT NOT NULL,
+    createdAt DATETIME NOT NULL DEFAULT now(),
+    PRIMARY KEY(cid, uid),
+    FOREIGN KEY(cid) REFERENCES community(id),
+    FOREIGN KEY(uid) REFERENCES user(id)
     );`,
   ];
 

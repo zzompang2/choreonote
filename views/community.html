@@ -1,0 +1,21 @@
+{% extends 'layout/layout-dashboard.html' %}
+
+{% block innerstyle %}
+<link rel="stylesheet" href="/css/community.css">
+{% endblock %}
+
+{% block innerbody %}
+<div class="input_section">
+  <div id="community_form" class="community__inputForm">
+    <textarea type="text" class="community__input" maxlength="500" name="body" required autofocus></textarea>
+    <button class="community__input_button">올리기</button>
+  </div>
+</div>
+
+<div id="post_section" class="post_section">
+</div>
+{% endblock %}
+
+{% block innerscript %}
+<script type="module" src="/js/community.js"></script>
+{% endblock %}

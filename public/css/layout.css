@@ -92,6 +92,10 @@ a {
   color: inherit; /* 링크의 색상 제거 */
 }
 
+input, button, textarea {
+  border: none;
+}
+
 .sidebar {
   position: fixed;
   z-index: 90;

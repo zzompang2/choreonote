@@ -32,7 +32,7 @@ module.exports = () => {
     callbackURL: googleCredentials.web.redirect_uris[0]
   }, async (accessToken, refreshToken, profile, done) => {
     // profile: 사용자 정보가 담겨있음
-    console.log(profile);
+    // console.log(profile);
     try {
       // 이미 회원가입한 사용자인지 확인
       const [[exUser]] = await connection.query(`SELECT * FROM user WHERE service = "gg" AND snsId = ? LIMIT 1;`, [profile.id]);

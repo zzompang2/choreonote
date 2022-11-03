@@ -92,4 +92,8 @@ a {
   color: inherit; /* 링크의 색상 제거 */
 }
 
+input, button, textarea {
+  border: none;
+}
+
 /*# sourceMappingURL=root.css.map */

@@ -145,9 +145,7 @@ function handleMusicFile(file) {
     $audio.src = "assets/music/" + filename;
     $audio.onloadedmetadata = () => {
       const duration = floorTime($audio.duration * 1000);
-      
-      console.log("새로운 노래 길이:", duration);
-      
+            
       if(duration < 10000 || 600000 < duration) {
         window.alert("노래는 최소 10초, 최대 10분 길이여야 합니다.");
         // window.location.reload(); // 새로고침
