@@ -482,6 +482,11 @@ function pasteFormation() {
     new Toast("복사한 대열이 없어요.", "warning");
     return;
   }
+  
+  if (state.copiedFormation.length !== state.dancers.length) {
+    new Toast(`복사한 대열이 현재 댄서 수와 맞지 않아요. (복사한 대열: ${state.copiedFormation.length-1}명)`, "warning");
+    return;
+  }
 
   const newPosition = [];
   state.copiedFormation.forEach(pos => newPosition[pos.did] = {...pos}); // deep copy
