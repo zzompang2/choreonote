@@ -103,4 +103,45 @@ router.post('/post_like', isLoggedIn, async (req, res, next) => {
   }
 });
 
+router.get('/comment', isLoggedIn, async (req, res, next) => {
+  try {
+    const { cid } = req.query;
+    
+    const [ comments ] = await connection.query(`
+    	SELECT c.id, nick, body, DATE_FORMAT(c.createdAt, '%Y.%m.%d %H:%i') AS createdAt
+      FROM (SELECT * FROM comment WHERE cid = ? AND hide = false) AS c
+      INNER JOIN user AS u
+      ON u.id = c.uid
+      ORDER BY c.createdAt;
+      `, [ cid ]);
+        
+    res.send({ comments });
+  } catch (err) {
+    console.error(err);
+    next(err);
+  }
+});
+
+router.post('/comment', isLoggedIn, async (req, res, next) => {
+  try {
+    const { cid, body } = req.body;
+    
+    const [{ insertId }] = await connection.query(
+      "INSERT INTO comment (cid, uid, body) VALUES (?, ?, ?);",
+      [ cid, req.user.id, body ]
+    );
+    
+    const [[ comment ]] = await connection.query(`
+      SELECT id, body, DATE_FORMAT(createdAt, '%Y.%m.%d %H:%i') AS createdAt
+      FROM comment WHERE id = ? LIMIT 1;
+      `, [ insertId ]
+    );
+        
+    res.json({ comment: { ...comment, nick: req.user.nick } });
+  } catch (err) {
+    console.error(err);
+    next(err);
+  }
+});
+
 module.exports = router;

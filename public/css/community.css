@@ -75,6 +75,7 @@
 .community__post_body {
   margin-bottom: 16px;
   font-size: 1rem;
+  word-break: break-all;
 }
 
 .community__bottomPart {
@@ -96,6 +97,79 @@
 
 .community__post_likeNumber {
   font-size: 0.8rem;
+}
+
+/***************/
+/*** COMMENT ***/
+/***************/
+.comment__container {
+  display: none;
+  background: var(--color-container-20);
+  border-radius: 4px;
+  margin-top: 10px;
+}
+
+.comment__slider {
+  padding: 16px 16px 6px 16px;
+  overflow-y: scroll;
+  height: 230px;
+}
+
+.comment {
+  width: fit-content;
+  max-width: 90%;
+  background-color: var(--color-bg);
+  border-radius: 8px;
+  padding: 8px;
+  margin-bottom: 8px;
+}
+
+.comment__topPart {
+  display: flex;
+  margin-bottom: 8px;
+  align-items: flex-end;
+}
+
+.comment__nick {
+  font-size: 0.7rem;
+  margin-right: 8px;
+}
+
+.comment__date {
+  font-size: 0.6rem;
+  color: var(--color-text-secondary);
+}
+
+.comment__body {
+  font-size: 0.9rem;
+}
+
+.comment__inputContainer {
+  display: flex;
+  padding: 8px;
+  margin: 16px;
+  border-radius: 8px;
+  background-color: var(--color-bg);
+}
+
+.comment__input {
+  flex: 1;
+  height: 40px;
+  min-height: 40px;
+  max-height: 120px;
+  padding: 8px;
+  margin-right: 6px;
+  line-height: 150%;
+  resize: vertical;
+}
+
+.comment__submitButton {
+  height: 40px;
+  padding: 8px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  color: var(--color-text-neg);
+  background-color: var(--color-brand);
 }
 
 /*# sourceMappingURL=community.css.map */

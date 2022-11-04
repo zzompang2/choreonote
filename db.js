@@ -28,6 +28,7 @@ function executeQuerys() {
     `DROP TABLE IF EXISTS pos;`,
     `DROP TABLE IF EXISTS community;`,
     `DROP TABLE IF EXISTS community_like;`,
+    `DROP TABLE IF EXISTS comment;`,
   ];
 
   const createQuerys = [
@@ -105,6 +106,18 @@ function executeQuerys() {
     uid       INT NOT NULL,
     createdAt DATETIME NOT NULL DEFAULT now(),
     PRIMARY KEY(cid, uid),
+    FOREIGN KEY(cid) REFERENCES community(id),
+    FOREIGN KEY(uid) REFERENCES user(id)
+    );`,
+    `
+    CREATE TABLE IF NOT EXISTS comment (
+    id        INT NOT NULL AUTO_INCREMENT,
+    cid       INT NOT NULL,
+    uid       INT NOT NULL,
+    body      VARCHAR(210) NOT NULL,
+    createdAt DATETIME NOT NULL DEFAULT now(),
+    hide      BOOLEAN DEFAULT false,
+    PRIMARY KEY(id),
     FOREIGN KEY(cid) REFERENCES community(id),
     FOREIGN KEY(uid) REFERENCES user(id)
     );`,
