@@ -295,6 +295,10 @@ input, button, textarea {
   height: 100%;
 }
 
+.header__time {
+  font-size: 0.8rem;
+}
+
 .header__button {
   display: flex;
   align-items: center;

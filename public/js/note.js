@@ -90,6 +90,7 @@ function initializeNote() {
     });
 
     setCurTime(0);
+    resetSaveTimer();
 
     $("#header_logo").onclick = e => {
       e.stopPropagation();
@@ -202,6 +203,8 @@ function handleMusicFile(file) {
 let saveNoteDB_block = false;
 function saveNoteDB() {
   if (saveNoteDB_block) return;
+  
+  new Toast("저장중입니다...", "success");
   saveNoteDB_block = true;
     
   axios.post('/note/update', {
@@ -211,9 +214,11 @@ function saveNoteDB() {
     noteInfo: state.noteInfo
   })
   .then(res => {
-    console.log("저장 완료");
+    resetSaveTimer();
+    new Toast("저장 완료!", "success");
   })
   .catch(err => {
+    new Toast("저장 실패", "warning");
     console.error(err);
   })
   saveNoteDB_block = false;
@@ -643,4 +648,14 @@ function selectDancer(id) {
   	sideScreen.select(id);
     stage.select(id);
   }
+}
+
+let headerTimeTimer;
+function resetSaveTimer() {
+  let saveTime = 0;
+  $("#save_timer").textContent = "마지막 저장 0분전";
+  
+  headerTimeTimer = setInterval(() => {
+    $("#save_timer").textContent = `마지막 저장 ${++saveTime}분전`;
+  }, 1000 * 60);
 }
