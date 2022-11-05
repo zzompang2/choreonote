@@ -143,6 +143,7 @@ export default class Timeline {
   }
 
   play() {
+    this.formationList.forEach(obj => obj.setDraggable(false));
     this.$timeMarker.style.transitionDuration = this.musicDuration - this.curTime + "ms";
     this.$timeMarker.style.left = TIMELINE_PADDING + this.musicDuration/1000 * PIXEL_PER_SEC + "px";
     this.interval = setInterval(() => {
@@ -151,6 +152,7 @@ export default class Timeline {
   }
 
   pause(ms) {
+     this.formationList.forEach(obj => obj.setDraggable(true));
     this.$timeMarker.style.transitionDuration = "0ms";
     this.moveTimeMarker(ms);
     clearInterval(this.interval);

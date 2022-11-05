@@ -1,6 +1,7 @@
 import { STAGE_WIDTH, STAGE_HEIGHT, PIXEL_PER_SEC, TIMELINE_PADDING, TIME_UNIT,
 HANDLE_WIDTH, COLOR_NUM, floorTime, roundTime, roundPos, $ } from "/js/constant.js";
 const TAG = "FormationBox.js/";
+import Toast from "./Toast.js";
 
 export default class FormationBox {
   constructor({ formationInfo, id, selectFormationBox, changeFormationTimeAndDuration }) {
@@ -15,17 +16,27 @@ export default class FormationBox {
     $body.className = "formationBox__body";
     $body.draggable = true;
     $body.onclick = e => {
-      e.stopPropagation();  // $bg 클릭 방지
+      if(!this.draggable) {
+        new Toast("노래 재생중입니다!", "warning");
+        return false;
+      }
+      // e.stopPropagation();  // $bg 클릭 방지
       selectFormationBox(this.id);
     }
+    this.draggable = true;
 
     let initialX;
     $body.ondragstart = e => {
+      if(!this.draggable) {
+        new Toast("노래 재생중입니다!", "warning");
+        return false;
+      }
       initialX = e.clientX;
       /* 드래그 잔상 지우기 위해 드래그 이미지에 빈 img 태그 넣음 */
       const img = document.createElement("img");
       e.dataTransfer.setDragImage(img, 0, 0);
     }
+    
     $body.ondrag = e => {
       if(e.clientX == 0) return;  // 마지막 drag의 clientX가 0으로 가는 오류
       this.$box.style.transform = `translate(${e.clientX - initialX}px, 0)`;
@@ -43,6 +54,10 @@ export default class FormationBox {
     $handlerLeft.draggable = true;
     $handlerLeft.className = "formationBox__handler formationBox__handler--left";
     $handlerLeft.ondragstart = e => {
+      if(!this.draggable) {
+        new Toast("노래 재생중입니다!", "warning");
+        return false;
+      }
       initialX = e.clientX;
       /* 드래그 잔상 지우기 위해 드래그 이미지에 빈 img 태그 넣음 */
       const img = document.createElement("img");
@@ -69,6 +84,10 @@ export default class FormationBox {
     $handlerRight.draggable = true;
     $handlerRight.className = "formationBox__handler formationBox__handler--right";
     $handlerRight.ondragstart = e => {
+      if(!this.draggable) {
+        new Toast("노래 재생중입니다!", "warning");
+        return false;
+      }
       initialX = e.clientX;
       /* 드래그 잔상 지우기 위해 드래그 이미지에 빈 img 태그 넣음 */
       const img = document.createElement("img");
@@ -107,5 +126,9 @@ export default class FormationBox {
   updateFormationBox() {
     this.$box.style.left = TIMELINE_PADDING + this.formationInfo.start / 1000 * PIXEL_PER_SEC + "px";
     this.$box.style.width = this.formationInfo.duration / 1000 * PIXEL_PER_SEC + "px";
+  }
+  
+  setDraggable(bool) {
+    this.draggable = bool;
   }
 }
