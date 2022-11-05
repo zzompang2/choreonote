@@ -109,6 +109,10 @@ export default class Dancer {
         newX = roundPos(newX, gap);
         newY = roundPos(newY, gap);
       }
+      
+      // STAGE 밖으로 나갔는지 검사
+      newX = newX > 300 ? 300 : (newX < -300 ? -300 : newX);
+      newY = newY > 200 ? 200 : (newY < -200 ? -200 : newY);
 
       this.position.x = newX;
       this.position.y = newY;

@@ -598,8 +598,8 @@ function addDancer() {
   const did = state.dancers.length;
   state.dancers.push({
     id: did,
-    name: did+"",
-    color: "#ff631b"
+    name: "이름",
+    color: "#D63F72"
   });
   state.formations.forEach(formation => {
     formation.positionsAtSameTime.push({ tid: formation.id, did, x: 0, y: 0 });
