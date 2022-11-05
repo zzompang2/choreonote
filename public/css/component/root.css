@@ -103,11 +103,11 @@ input, button, textarea {
 }
 
 ::-webkit-scrollbar-thumb {
-  background-color: var(--color-blackLight);
+  background-color: var(--color-container-20);
 }
 
 ::-webkit-scrollbar-track {
-  background-color: var(--color-blackMiddle);
+  background-color: var(--color-bg);
 }
 
 /*# sourceMappingURL=root.css.map */

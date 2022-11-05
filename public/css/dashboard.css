@@ -22,6 +22,7 @@
   border: 1px solid var(--color-border);
   border-radius: 6px;
   cursor: pointer;
+  overflow: hidden;
 }
 .note__container:focus, .note__container:hover {
   border-color: var(--color-brand);
