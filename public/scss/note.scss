@@ -5,18 +5,6 @@
 @import './component/timeline.scss';
 @import './component/tool.scss';
 
-::-webkit-scrollbar {
-  height: 12px;
-}
-
-::-webkit-scrollbar-thumb {
-  background-color: var(--color-blackLight);
-}
-
-::-webkit-scrollbar-track {
-  background-color: var(--color-blackMiddle)
-}
-
 .body {
   background-color: var(--color-bg-dark);
 }
