@@ -103,10 +103,22 @@ router.post('/delete_note', isLoggedIn, async (req, res, next) => {
 
 router.get('/get_notes', isLoggedIn, async (req, res, next) => {
   try {
-  	const [ notes ] = await connection.query(`
+  	const [ _notes ] = await connection.query(`
     	SELECT *, DATE_FORMAT(createdAt, '%Y.%m.%d %H:%i') AS createdAt
       FROM note WHERE uid = ? AND hide = ?;`,
       [req.user.id, false]);
+    
+    const notes = [];
+    for (let i=0; i < _notes.length; i++) {
+      const [ dancers ] = await connection.query(`
+        SELECT p.*, d.color
+        FROM (SELECT * FROM pos WHERE tid = 1 AND nid = ?) AS p
+        INNER JOIN (SELECT * FROM dancer WHERE nid = ?) AS d
+        ON d.id = p.did;
+        `, [ _notes[i].id, _notes[i].id ]);
+      notes.push({ ..._notes[i], dancers });
+    }
+
     res.send({ notes });
   } catch (err) {
     console.error(err);

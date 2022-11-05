@@ -16,7 +16,8 @@
 .note__container {
   position: relative;
   height: 60px;
-  padding-top: 66.6%;
+  padding-top: 66.6666666667%;
+  box-sizing: content-box;
   background-color: var(--color-bg);
   border: 1px solid var(--color-border);
   border-radius: 6px;
@@ -30,7 +31,8 @@
 .note__createContainer {
   position: relative;
   height: 60px;
-  padding-top: 66.6%;
+  padding-top: 66.6666666667%;
+  box-sizing: content-box;
   background-color: var(--color-container-90);
   border: 1px solid var(--color-border);
   border-radius: 6px;
@@ -47,6 +49,37 @@
 
 .note__thumbnail {
   flex-grow: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+.note__thumbnail_dancer {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+}
+
+.note__thumbnail_dancerBody {
+  width: 6%;
+  padding-top: 6%;
+  border-radius: 50%;
+  position: absolute;
+  top: -4%;
+  left: -3%;
+}
+
+.note__thumbnail_axis {
+  position: absolute;
+  width: 100%;
+  height: 1px;
+  background-color: var(--color-border);
+}
+
+.note__thumbnail_axisVer {
+  position: absolute;
+  width: 1px;
+  height: 100%;
+  background-color: var(--color-border);
 }
 
 .note__create {
