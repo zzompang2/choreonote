@@ -18,7 +18,7 @@ const app = express();
 passportConfig();		// 패스포트 설정
 
 /* app.set(key, value) 으로 데이터 저장 & app.get(key) 으로 사용 */
-app.set('port', process.env.PORT || 3000);
+app.set('port', process.env.PORT || 3002);
 app.set('view engine', 'html');  // for nunjucks
 
 // 'views' : 템플릿 파일들 위치한 폴더 지정.

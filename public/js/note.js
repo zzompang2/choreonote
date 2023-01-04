@@ -136,6 +136,8 @@ function handleMusicFile(file) {
     // location.reload();
     const { filename, originalname } = res.data;
     
+    console.log(filename, originalname);
+    
     // 노래 길이 구하고 DB 업데이트
     const $audio = $("#audio");
     $audio.src = "assets/music/" + filename;
@@ -173,19 +175,18 @@ function handleMusicFile(file) {
       
       
       timeline = new Timeline({
-        musicDuration: state.noteInfo.duration,
-        formationArray: state.formations,
+        state,
         pauseMusic,
         setCurTime,
         selectFormationBox,
         changeFormationTimeAndDuration,
       });
       musicPlayer = new MusicPlayer({
-        musicInfo: state.noteInfo,
-        curTime: state.currentTime,
+        state,
         clickPlayBtn,
         addFormationBox,
       });
+      
       sideScreen.setMusicName();
       setCurTime(0);
     };
@@ -220,7 +221,7 @@ function saveNoteDB() {
 }
 
 function saveFile() {
-  console.log(state.dancers, state.formations, state.noteInfo);
+  // console.log(state.dancers, state.formations, state.noteInfo);
   const jsonData = JSON.stringify([state.dancers, state.formations, state.noteInfo]);
   const file = new Blob([jsonData], { type: "text/plain" });
   $("a", {

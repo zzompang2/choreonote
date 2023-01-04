@@ -119,6 +119,10 @@ export default class Timeline {
     }
 
     /* FORMATION BOX */
+    // 기존 박스들 모두 제거 (노래 변경시 새로 박스들을 추가하기 때문에, 기존 박스를 삭제해야 한다.)
+    while (this.$formationBoxSection.hasChildNodes())
+      this.$formationBoxSection.removeChild(this.$formationBoxSection.firstChild);
+    
     $fragment = document.createDocumentFragment();
 
     this.formationList = [];
