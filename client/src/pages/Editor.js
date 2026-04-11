@@ -22,7 +22,7 @@ export async function renderEditor(container, noteId) {
   noteData = await NoteStore.loadNote(noteId);
   if (!noteData) {
     showToast('노트를 찾을 수 없습니다');
-    navigate('/');
+    navigate('/dashboard');
     return;
   }
 
@@ -601,7 +601,7 @@ function setupToolbar(container) {
 
 // --- Header ---
 function setupHeader(container, noteId) {
-  container.querySelector('#back-btn').addEventListener('click', () => navigate('/'));
+  container.querySelector('#back-btn').addEventListener('click', () => navigate('/dashboard'));
 
   async function saveToDB(silent = false) {
     const title = container.querySelector('#title-input').value;
