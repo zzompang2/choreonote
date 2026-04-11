@@ -1,8 +1,27 @@
 import { db } from './db.js';
 
 const DEFAULT_DANCERS = [
-  { name: 'Ham', color: '#FF6B6B', order: 0 },
-  { name: 'Lulu', color: '#4ECDC4', order: 1 },
+  { name: 'Ham', color: '#EF4444', order: 0 },
+  { name: 'Chance', color: '#3B82F6', order: 1 },
+  { name: 'Luna', color: '#22C55E', order: 2 },
+];
+
+// Formation 1: horizontal line  ○ ○ ○
+// Formation 2: triangle           ○
+//                                ○   ○
+const DEFAULT_POSITIONS = [
+  // Formation 0 (horizontal line)
+  [
+    { dancerIndex: 0, x: -60, y: 0 },
+    { dancerIndex: 1, x: 0, y: 0 },
+    { dancerIndex: 2, x: 60, y: 0 },
+  ],
+  // Formation 1 (triangle)
+  [
+    { dancerIndex: 0, x: 0, y: -50 },
+    { dancerIndex: 1, x: -50, y: 40 },
+    { dancerIndex: 2, x: 50, y: 40 },
+  ],
 ];
 
 const DEFAULT_FORMATIONS = [
@@ -29,10 +48,17 @@ export const NoteStore = {
         dancerIds.push(did);
       }
 
-      for (const f of DEFAULT_FORMATIONS) {
-        const fid = await db.formations.add({ noteId, ...f });
-        for (const did of dancerIds) {
-          await db.positions.add({ formationId: fid, dancerId: did, x: 0, y: 0 });
+      for (let fi = 0; fi < DEFAULT_FORMATIONS.length; fi++) {
+        const fid = await db.formations.add({ noteId, ...DEFAULT_FORMATIONS[fi] });
+        const posData = DEFAULT_POSITIONS[fi] || [];
+        for (let di = 0; di < dancerIds.length; di++) {
+          const pos = posData.find(p => p.dancerIndex === di);
+          await db.positions.add({
+            formationId: fid,
+            dancerId: dancerIds[di],
+            x: pos ? pos.x : 0,
+            y: pos ? pos.y : 0,
+          });
         }
       }
 
