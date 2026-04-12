@@ -34,7 +34,12 @@ export class PlaybackEngine {
   }
 
   get duration() {
+    if (this._manualDuration) return this._manualDuration;
     return this.audioBuffer ? this.audioBuffer.duration * 1000 : 30000;
+  }
+
+  set duration(ms) {
+    this._manualDuration = ms;
   }
 
   get currentTime() {
@@ -68,9 +73,9 @@ export class PlaybackEngine {
       this.sourceNode.buffer = this.audioBuffer;
       this.sourceNode.connect(this.gainNode);
       this.sourceNode.start(0, offset);
+      // Don't stop playback when audio ends — animation may continue beyond audio
       this.sourceNode.onended = () => {
-        if (this.isPlaying) this.pause();
-        this.onPlaybackEnd?.();
+        this.sourceNode = null;
       };
     }
 

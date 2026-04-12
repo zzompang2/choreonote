@@ -11,7 +11,7 @@ export async function renderDashboard(container) {
 
   div.innerHTML = `
     <div class="dashboard__header">
-      <div>
+      <div id="dashboard-logo" style="cursor:pointer">
         <div class="dashboard__title">ChoreoNote</div>
         <div class="dashboard__subtitle">당신의 멋진 무대를 위해</div>
       </div>
@@ -35,6 +35,8 @@ export async function renderDashboard(container) {
 
   const grid = div.querySelector('#note-grid');
   renderNoteCards(grid, notes);
+
+  div.querySelector('#dashboard-logo').addEventListener('click', () => navigate('/'));
 
   div.querySelector('#create-btn').addEventListener('click', async () => {
     const noteId = await NoteStore.createNote();

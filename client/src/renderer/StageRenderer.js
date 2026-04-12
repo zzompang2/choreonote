@@ -16,6 +16,7 @@ export class StageRenderer {
     this.is3D = false;
     this.isSnap = false;
     this.showNames = true;
+    this.gridGap = GRID_GAP;
 
     // Drag state
     this._dragging = null; // { dancerIndex, startX, startY, offsetX, offsetY }
@@ -31,11 +32,16 @@ export class StageRenderer {
     ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
     // Wing areas (offstage)
-    ctx.fillStyle = '#0a0a15';
+    const styles = getComputedStyle(document.documentElement);
+    const wingColor = styles.getPropertyValue('--stage-wing').trim() || '#0a0a15';
+    const stageColor = styles.getPropertyValue('--stage-bg').trim() || '#1a1a2e';
+    this._stageColor = stageColor;
+
+    ctx.fillStyle = wingColor;
     ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
     // Stage background
-    ctx.fillStyle = '#1a1a2e';
+    ctx.fillStyle = stageColor;
     ctx.fillRect(WING_SIZE, WING_SIZE, STAGE_WIDTH, STAGE_HEIGHT);
 
     // Stage border
@@ -46,10 +52,11 @@ export class StageRenderer {
     ctx.setLineDash([]);
 
     // Grid lines (inside stage only)
-    const ox = WING_SIZE; // stage origin x
-    const oy = WING_SIZE; // stage origin y
-    for (let x = HALF_W % GRID_GAP; x < STAGE_WIDTH; x += GRID_GAP) {
-      const isMajor = Math.round(Math.abs(x - HALF_W) / GRID_GAP) % 4 === 0;
+    const ox = WING_SIZE;
+    const oy = WING_SIZE;
+    const gap = this.gridGap;
+    for (let x = HALF_W % gap; x < STAGE_WIDTH; x += gap) {
+      const isMajor = Math.round(Math.abs(x - HALF_W) / gap) % 4 === 0;
       ctx.strokeStyle = isMajor ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.06)';
       ctx.lineWidth = isMajor ? 1 : 0.5;
       ctx.beginPath();
@@ -57,8 +64,8 @@ export class StageRenderer {
       ctx.lineTo(ox + x, oy + STAGE_HEIGHT);
       ctx.stroke();
     }
-    for (let y = HALF_H % GRID_GAP; y < STAGE_HEIGHT; y += GRID_GAP) {
-      const isMajor = Math.round(Math.abs(y - HALF_H) / GRID_GAP) % 4 === 0;
+    for (let y = HALF_H % gap; y < STAGE_HEIGHT; y += gap) {
+      const isMajor = Math.round(Math.abs(y - HALF_H) / gap) % 4 === 0;
       ctx.strokeStyle = isMajor ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.06)';
       ctx.lineWidth = isMajor ? 1 : 0.5;
       ctx.beginPath();
@@ -113,6 +120,21 @@ export class StageRenderer {
 
       const isSelected = this._selectedDancers.has(i);
       ctx.globalAlpha = isOffstage ? 0.4 : 1.0;
+
+      // Compensate CSS transforms so dancers appear upright
+      const needsCompensation = this.isRotated || this.is3D;
+      if (needsCompensation) {
+        ctx.save();
+        ctx.translate(screenX, screenY);
+        // Undo CSS rotateZ(180deg)
+        if (this.isRotated) ctx.rotate(Math.PI);
+        // Undo CSS rotateX by scaling Y back (perspective approximation)
+        if (this.is3D) {
+          const angle = 55 * Math.PI / 180;
+          ctx.scale(1, 1 / Math.cos(angle));
+        }
+        ctx.translate(-screenX, -screenY);
+      }
 
       if (this.is3D) {
         // 3D mode: simple person silhouette
@@ -202,7 +224,7 @@ export class StageRenderer {
 
       // Name/index label
       const label = this.showNames ? d.name.slice(0, 3) : String(i + 1);
-      ctx.fillStyle = isLightColor(d.color) ? '#1a1a2e' : '#ffffff';
+      ctx.fillStyle = isLightColor(d.color) ? (this._stageColor || '#1a1a2e') : '#ffffff';
       // 3D: label in body center, 2D: label in circle center
       const bodyCenter = screenY - radius * 3.2 * 0.45;
       const labelY = this.is3D ? bodyCenter : screenY;
@@ -215,6 +237,9 @@ export class StageRenderer {
       ctx.textBaseline = 'middle';
       const labelOffset = isNumber ? fontSize * 0.15 : 0;
       ctx.fillText(label, screenX, labelY + labelOffset);
+      if (needsCompensation) {
+        ctx.restore();
+      }
       ctx.globalAlpha = 1.0;
     }
 
@@ -244,12 +269,21 @@ export class StageRenderer {
   set3D(enabled, mode = 'css') {
     this.is3D = enabled;
     this._projectionMode = mode;
-    if (mode === 'css') {
-      this.canvas.style.transform = enabled
-        ? 'perspective(800px) rotateX(30deg)'
-        : '';
-      this.canvas.style.transformOrigin = 'center center';
-    }
+    this._updateTransform();
+  }
+
+  setRotated(enabled) {
+    this.isRotated = enabled;
+    this._updateTransform();
+  }
+
+  _updateTransform() {
+    const wrap = this.canvas.parentElement;
+    if (!wrap) return;
+    const parts = [];
+    if (this.is3D) parts.push('perspective(800px) rotateX(55deg)');
+    if (this.isRotated) parts.push('rotateZ(180deg)');
+    wrap.style.transform = parts.join(' ') || '';
   }
 
   // --- Hit Test ---
@@ -266,11 +300,35 @@ export class StageRenderer {
     return -1;
   }
 
-  // --- Mouse Events ---
+  // --- Mouse & Touch Events ---
   _setupEvents() {
     this.canvas.addEventListener('mousedown', (e) => this._onMouseDown(e));
     this.canvas.addEventListener('mousemove', (e) => this._onMouseMove(e));
     this.canvas.addEventListener('mouseup', (e) => this._onMouseUp(e));
+
+    // Touch support
+    this.canvas.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      this._onMouseDown(this._touchToMouse(e));
+    }, { passive: false });
+    this.canvas.addEventListener('touchmove', (e) => {
+      e.preventDefault();
+      this._onMouseMove(this._touchToMouse(e));
+    }, { passive: false });
+    this.canvas.addEventListener('touchend', (e) => {
+      e.preventDefault();
+      this._onMouseUp(this._touchToMouse(e, true));
+    }, { passive: false });
+  }
+
+  _touchToMouse(e, isEnd = false) {
+    const touch = isEnd ? e.changedTouches[0] : e.touches[0];
+    return {
+      clientX: touch.clientX,
+      clientY: touch.clientY,
+      shiftKey: e.shiftKey,
+      preventDefault: () => {},
+    };
   }
 
   _getCanvasPos(e) {
@@ -287,21 +345,38 @@ export class StageRenderer {
     const hit = this.hitTest(x, y, this._positions);
 
     if (hit >= 0) {
-      const pos = this._positions[hit];
-      this._dragging = {
-        dancerIndex: hit,
-        startX: WING_SIZE + HALF_W + pos.x,
-        startY: WING_SIZE + HALF_H + pos.y,
-        offsetX: x - (WING_SIZE + HALF_W + pos.x),
-        offsetY: y - (WING_SIZE + HALF_H + pos.y),
-      };
-      if (!this._selectedDancers.has(hit)) {
-        if (!e.shiftKey) this._selectedDancers.clear();
-        this._selectedDancers.add(hit);
+      if (e.shiftKey) {
+        // Shift+click: toggle selection only, no drag
+        if (this._selectedDancers.has(hit)) {
+          this._selectedDancers.delete(hit);
+        } else {
+          this._selectedDancers.add(hit);
+        }
+        this.onDancerSelect?.(hit);
+        if (this._dancers && this._positions) {
+          this.drawFrame(this._dancers, this._positions);
+        }
+      } else {
+        // Normal click: start drag
+        const pos = this._positions[hit];
+        this._dragging = {
+          dancerIndex: hit,
+          startX: WING_SIZE + HALF_W + pos.x,
+          startY: WING_SIZE + HALF_H + pos.y,
+          offsetX: x - (WING_SIZE + HALF_W + pos.x),
+          offsetY: y - (WING_SIZE + HALF_H + pos.y),
+        };
+        if (!this._selectedDancers.has(hit)) {
+          this._selectedDancers.clear();
+          this._selectedDancers.add(hit);
+        }
+        this.onDancerSelect?.(hit);
       }
-      this.onDancerSelect?.(hit);
     } else {
-      this._selectedDancers.clear();
+      if (!e.shiftKey) {
+        this._selectedDancers.clear();
+      }
+      this._shiftDrag = e.shiftKey;
       this._boxSelect = { startX: x, startY: y, endX: x, endY: y };
       this.onDancerSelect?.(-1);
     }
@@ -319,6 +394,10 @@ export class StageRenderer {
     if (this._boxSelect) {
       this._boxSelect.endX = x;
       this._boxSelect.endY = y;
+      // Redraw to show selection rectangle
+      if (this._dancers && this._positions) {
+        this.drawFrame(this._dancers, this._positions);
+      }
     }
   }
 
@@ -334,6 +413,10 @@ export class StageRenderer {
     if (this._boxSelect) {
       this._selectDancersInBox();
       this._boxSelect = null;
+      // Redraw to show selected dancers highlight
+      if (this._dancers && this._positions) {
+        this.drawFrame(this._dancers, this._positions);
+      }
     }
   }
 
@@ -345,7 +428,9 @@ export class StageRenderer {
     const minY = Math.min(startY, endY);
     const maxY = Math.max(startY, endY);
 
-    this._selectedDancers.clear();
+    if (!this._shiftDrag) {
+      this._selectedDancers.clear();
+    }
     for (let i = 0; i < this._positions.length; i++) {
       const pos = this._positions[i];
       if (!pos) continue;

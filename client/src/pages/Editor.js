@@ -5,6 +5,8 @@ import { VideoExporter } from '../engine/VideoExporter.js';
 import { navigate, setNavigationGuard, clearNavigationGuard } from '../utils/router.js';
 import { showToast } from '../utils/toast.js';
 import { pushState, undo, redo, canUndo, canRedo, clearHistory } from '../utils/history.js';
+import { getPresetNames, applyPreset } from '../utils/formations.js';
+import { toggleTheme, isLightMode } from '../utils/theme.js';
 import {
   PIXEL_PER_SEC, TIMELINE_PADDING, TIME_UNIT, WING_SIZE,
   formatTime, floorTime, clamp, roundToGrid, GRID_GAP, HALF_W, HALF_H,
@@ -17,6 +19,7 @@ let selectedFormation = 0;
 let selectedFormations = new Set([0]); // multi-select set
 let currentMs = 0;
 let unsaved = false;
+let swapMode = false;
 let pixelsPerSec = PIXEL_PER_SEC; // mutable, for timeline zoom
 
 export async function renderEditor(container, noteId) {
@@ -30,8 +33,14 @@ export async function renderEditor(container, noteId) {
 
   container.innerHTML = buildEditorHTML(noteData);
 
+  // Reset state
+  currentMs = 0;
+  selectedFormation = 0;
+  selectedFormations = new Set([0]);
+
   // Init engine
   engine = new PlaybackEngine();
+  engine.duration = noteData.note.duration;
   engine.setFormations(noteData.formations, noteData.dancers);
 
   if (noteData.musicBlob) {
@@ -52,6 +61,7 @@ export async function renderEditor(container, noteId) {
 
   // Initial render (defer to ensure DOM is fully ready)
   setTimeout(() => {
+    renderer._drawGridCache(); // rebuild with CSS variables now available
     updateStage();
     updateTimelineMarker();
     highlightFormation();
@@ -78,10 +88,31 @@ function buildEditorHTML(data) {
         <button class="editor__back" id="back-btn">← </button>
         <input class="editor__title-input" id="title-input" value="${escapeAttr(data.note.title)}" />
         <div class="editor__actions">
-          <button class="btn btn--ghost" id="music-btn">음악</button>
-          <button class="btn btn--ghost" id="export-json-btn">백업</button>
-          <button class="btn btn--ghost" id="export-video-btn">영상</button>
+          <button class="btn btn--ghost" id="music-btn">🎵 음악 넣기</button>
+          <button class="btn btn--ghost" id="export-json-btn">💾 백업</button>
+          <button class="btn btn--ghost" id="export-video-btn">🎬 영상 저장</button>
+          <button class="btn btn--ghost" id="theme-btn" title="다크/라이트 전환">🌙</button>
           <button class="btn btn--primary" id="save-btn">저장</button>
+        </div>
+      </div>
+
+      <div class="editor__main">
+        <div class="stage-container">
+          <div class="stage-wrap">
+            <canvas id="stage-canvas" class="stage-canvas"></canvas>
+          </div>
+          <div class="stage-3d-banner" id="stage-3d-banner">👁 미리보기 모드 — 클릭하면 편집 모드로</div>
+        </div>
+      </div>
+
+      <div class="editor__sidebar" id="sidebar">
+        <div class="sidebar__header">댄서</div>
+        <div class="sidebar__scroll">
+          <div class="dancer-list" id="dancer-list"></div>
+        </div>
+        <div class="sidebar__actions">
+          <button class="btn btn--ghost" id="add-dancer-btn" style="width:100%;font-size:12px">+ 댄서 추가</button>
+          <button class="btn btn--ghost" id="batch-color-btn" style="width:100%;font-size:12px">🎨 선택 댄서 색 변경</button>
         </div>
       </div>
 
@@ -89,7 +120,8 @@ function buildEditorHTML(data) {
         <button class="player-bar__btn" id="play-btn">▶</button>
         <span class="player-bar__time" id="time-display">${formatTime(0, true)}</span>
         <span class="player-bar__time" style="color:var(--text-secondary)">/</span>
-        <span class="player-bar__time" id="duration-display">${formatTime(data.note.duration, true)}</span>
+        <span class="player-bar__time player-bar__duration" id="duration-display" title="클릭하여 길이 변경">${formatTime(data.note.duration, true)}</span>
+        <span class="player-bar__music-name" id="music-name">${data.note.musicName ? escapeAttr(data.note.musicName) : '음악 없음'}</span>
 
         <div class="toolbar__separator"></div>
 
@@ -97,29 +129,20 @@ function buildEditorHTML(data) {
           <button class="toolbar__btn" id="undo-btn" title="실행 취소 (Ctrl+Z)">↩</button>
           <button class="toolbar__btn" id="redo-btn" title="다시 실행 (Ctrl+Shift+Z)">↪</button>
           <div class="toolbar__separator"></div>
-          <button class="toolbar__btn" id="add-formation-btn">+ 대형</button>
-          <button class="toolbar__btn" id="del-formation-btn">- 대형</button>
-          <button class="toolbar__btn" id="copy-btn">복사</button>
-          <button class="toolbar__btn" id="paste-btn">붙여넣기</button>
+          <button class="toolbar__btn" id="add-formation-btn" title="현재 위치에 대형 추가">+ 대형</button>
+          <button class="toolbar__btn" id="del-formation-btn" title="선택된 대형 삭제">− 대형</button>
+          <button class="toolbar__btn" id="preset-btn" title="추천 대열 배치">추천 대열</button>
+          <button class="toolbar__btn" id="swap-btn" title="댄서 두 명 위치 교환">교환</button>
+          <button class="toolbar__btn" id="copy-btn" title="대형 복사 (Ctrl+C)">복사</button>
+          <button class="toolbar__btn" id="paste-btn" title="대형 붙여넣기 (Ctrl+V)">붙여넣기</button>
           <div class="toolbar__separator"></div>
-          <button class="toolbar__btn" id="snap-btn">격자</button>
+          <button class="toolbar__btn" id="snap-btn" title="격자에 맞추기">격자</button>
+          <button class="toolbar__btn" id="grid-down-btn" title="격자 촘촘하게">−</button>
+          <button class="toolbar__btn" id="grid-up-btn" title="격자 넓게">+</button>
           <button class="toolbar__btn" id="view-3d-btn">3D</button>
+          <button class="toolbar__btn" id="view-rotate-btn" title="180° 회전 뷰">회전</button>
           <button class="toolbar__btn" id="names-btn">이름</button>
           <button class="toolbar__btn toolbar__btn--active" id="sidebar-btn">댄서</button>
-        </div>
-      </div>
-
-      <div class="editor__main">
-        <div class="stage-wrap">
-          <canvas id="stage-canvas" class="stage-canvas"></canvas>
-        </div>
-      </div>
-
-      <div class="editor__sidebar" id="sidebar">
-        <div class="sidebar__section">
-          <div class="sidebar__section-title">댄서</div>
-          <div class="dancer-list" id="dancer-list"></div>
-          <button class="btn btn--ghost" id="add-dancer-btn" style="margin-top:8px;width:100%;font-size:12px">+ 댄서 추가</button>
         </div>
       </div>
 
@@ -154,6 +177,42 @@ function buildEditorHTML(data) {
 function setupPlayback(container) {
   const playBtn = container.querySelector('#play-btn');
   const timeDisplay = container.querySelector('#time-display');
+  const durationDisplay = container.querySelector('#duration-display');
+
+  // Click duration to change manually
+  durationDisplay.addEventListener('click', () => {
+    const currentSec = Math.round(noteData.note.duration / 1000);
+    const input = prompt('노래 길이 (초)', currentSec);
+    if (input === null) return;
+    const newSec = parseInt(input, 10);
+    if (isNaN(newSec) || newSec < 10 || newSec > 600) {
+      showToast('10초 ~ 600초 사이로 입력해주세요');
+      return;
+    }
+    const newDuration = newSec * 1000;
+    noteData.note.duration = newDuration;
+    engine.duration = newDuration;
+    durationDisplay.textContent = formatTime(newDuration, true);
+
+    // Rebuild timeline
+    const dSec = newDuration / 1000;
+    const timelineWidth = TIMELINE_PADDING * 2 + dSec * pixelsPerSec;
+    const timeline = container.querySelector('#timeline');
+    timeline.style.width = `${timelineWidth}px`;
+    const ruler = container.querySelector('#timeline-ruler');
+    ruler.innerHTML = '';
+    buildRulerTicks(ruler, dSec);
+    const formationsEl = container.querySelector('#timeline-formations');
+    renderFormationBoxes(formationsEl);
+    if (currentMs > newDuration) {
+      seekTo(0);
+    }
+    updateTimelineMarker();
+    if (noteData.musicBlob) {
+      drawWaveform(container, noteData.musicBlob, newDuration);
+    }
+    showToast(`노래 길이: ${newSec}초`);
+  });
 
   engine.onTimeUpdate = (ms) => {
     currentMs = ms;
@@ -225,6 +284,10 @@ function setupPlayback(container) {
         showToast('다시 실행');
       }
     }
+    if (e.key === '?' || (e.shiftKey && e.code === 'Slash')) {
+      e.preventDefault();
+      toggleShortcutHelp(container);
+    }
   };
   document.addEventListener('keydown', window._choreoKeyHandler);
 
@@ -239,30 +302,83 @@ function setupPlayback(container) {
   };
 
   // Renderer drag callbacks
+  // Store drag start positions for multi-drag offset
+  let dragStartPositions = null;
+
   renderer.onDancerDragEnd = (dancerIndex, newX, newY, selectedSet) => {
+    if (swapMode) return;
     if (engine.isPlaying || selectedFormation < 0) return;
     const f = noteData.formations[selectedFormation];
     if (!f) return;
+    const snap = renderer.isSnap;
+    const gap = renderer.gridGap;
+    const limit = { minX: -(HALF_W + WING_SIZE), maxX: HALF_W + WING_SIZE, minY: -(HALF_H + WING_SIZE), maxY: HALF_H + WING_SIZE };
 
-    const dancer = noteData.dancers[dancerIndex];
-    const pos = f.positions.find((p) => p.dancerId === dancer.id);
-    if (pos) {
-      const snap = renderer.isSnap;
-      pos.x = snap ? roundToGrid(clamp(newX, -(HALF_W + WING_SIZE), HALF_W + WING_SIZE), GRID_GAP) : clamp(Math.round(newX), -(HALF_W + WING_SIZE), HALF_W + WING_SIZE);
-      pos.y = snap ? roundToGrid(clamp(newY, -(HALF_H + WING_SIZE), HALF_H + WING_SIZE), GRID_GAP) : clamp(Math.round(newY), -(HALF_H + WING_SIZE), HALF_H + WING_SIZE);
+    if (selectedSet.size > 1 && selectedSet.has(dancerIndex) && dragStartPositions) {
+      // Multi-drag: calculate offset from dragged dancer
+      const origPos = dragStartPositions.get(dancerIndex);
+      const dx = newX - origPos.x;
+      const dy = newY - origPos.y;
+      for (const idx of selectedSet) {
+        const d = noteData.dancers[idx];
+        const pos = f.positions.find(p => p.dancerId === d.id);
+        const orig = dragStartPositions.get(idx);
+        if (pos && orig) {
+          const nx = orig.x + dx;
+          const ny = orig.y + dy;
+          pos.x = snap ? roundToGrid(clamp(nx, limit.minX, limit.maxX), gap) : clamp(Math.round(nx), limit.minX, limit.maxX);
+          pos.y = snap ? roundToGrid(clamp(ny, limit.minY, limit.maxY), gap) : clamp(Math.round(ny), limit.minY, limit.maxY);
+        }
+      }
+    } else {
+      const dancer = noteData.dancers[dancerIndex];
+      const pos = f.positions.find(p => p.dancerId === dancer.id);
+      if (pos) {
+        pos.x = snap ? roundToGrid(clamp(newX, limit.minX, limit.maxX), gap) : clamp(Math.round(newX), limit.minX, limit.maxX);
+        pos.y = snap ? roundToGrid(clamp(newY, limit.minY, limit.maxY), gap) : clamp(Math.round(newY), limit.minY, limit.maxY);
+      }
     }
+    dragStartPositions = null;
     updateStage(); saveSnapshot();
   };
 
-  renderer.onDancerDrag = (dancerIndex, newX, newY) => {
+  renderer.onDancerDrag = (dancerIndex, newX, newY, selectedSet) => {
+    if (swapMode) return;
     if (engine.isPlaying || selectedFormation < 0) return;
-    // Live preview during drag
     const positions = engine.calcPositionsAt(currentMs);
     const snap = renderer.isSnap;
-    positions[dancerIndex] = {
-      x: snap ? roundToGrid(clamp(newX, -(HALF_W + WING_SIZE), HALF_W + WING_SIZE), GRID_GAP) : clamp(Math.round(newX), -(HALF_W + WING_SIZE), HALF_W + WING_SIZE),
-      y: snap ? roundToGrid(clamp(newY, -(HALF_H + WING_SIZE), HALF_H + WING_SIZE), GRID_GAP) : clamp(Math.round(newY), -(HALF_H + WING_SIZE), HALF_H + WING_SIZE),
-    };
+    const gap = renderer.gridGap;
+    const limit = { minX: -(HALF_W + WING_SIZE), maxX: HALF_W + WING_SIZE, minY: -(HALF_H + WING_SIZE), maxY: HALF_H + WING_SIZE };
+
+    // Capture start positions on first drag frame
+    if (!dragStartPositions) {
+      dragStartPositions = new Map();
+      for (let i = 0; i < positions.length; i++) {
+        dragStartPositions.set(i, { x: positions[i].x, y: positions[i].y });
+      }
+    }
+
+    if (selectedSet && selectedSet.size > 1 && selectedSet.has(dancerIndex)) {
+      const origPos = dragStartPositions.get(dancerIndex);
+      const dx = newX - origPos.x;
+      const dy = newY - origPos.y;
+      for (const idx of selectedSet) {
+        const orig = dragStartPositions.get(idx);
+        if (orig) {
+          const nx = orig.x + dx;
+          const ny = orig.y + dy;
+          positions[idx] = {
+            x: snap ? roundToGrid(clamp(nx, limit.minX, limit.maxX), gap) : clamp(Math.round(nx), limit.minX, limit.maxX),
+            y: snap ? roundToGrid(clamp(ny, limit.minY, limit.maxY), gap) : clamp(Math.round(ny), limit.minY, limit.maxY),
+          };
+        }
+      }
+    } else {
+      positions[dancerIndex] = {
+        x: snap ? roundToGrid(clamp(newX, limit.minX, limit.maxX), gap) : clamp(Math.round(newX), limit.minX, limit.maxX),
+        y: snap ? roundToGrid(clamp(newY, limit.minY, limit.maxY), gap) : clamp(Math.round(newY), limit.minY, limit.maxY),
+      };
+    }
     renderer.setCurrentState(noteData.dancers, positions);
     renderer.drawFrame(noteData.dancers, positions);
   };
@@ -299,28 +415,41 @@ function setupTimeline(container) {
     seekTo(ms);
   }
 
-  ruler.addEventListener('mousedown', (e) => {
+  function startRulerDrag(e) {
     e.preventDefault();
     rulerDragging = true;
     rulerSeek(e);
-  });
+  }
 
-  handle.addEventListener('mousedown', (e) => {
+  function startHandleDrag(e) {
     e.preventDefault();
     rulerDragging = true;
-  });
+  }
 
-  document.addEventListener('mousemove', (e) => {
+  function moveRulerDrag(e) {
     if (!rulerDragging) return;
     const rect = ruler.getBoundingClientRect();
-    const x = e.clientX - rect.left;
+    const cx = e.clientX !== undefined ? e.clientX : (e.touches ? e.touches[0].clientX : 0);
+    const x = cx - rect.left;
     const ms = floorTime(clamp((x - TIMELINE_PADDING) / pixelsPerSec * 1000, 0, noteData.note.duration));
     seekTo(ms);
-  });
+  }
 
-  document.addEventListener('mouseup', () => {
+  function endRulerDrag() {
     rulerDragging = false;
-  });
+  }
+
+  ruler.addEventListener('mousedown', startRulerDrag);
+  ruler.addEventListener('touchstart', (e) => { e.preventDefault(); startRulerDrag({ preventDefault(){}, clientX: e.touches[0].clientX }); }, { passive: false });
+
+  handle.addEventListener('mousedown', startHandleDrag);
+  handle.addEventListener('touchstart', (e) => { e.preventDefault(); startHandleDrag({ preventDefault(){} }); }, { passive: false });
+
+  document.addEventListener('mousemove', moveRulerDrag);
+  document.addEventListener('touchmove', (e) => { if (rulerDragging) moveRulerDrag(e); }, { passive: false });
+
+  document.addEventListener('mouseup', endRulerDrag);
+  document.addEventListener('touchend', endRulerDrag);
 
   // --- Custom scrollbar (drag only, no zoom handles) ---
   const scrollbar = container.querySelector('#timeline-scrollbar');
@@ -477,10 +606,11 @@ function setupFormationDrag(el, fIdx, mode) {
   let didDrag = false;
   let shiftKey = false;
 
-  el.addEventListener('mousedown', (e) => {
+  function onStart(e) {
     if (engine.isPlaying) return;
     if (mode !== 'body' && !e.target.classList.contains('formation-box__handle')) return;
     e.stopPropagation();
+    if (e.preventDefault) e.preventDefault();
     startX = e.clientX;
     didDrag = false;
     shiftKey = e.shiftKey;
@@ -499,8 +629,9 @@ function setupFormationDrag(el, fIdx, mode) {
     }
 
     const onMove = (ev) => {
-      if (Math.abs(ev.clientX - startX) > 3) didDrag = true;
-      const dx = ev.clientX - startX;
+      const cx = ev.clientX !== undefined ? ev.clientX : (ev.touches ? ev.touches[0].clientX : startX);
+      if (Math.abs(cx - startX) > 3) didDrag = true;
+      const dx = cx - startX;
       const dtMs = Math.round(dx / pixelsPerSec * 1000 / TIME_UNIT) * TIME_UNIT;
 
       if (mode === 'body') {
@@ -624,9 +755,20 @@ function setupFormationDrag(el, fIdx, mode) {
       updateStage(); saveSnapshot();
     };
 
+    const onTouchMove = (ev) => { ev.preventDefault(); onMove(ev); };
+    const onTouchEnd = () => { onUp(); document.removeEventListener('touchmove', onTouchMove); document.removeEventListener('touchend', onTouchEnd); };
+
     document.addEventListener('mousemove', onMove);
     document.addEventListener('mouseup', onUp);
-  });
+    document.addEventListener('touchmove', onTouchMove, { passive: false });
+    document.addEventListener('touchend', onTouchEnd);
+  }
+
+  el.addEventListener('mousedown', onStart);
+  el.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    onStart({ clientX: e.touches[0].clientX, target: e.target, shiftKey: e.shiftKey, stopPropagation() {}, preventDefault() {} });
+  }, { passive: false });
 }
 
 // --- Sidebar ---
@@ -671,6 +813,74 @@ function setupSidebar(container) {
     engine.setFormations(noteData.formations, noteData.dancers);
     renderDancerList(list);
     updateStage(); saveSnapshot();
+
+    // Focus the new dancer's name input
+    const lastInput = list.querySelector(`[data-name="${idx}"]`);
+    if (lastInput) {
+      lastInput.focus();
+      lastInput.select();
+    }
+  });
+
+  // Batch color change for selected dancers
+  container.querySelector('#batch-color-btn').addEventListener('click', () => {
+    const selected = renderer._selectedDancers;
+    if (!selected || selected.size === 0) {
+      showToast('스테이지에서 댄서를 먼저 선택하세요');
+      return;
+    }
+
+    document.querySelectorAll('.color-palette-popup').forEach(p => p.remove());
+
+    const popup = document.createElement('div');
+    popup.className = 'color-palette-popup';
+    popup.style.position = 'fixed';
+    popup.style.zIndex = '300';
+    const bRect = container.querySelector('#batch-color-btn').getBoundingClientRect();
+    popup.style.left = `${bRect.left}px`;
+    popup.style.top = `${bRect.top - 6}px`;
+    popup.style.transform = 'translateY(-100%)';
+
+    popup.innerHTML = PALETTE.map(c =>
+      `<div class="color-palette__swatch" data-swatch="${c}" style="background:${c}"></div>`
+    ).join('') + `<label class="color-palette__custom"><input type="color" value="#ffffff" />커스텀</label>`;
+
+    popup.querySelectorAll('[data-swatch]').forEach(swatch => {
+      swatch.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        for (const idx of selected) {
+          noteData.dancers[idx].color = swatch.dataset.swatch;
+        }
+        renderDancerList(list);
+        updateStage(); saveSnapshot();
+        popup.remove();
+        showToast(`${selected.size}명 색상 변경됨`);
+      });
+    });
+
+    popup.querySelector('input[type="color"]').addEventListener('input', (ev) => {
+      for (const idx of selected) {
+        noteData.dancers[idx].color = ev.target.value;
+      }
+      updateStage();
+    });
+
+    popup.querySelector('input[type="color"]').addEventListener('change', () => {
+      renderDancerList(list);
+      saveSnapshot();
+      popup.remove();
+    });
+
+    document.body.appendChild(popup);
+    setTimeout(() => {
+      const close = (e) => {
+        if (!popup.contains(e.target)) {
+          popup.remove();
+          document.removeEventListener('click', close);
+        }
+      };
+      document.addEventListener('click', close);
+    }, 0);
   });
 }
 
@@ -769,10 +979,12 @@ function setupToolbar(container) {
   const redoBtn = container.querySelector('#redo-btn');
   const addBtn = container.querySelector('#add-formation-btn');
   const delBtn = container.querySelector('#del-formation-btn');
+  const swapBtn = container.querySelector('#swap-btn');
   const copyBtn = container.querySelector('#copy-btn');
   const pasteBtn = container.querySelector('#paste-btn');
   const snapBtn = container.querySelector('#snap-btn');
   const view3dBtn = container.querySelector('#view-3d-btn');
+  const viewRotateBtn = container.querySelector('#view-rotate-btn');
   const namesBtn = container.querySelector('#names-btn');
 
   undoBtn.addEventListener('click', () => {
@@ -918,17 +1130,197 @@ function setupToolbar(container) {
     }
   });
 
+  // Swap mode
+  swapMode = false;
+  let swapFirst = -1;
+
+  swapBtn.addEventListener('click', () => {
+    swapMode = !swapMode;
+    swapFirst = -1;
+    swapBtn.classList.toggle('toolbar__btn--active', swapMode);
+    if (swapMode) {
+      showToast('교환할 첫 번째 댄서를 클릭하세요');
+    }
+  });
+
+  renderer.onDancerSelect = (dancerIndex) => {
+    if (!swapMode || dancerIndex < 0) return;
+    if (selectedFormation < 0) {
+      showToast('대열을 먼저 선택하세요');
+      return;
+    }
+
+    if (swapFirst < 0) {
+      swapFirst = dancerIndex;
+      // Highlight first selected dancer
+      renderer._selectedDancers.clear();
+      renderer._selectedDancers.add(dancerIndex);
+      updateStage();
+      showToast(`${noteData.dancers[dancerIndex].name} 선택됨 — 두 번째 댄서를 클릭하세요`);
+    } else {
+      if (swapFirst === dancerIndex) {
+        // Deselect
+        swapFirst = -1;
+        renderer._selectedDancers.clear();
+        updateStage();
+        showToast('선택 취소됨');
+        return;
+      }
+      // Swap with animation
+      const f = noteData.formations[selectedFormation];
+      const d1 = noteData.dancers[swapFirst];
+      const d2 = noteData.dancers[dancerIndex];
+      const pos1 = f.positions.find(p => p.dancerId === d1.id);
+      const pos2 = f.positions.find(p => p.dancerId === d2.id);
+      if (pos1 && pos2) {
+        const from1 = { x: pos1.x, y: pos1.y };
+        const from2 = { x: pos2.x, y: pos2.y };
+        const duration = 300;
+        const start = performance.now();
+
+        renderer._selectedDancers.clear();
+        renderer._selectedDancers.add(swapFirst);
+        renderer._selectedDancers.add(dancerIndex);
+
+        const animate = (now) => {
+          const t = Math.min((now - start) / duration, 1);
+          const ease = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2; // ease-in-out
+          pos1.x = from1.x + (from2.x - from1.x) * ease;
+          pos1.y = from1.y + (from2.y - from1.y) * ease;
+          pos2.x = from2.x + (from1.x - from2.x) * ease;
+          pos2.y = from2.y + (from1.y - from2.y) * ease;
+          updateStage();
+          if (t < 1) {
+            requestAnimationFrame(animate);
+          } else {
+            // Finalize
+            pos1.x = Math.round(from2.x); pos1.y = Math.round(from2.y);
+            pos2.x = Math.round(from1.x); pos2.y = Math.round(from1.y);
+            renderer._selectedDancers.clear();
+            updateStage(); saveSnapshot();
+            showToast(`${d1.name} ↔ ${d2.name} 교환 완료`);
+          }
+        };
+        requestAnimationFrame(animate);
+      }
+
+      // Ready for next swap
+      swapFirst = -1;
+    }
+  };
+
+  // Preset formations
+  container.querySelector('#preset-btn').addEventListener('click', () => {
+    if (selectedFormation < 0) {
+      showToast('대열을 먼저 선택하세요');
+      return;
+    }
+    // Close any existing popup
+    document.querySelectorAll('.preset-popup').forEach(p => p.remove());
+
+    const popup = document.createElement('div');
+    popup.className = 'preset-popup';
+    const names = getPresetNames();
+    popup.innerHTML = names.map(name =>
+      `<button class="preset-popup__item" data-preset="${name}">${name}</button>`
+    ).join('');
+
+    popup.querySelectorAll('[data-preset]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const positions = applyPreset(btn.dataset.preset, noteData.dancers.length, renderer.gridGap, HALF_W, HALF_H);
+        if (!positions) return;
+        const f = noteData.formations[selectedFormation];
+        for (let i = 0; i < f.positions.length && i < positions.length; i++) {
+          f.positions[i].x = positions[i].x;
+          f.positions[i].y = positions[i].y;
+        }
+        updateStage(); saveSnapshot();
+        popup.remove();
+        showToast(`${btn.dataset.preset} 대열 적용됨`);
+      });
+    });
+
+    const presetBtn = container.querySelector('#preset-btn');
+    const rect = presetBtn.getBoundingClientRect();
+    popup.style.position = 'fixed';
+    popup.style.left = `${rect.left}px`;
+    popup.style.bottom = `${window.innerHeight - rect.top + 6}px`;
+    document.body.appendChild(popup);
+
+    setTimeout(() => {
+      const close = (e) => {
+        if (!popup.contains(e.target) && e.target !== presetBtn) {
+          popup.remove();
+          document.removeEventListener('click', close);
+        }
+      };
+      document.addEventListener('click', close);
+    }, 0);
+  });
+
+  const GRID_LEVELS = [10, 15, 20, 30, 40, 60];
+  container.querySelector('#grid-down-btn').addEventListener('click', () => {
+    const curIdx = GRID_LEVELS.findIndex(g => g >= renderer.gridGap);
+    if (curIdx > 0) {
+      renderer.gridGap = GRID_LEVELS[curIdx - 1];
+      renderer._drawGridCache();
+      updateStage();
+      showToast(`격자 간격: ${renderer.gridGap}px`);
+    }
+  });
+  container.querySelector('#grid-up-btn').addEventListener('click', () => {
+    const curIdx = GRID_LEVELS.findIndex(g => g >= renderer.gridGap);
+    if (curIdx < GRID_LEVELS.length - 1) {
+      renderer.gridGap = GRID_LEVELS[curIdx + 1];
+      renderer._drawGridCache();
+      updateStage();
+      showToast(`격자 간격: ${renderer.gridGap}px`);
+    }
+  });
+
   snapBtn.addEventListener('click', () => {
     renderer.isSnap = !renderer.isSnap;
     snapBtn.classList.toggle('toolbar__btn--active', renderer.isSnap);
   });
 
-  view3dBtn.addEventListener('click', () => {
-    const is3D = !renderer.is3D;
+  const banner3d = container.querySelector('#stage-3d-banner');
+
+  function toggle3D(forceOff) {
+    const is3D = forceOff ? false : !renderer.is3D;
     renderer.set3D(is3D, 'css');
     view3dBtn.classList.toggle('toolbar__btn--active', is3D);
+    updateBanner();
     updateStage();
+  }
+
+  view3dBtn.addEventListener('click', () => toggle3D());
+  banner3d.addEventListener('click', () => {
+    if (renderer.is3D) toggle3D(true);
+    if (renderer.isRotated) toggleRotate(true);
   });
+
+  function toggleRotate(forceOff) {
+    const isRotated = forceOff ? false : !renderer.isRotated;
+    renderer.setRotated(isRotated);
+    viewRotateBtn.classList.toggle('toolbar__btn--active', isRotated);
+    updateBanner();
+    updateStage();
+  }
+
+  function updateBanner() {
+    const is3D = renderer.is3D;
+    const isRotated = renderer.isRotated;
+    const visible = is3D || isRotated;
+    let text = '👁 ';
+    if (is3D && isRotated) text += '3D + 회전 뷰';
+    else if (is3D) text += '3D 뷰';
+    else if (isRotated) text += '회전 뷰';
+    text += ' — 클릭하면 편집 모드로';
+    banner3d.textContent = text;
+    banner3d.classList.toggle('stage-3d-banner--visible', visible);
+  }
+
+  viewRotateBtn.addEventListener('click', () => toggleRotate());
 
   namesBtn.addEventListener('click', () => {
     renderer.showNames = !renderer.showNames;
@@ -982,6 +1374,17 @@ function setupToolbar(container) {
 function setupHeader(container, noteId) {
   container.querySelector('#back-btn').addEventListener('click', () => navigate('/dashboard'));
 
+  // Theme toggle
+  const themeBtn = container.querySelector('#theme-btn');
+  themeBtn.textContent = isLightMode() ? '☀️' : '🌙';
+  themeBtn.addEventListener('click', () => {
+    const light = toggleTheme();
+    themeBtn.textContent = light ? '☀️' : '🌙';
+    // Rebuild grid cache with new colors
+    renderer._drawGridCache();
+    updateStage();
+  });
+
   async function saveToDB(silent = false) {
     const title = container.querySelector('#title-input').value;
     await NoteStore.updateNoteTitle(noteId, title);
@@ -1032,10 +1435,24 @@ function setupHeader(container, noteId) {
   const videoExporter = new VideoExporter();
   const exportVideoBtn = container.querySelector('#export-video-btn');
 
-  // Export overlay to block editing
-  const overlay = document.createElement('div');
-  overlay.className = 'export-overlay';
-  overlay.innerHTML = `
+  // Export option dialog
+  const optionDialog = document.createElement('div');
+  optionDialog.className = 'export-overlay';
+  optionDialog.innerHTML = `
+    <div class="export-overlay__box">
+      <div class="export-overlay__text">영상 내보내기</div>
+      <div class="export-options">
+        <button class="btn btn--ghost export-option-btn" data-mode="2d">2D</button>
+        <button class="btn btn--ghost export-option-btn" data-mode="3d">3D</button>
+      </div>
+      <button class="btn btn--danger" id="export-option-cancel">취소</button>
+    </div>
+  `;
+
+  // Export progress overlay
+  const progressOverlay = document.createElement('div');
+  progressOverlay.className = 'export-overlay';
+  progressOverlay.innerHTML = `
     <div class="export-overlay__box">
       <div class="export-overlay__text">영상 내보내는 중...</div>
       <div class="export-overlay__progress" id="export-progress">0%</div>
@@ -1047,16 +1464,31 @@ function setupHeader(container, noteId) {
     if (videoExporter.isExporting) return;
     if (engine.isPlaying) engine.pause();
 
-    const is3D = renderer.is3D;
+    // Show option dialog
+    container.appendChild(optionDialog);
 
-    // Show overlay
-    container.appendChild(overlay);
-    const progressEl = overlay.querySelector('#export-progress');
-    overlay.querySelector('#export-cancel-btn').addEventListener('click', () => {
-      videoExporter.cancel();
-      overlay.remove();
-      showToast('영상 내보내기 취소됨');
+    optionDialog.querySelector('#export-option-cancel').onclick = () => {
+      optionDialog.remove();
+    };
+
+    optionDialog.querySelectorAll('.export-option-btn').forEach((btn) => {
+      btn.onclick = () => {
+        const is3D = btn.dataset.mode === '3d';
+        optionDialog.remove();
+        startExport(is3D);
+      };
     });
+  });
+
+  function startExport(is3D) {
+    container.appendChild(progressOverlay);
+    const progressEl = progressOverlay.querySelector('#export-progress');
+    progressEl.textContent = '0%';
+    progressOverlay.querySelector('#export-cancel-btn').onclick = () => {
+      videoExporter.cancel();
+      progressOverlay.remove();
+      showToast('영상 내보내기 취소됨');
+    };
 
     videoExporter.export({
       dancers: noteData.dancers,
@@ -1069,7 +1501,7 @@ function setupHeader(container, noteId) {
         progressEl.textContent = `${percent}%`;
       },
       onComplete: (blob, mimeType) => {
-        overlay.remove();
+        progressOverlay.remove();
         const ext = mimeType.includes('mp4') ? 'mp4' : 'webm';
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -1080,11 +1512,11 @@ function setupHeader(container, noteId) {
         showToast(`영상 다운로드 완료 (${ext.toUpperCase()})`);
       },
       onError: (err) => {
-        overlay.remove();
+        progressOverlay.remove();
         showToast('영상 내보내기 실패: ' + err.message);
       },
     });
-  });
+  }
 }
 
 // --- Music Upload ---
@@ -1142,6 +1574,7 @@ function setupMusicUpload(container, noteId) {
     buildRulerTicks(ruler, durationSec);
 
     drawWaveform(container, blob, durationMs);
+    container.querySelector('#music-name').textContent = file.name;
     showToast(`음악 로드됨: ${file.name}`);
   });
 }
@@ -1216,8 +1649,10 @@ async function drawWaveform(container, audioBlob, durationMs) {
 
     // Get channel data (mono mix)
     const rawData = audioBuffer.getChannelData(0);
-    const drawWidth = durationSec * pixelsPerSec;
-    const samplesPerPixel = Math.floor(rawData.length / drawWidth);
+    const audioDurationSec = audioBuffer.duration;
+    // Only draw waveform for the audio portion
+    const audioDrawWidth = Math.min(durationSec, audioDurationSec) * pixelsPerSec;
+    const samplesPerPixel = Math.max(1, Math.floor(rawData.length / audioDrawWidth));
 
     ctx.fillStyle = 'rgba(78, 205, 196, 0.2)';
     ctx.strokeStyle = 'rgba(78, 205, 196, 0.35)';
@@ -1226,7 +1661,7 @@ async function drawWaveform(container, audioBlob, durationMs) {
 
     const midY = height / 2;
 
-    for (let x = 0; x < drawWidth; x++) {
+    for (let x = 0; x < audioDrawWidth; x++) {
       const start = x * samplesPerPixel;
       let min = 0;
       let max = 0;
@@ -1316,6 +1751,37 @@ function buildRulerTicks(ruler, durationSec) {
       ruler.appendChild(label);
     }
   }
+}
+
+function toggleShortcutHelp(container) {
+  let modal = document.querySelector('.shortcut-modal');
+  if (modal) {
+    modal.remove();
+    return;
+  }
+  modal = document.createElement('div');
+  modal.className = 'shortcut-modal';
+  modal.innerHTML = `
+    <div class="shortcut-modal__box">
+      <div class="shortcut-modal__title">키보드 단축키</div>
+      <div class="shortcut-modal__list">
+        <div class="shortcut-row"><kbd>Space</kbd><span>재생 / 정지</span></div>
+        <div class="shortcut-row"><kbd>←</kbd> <kbd>→</kbd><span>250ms 이동</span></div>
+        <div class="shortcut-row"><kbd>Ctrl+Z</kbd><span>실행 취소</span></div>
+        <div class="shortcut-row"><kbd>Ctrl+Shift+Z</kbd><span>다시 실행</span></div>
+        <div class="shortcut-row"><kbd>Ctrl+C</kbd><span>대형 복사</span></div>
+        <div class="shortcut-row"><kbd>Ctrl+V</kbd><span>대형 붙여넣기</span></div>
+        <div class="shortcut-row"><kbd>Shift+클릭</kbd><span>대형 다중 선택</span></div>
+        <div class="shortcut-row"><kbd>?</kbd><span>이 도움말 열기/닫기</span></div>
+      </div>
+      <button class="btn btn--ghost shortcut-modal__close" id="shortcut-close">닫기</button>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  modal.querySelector('#shortcut-close').addEventListener('click', () => modal.remove());
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) modal.remove();
+  });
 }
 
 function escapeAttr(str) {
