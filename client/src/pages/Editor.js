@@ -236,7 +236,7 @@ function buildEditorHTML(data) {
           <button class="toolbar__btn" id="copy-btn" title="대형 복사 (Ctrl+C)">복사</button>
           <button class="toolbar__btn" id="paste-btn" title="대형 붙여넣기 (Ctrl+V)">붙여넣기</button>
           <div class="toolbar__separator"></div>
-          <button class="toolbar__btn" id="snap-btn" title="격자에 맞추기">격자</button>
+          <button class="toolbar__btn" id="snap-btn" title="격자에 맞추기">스냅</button>
         </div>
       </div>
 
