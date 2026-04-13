@@ -713,14 +713,15 @@ body {
   position: absolute;
   top: 2px;
   height: 12px;
-  background: var(--border-strong);
+  background: var(--text-secondary);
   border-radius: 6px;
   cursor: grab;
   min-width: 30px;
+  opacity: 0.5;
 }
 
 .timeline__scrollbar-thumb:hover {
-  background: var(--text-secondary);
+  opacity: 0.8;
 }
 
 .timeline__scrollbar-thumb:active {
