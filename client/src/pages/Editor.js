@@ -95,8 +95,8 @@ function buildEditorHTML(data) {
         <button class="editor__back" id="back-btn">← </button>
         <input class="editor__title-input" id="title-input" value="${escapeAttr(data.note.title)}" />
         <div class="editor__actions">
-          <button class="btn btn--ghost" id="music-btn">🎵 음악 넣기</button>
-          <button class="btn btn--ghost" id="export-video-btn">🎬 영상 저장</button>
+          <button class="btn btn--ghost" id="music-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>음악 넣기</button>
+          <button class="btn btn--ghost" id="export-video-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><path d="m22 8-6 4 6 4V8Z"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg>영상 저장</button>
           <button class="btn btn--primary" id="save-btn">저장</button>
         </div>
       </div>
@@ -106,15 +106,15 @@ function buildEditorHTML(data) {
           <div class="stage-wrap">
             <canvas id="stage-canvas" class="stage-canvas"></canvas>
           </div>
-          <div class="stage-3d-banner" id="stage-3d-banner">👁 미리보기 모드 — 클릭하면 편집 모드로</div>
+          <div class="stage-3d-banner" id="stage-3d-banner">미리보기 모드 — 클릭하면 편집 모드로</div>
         </div>
       </div>
 
       <div class="sidebar-rail" id="sidebar-rail">
-        <button class="sidebar-rail__icon sidebar-rail__icon--active" data-panel="dancers" title="댄서">👤</button>
-        <button class="sidebar-rail__icon" data-panel="presets" title="추천 대열">📐</button>
-        <button class="sidebar-rail__icon" data-panel="view" title="뷰 모드">👁</button>
-        <button class="sidebar-rail__icon" data-panel="settings" title="설정">⚙</button>
+        <button class="sidebar-rail__icon sidebar-rail__icon--active" data-panel="dancers" title="댄서"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></button>
+        <button class="sidebar-rail__icon" data-panel="presets" title="추천 대열"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></button>
+        <button class="sidebar-rail__icon" data-panel="view" title="뷰 모드"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg></button>
+        <button class="sidebar-rail__icon" data-panel="settings" title="설정"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg></button>
       </div>
       <div class="editor__sidebar" id="sidebar">
         <div class="sidebar__panel" id="panel-dancers">
@@ -124,7 +124,7 @@ function buildEditorHTML(data) {
           </div>
           <div class="sidebar__actions">
             <button class="btn btn--ghost" id="add-dancer-btn" style="width:100%;font-size:12px">+ 댄서 추가</button>
-            <button class="btn btn--ghost" id="batch-color-btn" style="width:100%;font-size:12px">🎨 선택 댄서 색 변경</button>
+            <button class="btn btn--ghost" id="batch-color-btn" style="width:100%;font-size:12px">선택 댄서 색 변경</button>
           </div>
         </div>
         <div class="sidebar__panel sidebar__panel--hidden" id="panel-presets">
@@ -201,15 +201,15 @@ function buildEditorHTML(data) {
             <div class="settings-section">
               <div class="settings-label">테마</div>
               <div class="settings-options" id="settings-theme-options">
-                <button class="settings-option${isLightMode() ? '' : ' settings-option--active'}" data-theme="dark">🌙 다크</button>
-                <button class="settings-option${isLightMode() ? ' settings-option--active' : ''}" data-theme="light">☀️ 라이트</button>
+                <button class="settings-option${isLightMode() ? '' : ' settings-option--active'}" data-theme="dark">다크</button>
+                <button class="settings-option${isLightMode() ? ' settings-option--active' : ''}" data-theme="light">라이트</button>
               </div>
             </div>
             <div class="settings-section">
               <div class="settings-label">백업</div>
               <div class="settings-row" style="flex-direction:column;gap:6px">
-                <button class="btn btn--ghost" id="settings-export-btn" style="width:100%;font-size:12px">💾 JSON 내보내기</button>
-                <button class="btn btn--ghost" id="settings-import-btn" style="width:100%;font-size:12px">📂 JSON 가져오기</button>
+                <button class="btn btn--ghost" id="settings-export-btn" style="width:100%;font-size:12px">JSON 내보내기</button>
+                <button class="btn btn--ghost" id="settings-import-btn" style="width:100%;font-size:12px">JSON 가져오기</button>
                 <input type="file" id="settings-import-file" accept=".json" style="display:none" />
               </div>
             </div>
@@ -1490,7 +1490,7 @@ function setupToolbar(container) {
     const is3D = renderer.is3D;
     const isRotated = renderer.isRotated;
     const visible = is3D || isRotated;
-    let text = '👁 ';
+    let text = '';
     if (is3D && isRotated) text += '3D + 회전 뷰';
     else if (is3D) text += '3D 뷰';
     else if (isRotated) text += '회전 뷰';
