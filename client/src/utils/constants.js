@@ -1,12 +1,21 @@
-export const STAGE_WIDTH = 600;
-export const STAGE_HEIGHT = 400;
-export const HALF_W = STAGE_WIDTH / 2;
-export const HALF_H = STAGE_HEIGHT / 2;
+export let STAGE_WIDTH = 600;
+export let STAGE_HEIGHT = 400;
+export let HALF_W = STAGE_WIDTH / 2;
+export let HALF_H = STAGE_HEIGHT / 2;
 
 // Canvas includes offstage wings for dancer entry/exit
 export const WING_SIZE = 80;
-export const CANVAS_WIDTH = STAGE_WIDTH + WING_SIZE * 2;
-export const CANVAS_HEIGHT = STAGE_HEIGHT + WING_SIZE * 2;
+export let CANVAS_WIDTH = STAGE_WIDTH + WING_SIZE * 2;
+export let CANVAS_HEIGHT = STAGE_HEIGHT + WING_SIZE * 2;
+
+export function setStageSize(w, h) {
+  STAGE_WIDTH = w;
+  STAGE_HEIGHT = h;
+  HALF_W = w / 2;
+  HALF_H = h / 2;
+  CANVAS_WIDTH = w + WING_SIZE * 2;
+  CANVAS_HEIGHT = h + WING_SIZE * 2;
+}
 export const GRID_GAP = 30;
 
 export const PIXEL_PER_SEC = 40;

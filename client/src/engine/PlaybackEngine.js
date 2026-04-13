@@ -181,14 +181,69 @@ export class PlaybackEngine {
     const prevPositions = this._getFormationPositions(prevIdx);
     const nextPositions = this._getFormationPositions(nextIdx);
 
-    return dancers.map((_, i) => {
+    return dancers.map((dancer, i) => {
       const prev = prevPositions[i] || { x: 0, y: 0 };
       const next = nextPositions[i] || { x: 0, y: 0 };
+
+      // Check for waypoints on the destination formation's position
+      const nextF = formations[nextIdx];
+      const posData = nextF.positions.find(p => p.dancerId === dancer.id);
+      const waypoints = posData?.waypoints;
+
+      // Interpolate angle (shortest path rotation)
+      const prevAngle = prev.angle || 0;
+      const nextAngle = next.angle || 0;
+      let angleDiff = nextAngle - prevAngle;
+      if (angleDiff > 180) angleDiff -= 360;
+      if (angleDiff < -180) angleDiff += 360;
+      const interpAngle = ((prevAngle + angleDiff * ratio) + 360) % 360;
+
+      if (waypoints && waypoints.length > 0) {
+        const result = this._interpolateWithWaypoints(prev, next, waypoints, ratio);
+        result.angle = interpAngle;
+        return result;
+      }
+
       return {
         x: prev.x + (next.x - prev.x) * ratio,
         y: prev.y + (next.y - prev.y) * ratio,
+        angle: interpAngle,
       };
     });
+  }
+
+  _interpolateWithWaypoints(start, end, waypoints, t) {
+    // Single waypoint: Quadratic Bezier that PASSES THROUGH the waypoint at t=0.5
+    // Reverse-calculate control point: cp = 2*passthrough - 0.5*(start+end)
+    if (waypoints.length === 1) {
+      const pt = waypoints[0]; // passthrough point
+      const cp = {
+        x: 2 * pt.x - 0.5 * (start.x + end.x),
+        y: 2 * pt.y - 0.5 * (start.y + end.y),
+      };
+      const u = 1 - t;
+      return {
+        x: u * u * start.x + 2 * u * t * cp.x + t * t * end.x,
+        y: u * u * start.y + 2 * u * t * cp.y + t * t * end.y,
+      };
+    }
+
+    // Multiple waypoints: piecewise linear fallback
+    const points = [
+      { x: start.x, y: start.y, t: 0 },
+      ...waypoints.slice().sort((a, b) => a.t - b.t),
+      { x: end.x, y: end.y, t: 1 },
+    ];
+    for (let i = 0; i < points.length - 1; i++) {
+      if (t >= points[i].t && t <= points[i + 1].t) {
+        const segT = (t - points[i].t) / (points[i + 1].t - points[i].t);
+        return {
+          x: points[i].x + (points[i + 1].x - points[i].x) * segT,
+          y: points[i].y + (points[i + 1].y - points[i].y) * segT,
+        };
+      }
+    }
+    return { x: end.x, y: end.y };
   }
 
   _findFormationAt(ms) {
@@ -213,7 +268,7 @@ export class PlaybackEngine {
 
     return this.dancers.map((dancer) => {
       const pos = f.positions.find((p) => p.dancerId === dancer.id);
-      return pos ? { x: pos.x, y: pos.y } : { x: 0, y: 0 };
+      return pos ? { x: pos.x, y: pos.y, angle: pos.angle || 0 } : { x: 0, y: 0, angle: 0 };
     });
   }
 

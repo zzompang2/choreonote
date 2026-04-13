@@ -14,7 +14,7 @@ export class VideoExporter {
     this.onError = null;    // (error) => void
   }
 
-  async export({ dancers, formations, audioBlob, duration, is3D, showNames, onProgress, onComplete, onError }) {
+  async export({ dancers, formations, audioBlob, duration, is3D, isRotated, showNames, onProgress, onComplete, onError }) {
     if (this.isExporting) return;
     this.isExporting = true;
     this._cancelRequested = false;
@@ -173,7 +173,11 @@ export class VideoExporter {
         this.onProgress?.(Math.round(ms / durationMs * 100));
 
         // Calculate positions and draw
-        const positions = calcPositionsAt(ms);
+        let positions = calcPositionsAt(ms);
+        // Rotate positions if needed
+        if (isRotated) {
+          positions = positions.map(p => ({ x: -p.x, y: -p.y, angle: ((p.angle || 0) + 180) % 360 }));
+        }
         const ctx = canvas.getContext('2d');
         ctx.save();
         ctx.scale(scaleX, scaleY);
@@ -183,6 +187,7 @@ export class VideoExporter {
           renderer.is3D = true;
           renderer._projectionMode = 'render';
         }
+        renderer.isRotated = false; // don't use CSS rotation in video
 
         renderer.drawFrame(dancers, positions);
         ctx.restore();

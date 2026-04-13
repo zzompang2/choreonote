@@ -139,6 +139,8 @@ export const NoteStore = {
                 dancerId: newDancerId,
                 x: pos.x,
                 y: pos.y,
+                angle: pos.angle || 0,
+                waypoints: pos.waypoints || undefined,
               });
             }
           }
@@ -196,7 +198,7 @@ export const NoteStore = {
       formations: data.formations.map((f) => ({
         startTime: f.startTime,
         duration: f.duration,
-        positions: f.positions.map((p) => ({ dancerIndex: data.dancers.findIndex((d) => d.id === p.dancerId), x: p.x, y: p.y })),
+        positions: f.positions.map((p) => ({ dancerIndex: data.dancers.findIndex((d) => d.id === p.dancerId), x: p.x, y: p.y, angle: p.angle || 0, waypoints: p.waypoints || undefined })),
       })),
     };
 
@@ -240,7 +242,7 @@ export const NoteStore = {
         const fid = await db.formations.add({ noteId, startTime: f.startTime, duration: f.duration, order: i });
         for (const pos of f.positions) {
           if (pos.dancerIndex >= 0 && pos.dancerIndex < dancerIds.length) {
-            await db.positions.add({ formationId: fid, dancerId: dancerIds[pos.dancerIndex], x: pos.x, y: pos.y });
+            await db.positions.add({ formationId: fid, dancerId: dancerIds[pos.dancerIndex], x: pos.x, y: pos.y, angle: pos.angle || 0, waypoints: pos.waypoints || undefined });
           }
         }
       }

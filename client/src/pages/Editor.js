@@ -10,6 +10,7 @@ import { toggleTheme, isLightMode } from '../utils/theme.js';
 import {
   PIXEL_PER_SEC, TIMELINE_PADDING, TIME_UNIT, WING_SIZE,
   formatTime, floorTime, clamp, roundToGrid, GRID_GAP, HALF_W, HALF_H,
+  STAGE_WIDTH, STAGE_HEIGHT, setStageSize,
 } from '../utils/constants.js';
 
 let engine = null;
@@ -17,10 +18,13 @@ let renderer = null;
 let noteData = null;
 let selectedFormation = 0;
 let selectedFormations = new Set([0]); // multi-select set
+let selectedTransition = null; // { fromIdx, toIdx } — selected gap between formations
 let currentMs = 0;
 let unsaved = false;
 let swapMode = false;
-let pixelsPerSec = PIXEL_PER_SEC; // mutable, for timeline zoom
+let audienceDirection = 'top';
+let pixelsPerSec = PIXEL_PER_SEC;
+let _renderPresetThumbnails = null; // set by setupSidebar // mutable, for timeline zoom
 
 export async function renderEditor(container, noteId) {
   noteId = Number(noteId);
@@ -35,8 +39,10 @@ export async function renderEditor(container, noteId) {
 
   // Reset state
   currentMs = 0;
-  selectedFormation = 0;
-  selectedFormations = new Set([0]);
+  const initFIdx = noteData.formations.findIndex(f => 0 >= f.startTime && 0 < f.startTime + f.duration);
+  selectedFormation = initFIdx;
+  selectedFormations = initFIdx >= 0 ? new Set([initFIdx]) : new Set();
+  selectedTransition = null;
 
   // Init engine
   engine = new PlaybackEngine();
@@ -57,6 +63,7 @@ export async function renderEditor(container, noteId) {
   setupSidebar(container);
   setupToolbar(container);
   setupHeader(container, noteId);
+  setupSettings(container, noteId);
   setupMusicUpload(container, noteId);
 
   // Initial render (defer to ensure DOM is fully ready)
@@ -89,9 +96,7 @@ function buildEditorHTML(data) {
         <input class="editor__title-input" id="title-input" value="${escapeAttr(data.note.title)}" />
         <div class="editor__actions">
           <button class="btn btn--ghost" id="music-btn">🎵 음악 넣기</button>
-          <button class="btn btn--ghost" id="export-json-btn">💾 백업</button>
           <button class="btn btn--ghost" id="export-video-btn">🎬 영상 저장</button>
-          <button class="btn btn--ghost" id="theme-btn" title="다크/라이트 전환">🌙</button>
           <button class="btn btn--primary" id="save-btn">저장</button>
         </div>
       </div>
@@ -105,14 +110,110 @@ function buildEditorHTML(data) {
         </div>
       </div>
 
+      <div class="sidebar-rail" id="sidebar-rail">
+        <button class="sidebar-rail__icon sidebar-rail__icon--active" data-panel="dancers" title="댄서">👤</button>
+        <button class="sidebar-rail__icon" data-panel="presets" title="추천 대열">📐</button>
+        <button class="sidebar-rail__icon" data-panel="view" title="뷰 모드">👁</button>
+        <button class="sidebar-rail__icon" data-panel="settings" title="설정">⚙</button>
+      </div>
       <div class="editor__sidebar" id="sidebar">
-        <div class="sidebar__header">댄서</div>
-        <div class="sidebar__scroll">
-          <div class="dancer-list" id="dancer-list"></div>
+        <div class="sidebar__panel" id="panel-dancers">
+          <div class="sidebar__panel-title">댄서</div>
+          <div class="sidebar__scroll">
+            <div class="dancer-list" id="dancer-list"></div>
+          </div>
+          <div class="sidebar__actions">
+            <button class="btn btn--ghost" id="add-dancer-btn" style="width:100%;font-size:12px">+ 댄서 추가</button>
+            <button class="btn btn--ghost" id="batch-color-btn" style="width:100%;font-size:12px">🎨 선택 댄서 색 변경</button>
+          </div>
         </div>
-        <div class="sidebar__actions">
-          <button class="btn btn--ghost" id="add-dancer-btn" style="width:100%;font-size:12px">+ 댄서 추가</button>
-          <button class="btn btn--ghost" id="batch-color-btn" style="width:100%;font-size:12px">🎨 선택 댄서 색 변경</button>
+        <div class="sidebar__panel sidebar__panel--hidden" id="panel-presets">
+          <div class="sidebar__panel-title">추천 대열</div>
+          <div class="sidebar__scroll">
+            <div class="preset-spacing">
+              <span class="settings-label">간격</span>
+              <button class="btn btn--ghost settings-btn-sm" id="preset-spacing-down">−</button>
+              <span id="preset-spacing-value">50</span>
+              <button class="btn btn--ghost settings-btn-sm" id="preset-spacing-up">+</button>
+            </div>
+            <div class="preset-grid" id="preset-grid"></div>
+          </div>
+        </div>
+        <div class="sidebar__panel sidebar__panel--hidden" id="panel-view">
+          <div class="sidebar__panel-title">뷰 모드</div>
+          <div class="sidebar__scroll" style="padding:12px 16px">
+            <div class="settings-section">
+              <div class="settings-label">스테이지 뷰</div>
+              <div class="settings-options">
+                <button class="toolbar__btn" id="sidebar-3d-btn">3D</button>
+                <button class="toolbar__btn" id="sidebar-rotate-btn">회전</button>
+              </div>
+            </div>
+            <div class="settings-section">
+              <div class="settings-label">표시</div>
+              <div class="settings-options">
+                <button class="toolbar__btn" id="sidebar-names-btn">이름</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="sidebar__panel sidebar__panel--hidden" id="panel-settings">
+          <div class="sidebar__panel-title">설정</div>
+          <div class="sidebar__scroll" style="padding:12px 16px">
+            <div class="settings-section">
+              <div class="settings-label">무대 크기</div>
+              <div class="settings-options" id="settings-stage-options">
+                <button class="settings-option" data-stage="400x260">작은 무대</button>
+                <button class="settings-option settings-option--active" data-stage="600x400">보통</button>
+                <button class="settings-option" data-stage="800x500">넓은 무대</button>
+              </div>
+            </div>
+            <div class="settings-section">
+              <div class="settings-label">격자 간격</div>
+              <div class="settings-options" id="settings-grid-options">
+                <button class="settings-option" data-grid="15">촘촘</button>
+                <button class="settings-option settings-option--active" data-grid="30">보통</button>
+                <button class="settings-option" data-grid="60">넓음</button>
+              </div>
+            </div>
+            <div class="settings-section">
+              <div class="settings-label">노래 길이</div>
+              <div class="settings-row">
+                <span id="settings-duration">${formatDurationFull(data.note.duration)}</span>
+                <button class="btn btn--ghost settings-btn-sm" id="settings-duration-btn">변경</button>
+              </div>
+            </div>
+            <div class="settings-section">
+              <div class="settings-label">댄서 모양</div>
+              <div class="settings-options" id="settings-shape-options">
+                <button class="settings-option settings-option--active" data-shape="pentagon">⬠ 오각형</button>
+                <button class="settings-option" data-shape="circle">● 원형</button>
+                <button class="settings-option" data-shape="heart">♡ 하트</button>
+              </div>
+            </div>
+            <div class="settings-section">
+              <div class="settings-label">객석 방향</div>
+              <div class="settings-options" id="settings-audience-options">
+                <button class="settings-option settings-option--active" data-audience="top">↑ 위쪽</button>
+                <button class="settings-option" data-audience="bottom">↓ 아래쪽</button>
+              </div>
+            </div>
+            <div class="settings-section">
+              <div class="settings-label">테마</div>
+              <div class="settings-options" id="settings-theme-options">
+                <button class="settings-option${isLightMode() ? '' : ' settings-option--active'}" data-theme="dark">🌙 다크</button>
+                <button class="settings-option${isLightMode() ? ' settings-option--active' : ''}" data-theme="light">☀️ 라이트</button>
+              </div>
+            </div>
+            <div class="settings-section">
+              <div class="settings-label">백업</div>
+              <div class="settings-row" style="flex-direction:column;gap:6px">
+                <button class="btn btn--ghost" id="settings-export-btn" style="width:100%;font-size:12px">💾 JSON 내보내기</button>
+                <button class="btn btn--ghost" id="settings-import-btn" style="width:100%;font-size:12px">📂 JSON 가져오기</button>
+                <input type="file" id="settings-import-file" accept=".json" style="display:none" />
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -120,7 +221,7 @@ function buildEditorHTML(data) {
         <button class="player-bar__btn" id="play-btn">▶</button>
         <span class="player-bar__time" id="time-display">${formatTime(0, true)}</span>
         <span class="player-bar__time" style="color:var(--text-secondary)">/</span>
-        <span class="player-bar__time player-bar__duration" id="duration-display" title="클릭하여 길이 변경">${formatTime(data.note.duration, true)}</span>
+        <span class="player-bar__time" id="duration-display">${formatTime(data.note.duration, true)}</span>
         <span class="player-bar__music-name" id="music-name">${data.note.musicName ? escapeAttr(data.note.musicName) : '음악 없음'}</span>
 
         <div class="toolbar__separator"></div>
@@ -131,18 +232,11 @@ function buildEditorHTML(data) {
           <div class="toolbar__separator"></div>
           <button class="toolbar__btn" id="add-formation-btn" title="현재 위치에 대형 추가">+ 대형</button>
           <button class="toolbar__btn" id="del-formation-btn" title="선택된 대형 삭제">− 대형</button>
-          <button class="toolbar__btn" id="preset-btn" title="추천 대열 배치">추천 대열</button>
           <button class="toolbar__btn" id="swap-btn" title="댄서 두 명 위치 교환">교환</button>
           <button class="toolbar__btn" id="copy-btn" title="대형 복사 (Ctrl+C)">복사</button>
           <button class="toolbar__btn" id="paste-btn" title="대형 붙여넣기 (Ctrl+V)">붙여넣기</button>
           <div class="toolbar__separator"></div>
           <button class="toolbar__btn" id="snap-btn" title="격자에 맞추기">격자</button>
-          <button class="toolbar__btn" id="grid-down-btn" title="격자 촘촘하게">−</button>
-          <button class="toolbar__btn" id="grid-up-btn" title="격자 넓게">+</button>
-          <button class="toolbar__btn" id="view-3d-btn">3D</button>
-          <button class="toolbar__btn" id="view-rotate-btn" title="180° 회전 뷰">회전</button>
-          <button class="toolbar__btn" id="names-btn">이름</button>
-          <button class="toolbar__btn toolbar__btn--active" id="sidebar-btn">댄서</button>
         </div>
       </div>
 
@@ -179,40 +273,7 @@ function setupPlayback(container) {
   const timeDisplay = container.querySelector('#time-display');
   const durationDisplay = container.querySelector('#duration-display');
 
-  // Click duration to change manually
-  durationDisplay.addEventListener('click', () => {
-    const currentSec = Math.round(noteData.note.duration / 1000);
-    const input = prompt('노래 길이 (초)', currentSec);
-    if (input === null) return;
-    const newSec = parseInt(input, 10);
-    if (isNaN(newSec) || newSec < 10 || newSec > 600) {
-      showToast('10초 ~ 600초 사이로 입력해주세요');
-      return;
-    }
-    const newDuration = newSec * 1000;
-    noteData.note.duration = newDuration;
-    engine.duration = newDuration;
-    durationDisplay.textContent = formatTime(newDuration, true);
-
-    // Rebuild timeline
-    const dSec = newDuration / 1000;
-    const timelineWidth = TIMELINE_PADDING * 2 + dSec * pixelsPerSec;
-    const timeline = container.querySelector('#timeline');
-    timeline.style.width = `${timelineWidth}px`;
-    const ruler = container.querySelector('#timeline-ruler');
-    ruler.innerHTML = '';
-    buildRulerTicks(ruler, dSec);
-    const formationsEl = container.querySelector('#timeline-formations');
-    renderFormationBoxes(formationsEl);
-    if (currentMs > newDuration) {
-      seekTo(0);
-    }
-    updateTimelineMarker();
-    if (noteData.musicBlob) {
-      drawWaveform(container, noteData.musicBlob, newDuration);
-    }
-    showToast(`노래 길이: ${newSec}초`);
-  });
+  // Duration change moved to settings panel
 
   engine.onTimeUpdate = (ms) => {
     currentMs = ms;
@@ -240,7 +301,13 @@ function setupPlayback(container) {
     if (engine.isPlaying) {
       engine.pause();
       playBtn.textContent = '▶';
+      seekTo(currentMs);
     } else {
+      selectedFormation = -1;
+      selectedFormations.clear();
+      selectedTransition = null;
+      highlightFormation();
+      highlightTransition();
       engine.play(currentMs);
       playBtn.textContent = '⏸';
     }
@@ -311,23 +378,24 @@ function setupPlayback(container) {
     const f = noteData.formations[selectedFormation];
     if (!f) return;
     const snap = renderer.isSnap;
-    const gap = renderer.gridGap;
-    const limit = { minX: -(HALF_W + WING_SIZE), maxX: HALF_W + WING_SIZE, minY: -(HALF_H + WING_SIZE), maxY: HALF_H + WING_SIZE };
+    const gap = 15; // fixed snap unit
+    const limit = { minX: -(HALF_W + WING_SIZE - 20), maxX: HALF_W + WING_SIZE - 20, minY: -(HALF_H + WING_SIZE - 20), maxY: HALF_H + WING_SIZE - 20 };
 
     if (selectedSet.size > 1 && selectedSet.has(dancerIndex) && dragStartPositions) {
-      // Multi-drag: calculate offset from dragged dancer
       const origPos = dragStartPositions.get(dancerIndex);
-      const dx = newX - origPos.x;
-      const dy = newY - origPos.y;
+      const rawDx = newX - origPos.x;
+      const rawDy = newY - origPos.y;
+      const snappedAnchorX = snap ? roundToGrid(clamp(newX, limit.minX, limit.maxX), gap) : clamp(Math.round(newX), limit.minX, limit.maxX);
+      const snappedAnchorY = snap ? roundToGrid(clamp(newY, limit.minY, limit.maxY), gap) : clamp(Math.round(newY), limit.minY, limit.maxY);
+      const sdx = snappedAnchorX - origPos.x;
+      const sdy = snappedAnchorY - origPos.y;
       for (const idx of selectedSet) {
         const d = noteData.dancers[idx];
         const pos = f.positions.find(p => p.dancerId === d.id);
         const orig = dragStartPositions.get(idx);
         if (pos && orig) {
-          const nx = orig.x + dx;
-          const ny = orig.y + dy;
-          pos.x = snap ? roundToGrid(clamp(nx, limit.minX, limit.maxX), gap) : clamp(Math.round(nx), limit.minX, limit.maxX);
-          pos.y = snap ? roundToGrid(clamp(ny, limit.minY, limit.maxY), gap) : clamp(Math.round(ny), limit.minY, limit.maxY);
+          pos.x = clamp(Math.round(orig.x + sdx), limit.minX, limit.maxX);
+          pos.y = clamp(Math.round(orig.y + sdy), limit.minY, limit.maxY);
         }
       }
     } else {
@@ -347,29 +415,30 @@ function setupPlayback(container) {
     if (engine.isPlaying || selectedFormation < 0) return;
     const positions = engine.calcPositionsAt(currentMs);
     const snap = renderer.isSnap;
-    const gap = renderer.gridGap;
-    const limit = { minX: -(HALF_W + WING_SIZE), maxX: HALF_W + WING_SIZE, minY: -(HALF_H + WING_SIZE), maxY: HALF_H + WING_SIZE };
+    const gap = 15; // fixed snap unit
+    const limit = { minX: -(HALF_W + WING_SIZE - 20), maxX: HALF_W + WING_SIZE - 20, minY: -(HALF_H + WING_SIZE - 20), maxY: HALF_H + WING_SIZE - 20 };
 
     // Capture start positions on first drag frame
     if (!dragStartPositions) {
       dragStartPositions = new Map();
       for (let i = 0; i < positions.length; i++) {
-        dragStartPositions.set(i, { x: positions[i].x, y: positions[i].y });
+        dragStartPositions.set(i, { x: positions[i].x, y: positions[i].y, angle: positions[i].angle || 0 });
       }
     }
 
     if (selectedSet && selectedSet.size > 1 && selectedSet.has(dancerIndex)) {
       const origPos = dragStartPositions.get(dancerIndex);
-      const dx = newX - origPos.x;
-      const dy = newY - origPos.y;
+      const snappedAnchorX = snap ? roundToGrid(clamp(newX, limit.minX, limit.maxX), gap) : clamp(Math.round(newX), limit.minX, limit.maxX);
+      const snappedAnchorY = snap ? roundToGrid(clamp(newY, limit.minY, limit.maxY), gap) : clamp(Math.round(newY), limit.minY, limit.maxY);
+      const sdx = snappedAnchorX - origPos.x;
+      const sdy = snappedAnchorY - origPos.y;
       for (const idx of selectedSet) {
         const orig = dragStartPositions.get(idx);
         if (orig) {
-          const nx = orig.x + dx;
-          const ny = orig.y + dy;
           positions[idx] = {
-            x: snap ? roundToGrid(clamp(nx, limit.minX, limit.maxX), gap) : clamp(Math.round(nx), limit.minX, limit.maxX),
-            y: snap ? roundToGrid(clamp(ny, limit.minY, limit.maxY), gap) : clamp(Math.round(ny), limit.minY, limit.maxY),
+            x: clamp(Math.round(orig.x + sdx), limit.minX, limit.maxX),
+            y: clamp(Math.round(orig.y + sdy), limit.minY, limit.maxY),
+            angle: orig.angle || 0,
           };
         }
       }
@@ -377,10 +446,66 @@ function setupPlayback(container) {
       positions[dancerIndex] = {
         x: snap ? roundToGrid(clamp(newX, limit.minX, limit.maxX), gap) : clamp(Math.round(newX), limit.minX, limit.maxX),
         y: snap ? roundToGrid(clamp(newY, limit.minY, limit.maxY), gap) : clamp(Math.round(newY), limit.minY, limit.maxY),
+        angle: positions[dancerIndex]?.angle || 0,
       };
     }
     renderer.setCurrentState(noteData.dancers, positions);
     renderer.drawFrame(noteData.dancers, positions);
+  };
+
+  // Dancer rotation (mouse wheel)
+  renderer.onDancerRotate = (dancerIndex, delta) => {
+    if (engine.isPlaying || selectedFormation < 0) return;
+    const f = noteData.formations[selectedFormation];
+    if (!f) return;
+    const d = noteData.dancers[dancerIndex];
+    const pos = f.positions.find(p => p.dancerId === d.id);
+    if (!pos) return;
+    pos.angle = ((pos.angle || 0) + delta + 360) % 360;
+    updateStage(); saveSnapshot();
+  };
+
+  // Waypoint callbacks (drag only, waypoints auto-created)
+  function _getTransitionPos(dancerIndex) {
+    if (!selectedTransition) return null;
+    const toF = noteData.formations[selectedTransition.toIdx];
+    const d = noteData.dancers[dancerIndex];
+    return toF?.positions.find(p => p.dancerId === d.id) || null;
+  }
+
+  renderer.onWaypointDrag = (dancerIndex, wpIndex, newX, newY) => {
+    const pos = _getTransitionPos(dancerIndex);
+    if (!pos || !pos.waypoints || !pos.waypoints[wpIndex]) return;
+    pos.waypoints[wpIndex].x = Math.round(newX);
+    pos.waypoints[wpIndex].y = Math.round(newY);
+    updateStage();
+  };
+
+  renderer.onWaypointDragEnd = (dancerIndex, wpIndex, newX, newY) => {
+    const pos = _getTransitionPos(dancerIndex);
+    if (!pos || !pos.waypoints || !pos.waypoints[wpIndex]) return;
+    pos.waypoints[wpIndex].x = Math.round(newX);
+    pos.waypoints[wpIndex].y = Math.round(newY);
+    updateStage(); saveSnapshot();
+  };
+
+  renderer.onWaypointReset = (dancerIndex) => {
+    if (!selectedTransition) return;
+    const { fromIdx, toIdx } = selectedTransition;
+    const fromF = noteData.formations[fromIdx];
+    const toF = noteData.formations[toIdx];
+    const d = noteData.dancers[dancerIndex];
+    const fromPos = fromF.positions.find(p => p.dancerId === d.id);
+    const toPos = toF.positions.find(p => p.dancerId === d.id);
+    if (fromPos && toPos) {
+      toPos.waypoints = [{
+        x: Math.round((fromPos.x + toPos.x) / 2),
+        y: Math.round((fromPos.y + toPos.y) / 2),
+        t: 0.5,
+      }];
+      updateStage(); saveSnapshot();
+      showToast(`${d.name} 경로 초기화됨`);
+    }
   };
 }
 
@@ -396,6 +521,15 @@ function setupTimeline(container) {
     e.preventDefault();
     timelineScroll.scrollLeft += e.deltaY || e.deltaX;
   }, { passive: false });
+
+  // Click on formations area (empty space between boxes) to select transition
+  formationsEl.addEventListener('click', (e) => {
+    if (e.target !== formationsEl) return; // only direct clicks, not on boxes
+    const rect = formationsEl.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const ms = floorTime(Math.max(0, (x - TIMELINE_PADDING) / pixelsPerSec * 1000));
+    seekTo(ms);
+  });
 
   // Ruler ticks
   buildRulerTicks(ruler, durationSec);
@@ -572,13 +706,7 @@ function renderFormationBoxes(formationsEl) {
     box.textContent = `${i + 1}`;
     box.dataset.index = i;
 
-    // Click to select
-    box.addEventListener('click', (e) => {
-      if (e.target.classList.contains('formation-box__handle')) return;
-      selectedFormation = i;
-      seekTo(f.startTime);
-      highlightFormation();
-    });
+    // Click handled by setupFormationDrag onUp (no separate click handler)
 
     // Handles
     const leftHandle = document.createElement('div');
@@ -686,7 +814,11 @@ function setupFormationDrag(el, fIdx, mode) {
           selectedFormations.clear();
           selectedFormations.add(fIdx);
         }
-        seekTo(targetFormation.startTime);
+        // Seek to clicked position within the box
+        const scrollEl = document.querySelector('#timeline-scroll');
+        const clickX = startX - scrollEl.getBoundingClientRect().left + scrollEl.scrollLeft;
+        const clickMs = floorTime(clamp((clickX - TIMELINE_PADDING) / pixelsPerSec * 1000, 0, noteData.note.duration));
+        seekTo(clickMs);
         highlightFormation();
         return;
       }
@@ -776,6 +908,101 @@ function setupSidebar(container) {
   const list = container.querySelector('#dancer-list');
   const addBtn = container.querySelector('#add-dancer-btn');
 
+  // Tab switching
+  const tabs = container.querySelectorAll('.sidebar__tab');
+  const panels = {
+    dancers: container.querySelector('#panel-dancers'),
+    presets: container.querySelector('#panel-presets'),
+  };
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      tabs.forEach(t => t.classList.remove('sidebar__tab--active'));
+      tab.classList.add('sidebar__tab--active');
+      Object.values(panels).forEach(p => p.classList.add('sidebar__panel--hidden'));
+      panels[tab.dataset.tab].classList.remove('sidebar__panel--hidden');
+    });
+  });
+
+  // Preset grid
+  let presetSpacing = 50;
+  const spacingValue = container.querySelector('#preset-spacing-value');
+  const presetGrid = container.querySelector('#preset-grid');
+
+  function renderPresetThumbnails() {
+    presetGrid.innerHTML = '';
+    const names = getPresetNames();
+    const count = noteData.dancers.length;
+    for (const name of names) {
+      const positions = applyPreset(name, count, presetSpacing, HALF_W, HALF_H);
+      if (!positions) continue;
+
+      const card = document.createElement('div');
+      card.className = 'preset-card';
+
+      // Mini canvas thumbnail
+      const cvs = document.createElement('canvas');
+      cvs.width = 120;
+      cvs.height = 80;
+      const ctx = cvs.getContext('2d');
+
+      // Background
+      ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--stage-bg').trim() || '#1a1a2e';
+      ctx.fillRect(0, 0, 120, 80);
+
+      // Draw dots
+      for (let i = 0; i < positions.length && i < noteData.dancers.length; i++) {
+        const p = positions[i];
+        const sx = 60 + p.x * 0.15;
+        const sy = 40 + p.y * 0.15;
+        ctx.beginPath();
+        ctx.arc(sx, sy, 4, 0, Math.PI * 2);
+        ctx.fillStyle = noteData.dancers[i]?.color || '#4ECDC4';
+        ctx.fill();
+      }
+
+      card.appendChild(cvs);
+
+      const label = document.createElement('div');
+      label.className = 'preset-card__name';
+      label.textContent = name;
+      card.appendChild(label);
+
+      card.addEventListener('click', () => {
+        if (selectedFormation < 0) {
+          showToast('대열을 먼저 선택하세요');
+          return;
+        }
+        const f = noteData.formations[selectedFormation];
+        for (let i = 0; i < f.positions.length && i < positions.length; i++) {
+          f.positions[i].x = positions[i].x;
+          f.positions[i].y = positions[i].y;
+        }
+        updateStage(); saveSnapshot();
+        showToast(`${name} 대열 적용됨`);
+      });
+
+      presetGrid.appendChild(card);
+    }
+  }
+
+  container.querySelector('#preset-spacing-down').addEventListener('click', () => {
+    if (presetSpacing > 20) {
+      presetSpacing -= 10;
+      spacingValue.textContent = presetSpacing;
+      renderPresetThumbnails();
+    }
+  });
+  container.querySelector('#preset-spacing-up').addEventListener('click', () => {
+    if (presetSpacing < 100) {
+      presetSpacing += 10;
+      spacingValue.textContent = presetSpacing;
+      renderPresetThumbnails();
+    }
+  });
+
+  renderPresetThumbnails();
+  _renderPresetThumbnails = renderPresetThumbnails;
+
   renderDancerList(list);
 
   addBtn.addEventListener('click', () => {
@@ -807,11 +1034,13 @@ function setupSidebar(container) {
     const offstageY = -HALF_H + 40 + offstageCount * 40;
 
     for (const f of noteData.formations) {
-      f.positions.push({ dancerId: newDancer.id, x: offstageX, y: clamp(offstageY, -HALF_H, HALF_H) });
+      const defaultAngle = audienceDirection === 'bottom' ? 180 : 0;
+      f.positions.push({ dancerId: newDancer.id, x: offstageX, y: clamp(offstageY, -HALF_H, HALF_H), angle: defaultAngle });
     }
 
     engine.setFormations(noteData.formations, noteData.dancers);
     renderDancerList(list);
+    if (_renderPresetThumbnails) _renderPresetThumbnails();
     updateStage(); saveSnapshot();
 
     // Focus the new dancer's name input
@@ -882,6 +1111,7 @@ function setupSidebar(container) {
       document.addEventListener('click', close);
     }, 0);
   });
+
 }
 
 const PALETTE = [
@@ -968,6 +1198,7 @@ function renderDancerList(list) {
       }
       engine.setFormations(noteData.formations, noteData.dancers);
       renderDancerList(list);
+      if (_renderPresetThumbnails) _renderPresetThumbnails();
       updateStage(); saveSnapshot();
     });
   });
@@ -982,10 +1213,6 @@ function setupToolbar(container) {
   const swapBtn = container.querySelector('#swap-btn');
   const copyBtn = container.querySelector('#copy-btn');
   const pasteBtn = container.querySelector('#paste-btn');
-  const snapBtn = container.querySelector('#snap-btn');
-  const view3dBtn = container.querySelector('#view-3d-btn');
-  const viewRotateBtn = container.querySelector('#view-rotate-btn');
-  const namesBtn = container.querySelector('#names-btn');
 
   undoBtn.addEventListener('click', () => {
     const snapshot = undo();
@@ -1138,13 +1365,28 @@ function setupToolbar(container) {
     swapMode = !swapMode;
     swapFirst = -1;
     swapBtn.classList.toggle('toolbar__btn--active', swapMode);
+    renderer._selectedDancers.clear();
+    updateStage();
     if (swapMode) {
       showToast('교환할 첫 번째 댄서를 클릭하세요');
     }
   });
 
   renderer.onDancerSelect = (dancerIndex) => {
-    if (!swapMode || dancerIndex < 0) return;
+    // Always update stage to refresh waypoint path filtering
+    if (selectedTransition) updateStage();
+
+    if (!swapMode) return;
+    if (dancerIndex < 0) {
+      // Empty space click: cancel first selection
+      if (swapFirst >= 0) {
+        swapFirst = -1;
+        renderer._selectedDancers.clear();
+        updateStage();
+        showToast('선택 취소됨');
+      }
+      return;
+    }
     if (selectedFormation < 0) {
       showToast('대열을 먼저 선택하세요');
       return;
@@ -1209,102 +1451,39 @@ function setupToolbar(container) {
     }
   };
 
-  // Preset formations
-  container.querySelector('#preset-btn').addEventListener('click', () => {
-    if (selectedFormation < 0) {
-      showToast('대열을 먼저 선택하세요');
-      return;
-    }
-    // Close any existing popup
-    document.querySelectorAll('.preset-popup').forEach(p => p.remove());
-
-    const popup = document.createElement('div');
-    popup.className = 'preset-popup';
-    const names = getPresetNames();
-    popup.innerHTML = names.map(name =>
-      `<button class="preset-popup__item" data-preset="${name}">${name}</button>`
-    ).join('');
-
-    popup.querySelectorAll('[data-preset]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const positions = applyPreset(btn.dataset.preset, noteData.dancers.length, renderer.gridGap, HALF_W, HALF_H);
-        if (!positions) return;
-        const f = noteData.formations[selectedFormation];
-        for (let i = 0; i < f.positions.length && i < positions.length; i++) {
-          f.positions[i].x = positions[i].x;
-          f.positions[i].y = positions[i].y;
-        }
-        updateStage(); saveSnapshot();
-        popup.remove();
-        showToast(`${btn.dataset.preset} 대열 적용됨`);
-      });
-    });
-
-    const presetBtn = container.querySelector('#preset-btn');
-    const rect = presetBtn.getBoundingClientRect();
-    popup.style.position = 'fixed';
-    popup.style.left = `${rect.left}px`;
-    popup.style.bottom = `${window.innerHeight - rect.top + 6}px`;
-    document.body.appendChild(popup);
-
-    setTimeout(() => {
-      const close = (e) => {
-        if (!popup.contains(e.target) && e.target !== presetBtn) {
-          popup.remove();
-          document.removeEventListener('click', close);
-        }
-      };
-      document.addEventListener('click', close);
-    }, 0);
-  });
-
-  const GRID_LEVELS = [10, 15, 20, 30, 40, 60];
-  container.querySelector('#grid-down-btn').addEventListener('click', () => {
-    const curIdx = GRID_LEVELS.findIndex(g => g >= renderer.gridGap);
-    if (curIdx > 0) {
-      renderer.gridGap = GRID_LEVELS[curIdx - 1];
-      renderer._drawGridCache();
-      updateStage();
-      showToast(`격자 간격: ${renderer.gridGap}px`);
-    }
-  });
-  container.querySelector('#grid-up-btn').addEventListener('click', () => {
-    const curIdx = GRID_LEVELS.findIndex(g => g >= renderer.gridGap);
-    if (curIdx < GRID_LEVELS.length - 1) {
-      renderer.gridGap = GRID_LEVELS[curIdx + 1];
-      renderer._drawGridCache();
-      updateStage();
-      showToast(`격자 간격: ${renderer.gridGap}px`);
-    }
-  });
-
+  // Snap toggle
+  const snapBtn = container.querySelector('#snap-btn');
   snapBtn.addEventListener('click', () => {
     renderer.isSnap = !renderer.isSnap;
     snapBtn.classList.toggle('toolbar__btn--active', renderer.isSnap);
   });
 
+  // View mode functions (used by sidebar view panel)
   const banner3d = container.querySelector('#stage-3d-banner');
 
   function toggle3D(forceOff) {
     const is3D = forceOff ? false : !renderer.is3D;
     renderer.set3D(is3D, 'css');
-    view3dBtn.classList.toggle('toolbar__btn--active', is3D);
+    if (is3D) renderer._selectedDancers.clear();
     updateBanner();
+    updateViewButtons();
     updateStage();
   }
-
-  view3dBtn.addEventListener('click', () => toggle3D());
-  banner3d.addEventListener('click', () => {
-    if (renderer.is3D) toggle3D(true);
-    if (renderer.isRotated) toggleRotate(true);
-  });
 
   function toggleRotate(forceOff) {
     const isRotated = forceOff ? false : !renderer.isRotated;
     renderer.setRotated(isRotated);
-    viewRotateBtn.classList.toggle('toolbar__btn--active', isRotated);
+    if (isRotated) renderer._selectedDancers.clear();
     updateBanner();
+    updateViewButtons();
     updateStage();
+  }
+
+  function updateViewButtons() {
+    const btn3d = container.querySelector('#sidebar-3d-btn');
+    const btnRotate = container.querySelector('#sidebar-rotate-btn');
+    if (btn3d) btn3d.classList.toggle('toolbar__btn--active', renderer.is3D);
+    if (btnRotate) btnRotate.classList.toggle('toolbar__btn--active', renderer.isRotated);
   }
 
   function updateBanner() {
@@ -1320,51 +1499,82 @@ function setupToolbar(container) {
     banner3d.classList.toggle('stage-3d-banner--visible', visible);
   }
 
-  viewRotateBtn.addEventListener('click', () => toggleRotate());
+  banner3d.addEventListener('click', () => {
+    if (renderer.is3D) toggle3D(true);
+    if (renderer.isRotated) toggleRotate(true);
+  });
 
-  namesBtn.addEventListener('click', () => {
+  // Sidebar rail: icon click toggles panels
+  const sidebar = container.querySelector('#sidebar');
+  const railIcons = container.querySelectorAll('.sidebar-rail__icon');
+  const panels = {
+    dancers: container.querySelector('#panel-dancers'),
+    presets: container.querySelector('#panel-presets'),
+    view: container.querySelector('#panel-view'),
+    settings: container.querySelector('#panel-settings'),
+  };
+  let activePanel = 'dancers';
+
+  function openPanel(name) {
+    if (activePanel === name && !sidebar.classList.contains('editor__sidebar--hidden')) {
+      // Same icon clicked: close sidebar
+      sidebar.classList.add('editor__sidebar--hidden');
+      railIcons.forEach(ic => ic.classList.remove('sidebar-rail__icon--active'));
+      activePanel = null;
+      return;
+    }
+    // Open/switch panel
+    sidebar.classList.remove('editor__sidebar--hidden');
+    Object.values(panels).forEach(p => p.classList.add('sidebar__panel--hidden'));
+    if (panels[name]) panels[name].classList.remove('sidebar__panel--hidden');
+    railIcons.forEach(ic => ic.classList.toggle('sidebar-rail__icon--active', ic.dataset.panel === name));
+    activePanel = name;
+  }
+
+  railIcons.forEach(ic => {
+    ic.addEventListener('click', () => openPanel(ic.dataset.panel));
+  });
+
+  // View mode buttons in sidebar
+  const sidebar3dBtn = container.querySelector('#sidebar-3d-btn');
+  const sidebarRotateBtn = container.querySelector('#sidebar-rotate-btn');
+  const sidebarNamesBtn = container.querySelector('#sidebar-names-btn');
+
+  sidebar3dBtn.addEventListener('click', () => toggle3D());
+  sidebarRotateBtn.addEventListener('click', () => toggleRotate());
+  sidebarNamesBtn.addEventListener('click', () => {
     renderer.showNames = !renderer.showNames;
-    namesBtn.classList.toggle('toolbar__btn--active', renderer.showNames);
+    sidebarNamesBtn.classList.toggle('toolbar__btn--active', renderer.showNames);
     updateStage();
   });
-  namesBtn.classList.add('toolbar__btn--active'); // default on
+  sidebarNamesBtn.classList.add('toolbar__btn--active');
 
-  const sidebarBtn = container.querySelector('#sidebar-btn');
-  const sidebar = container.querySelector('#sidebar');
-
-  // Add overlay for mobile bottom sheet
+  // Mobile overlay
   let overlay = document.querySelector('.sidebar-overlay');
   if (!overlay) {
     overlay = document.createElement('div');
     overlay.className = 'sidebar-overlay';
     document.body.appendChild(overlay);
   }
-
-  function toggleSidebar() {
-    const hidden = sidebar.classList.toggle('editor__sidebar--hidden');
-    sidebarBtn.classList.toggle('toolbar__btn--active', !hidden);
-    if (window.innerWidth <= 768) {
-      overlay.classList.toggle('sidebar-overlay--visible', !hidden);
-    }
-  }
-
-  sidebarBtn.addEventListener('click', toggleSidebar);
-  overlay.addEventListener('click', toggleSidebar);
+  overlay.addEventListener('click', () => {
+    sidebar.classList.add('editor__sidebar--hidden');
+    railIcons.forEach(ic => ic.classList.remove('sidebar-rail__icon--active'));
+    activePanel = null;
+    overlay.classList.remove('sidebar-overlay--visible');
+  });
 
   // Start hidden on mobile
   if (window.innerWidth <= 768) {
     sidebar.classList.add('editor__sidebar--hidden');
-    sidebarBtn.classList.remove('toolbar__btn--active');
+    railIcons.forEach(ic => ic.classList.remove('sidebar-rail__icon--active'));
+    activePanel = null;
   }
 
-  // Handle resize between desktop/mobile
   window.addEventListener('resize', () => {
     if (window.innerWidth > 768) {
       overlay.classList.remove('sidebar-overlay--visible');
     } else {
-      // Entering mobile: close sidebar
       sidebar.classList.add('editor__sidebar--hidden');
-      sidebarBtn.classList.remove('toolbar__btn--active');
       overlay.classList.remove('sidebar-overlay--visible');
     }
   });
@@ -1373,17 +1583,6 @@ function setupToolbar(container) {
 // --- Header ---
 function setupHeader(container, noteId) {
   container.querySelector('#back-btn').addEventListener('click', () => navigate('/dashboard'));
-
-  // Theme toggle
-  const themeBtn = container.querySelector('#theme-btn');
-  themeBtn.textContent = isLightMode() ? '☀️' : '🌙';
-  themeBtn.addEventListener('click', () => {
-    const light = toggleTheme();
-    themeBtn.textContent = light ? '☀️' : '🌙';
-    // Rebuild grid cache with new colors
-    renderer._drawGridCache();
-    updateStage();
-  });
 
   async function saveToDB(silent = false) {
     const title = container.querySelector('#title-input').value;
@@ -1397,6 +1596,8 @@ function setupHeader(container, noteId) {
           dancerIndex: noteData.dancers.findIndex((d) => d.id === p.dancerId),
           x: p.x,
           y: p.y,
+          angle: p.angle || 0,
+          waypoints: p.waypoints || undefined,
         })),
       })),
     });
@@ -1418,18 +1619,7 @@ function setupHeader(container, noteId) {
   const cleanupAutoSave = () => clearInterval(autoSaveInterval);
   window.addEventListener('hashchange', cleanupAutoSave, { once: true });
 
-  container.querySelector('#export-json-btn').addEventListener('click', async () => {
-    const json = await NoteStore.exportJSON(noteId);
-    if (!json) return;
-    const blob = new Blob([json], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${noteData.note.title || 'choreonote'}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    showToast('백업 파일 다운로드됨');
-  });
+  // Export JSON moved to settings panel
 
   // Video export
   const videoExporter = new VideoExporter();
@@ -1441,11 +1631,24 @@ function setupHeader(container, noteId) {
   optionDialog.innerHTML = `
     <div class="export-overlay__box">
       <div class="export-overlay__text">영상 내보내기</div>
-      <div class="export-options">
-        <button class="btn btn--ghost export-option-btn" data-mode="2d">2D</button>
-        <button class="btn btn--ghost export-option-btn" data-mode="3d">3D</button>
+      <div class="settings-section">
+        <div class="settings-label">뷰</div>
+        <div class="export-options">
+          <button class="btn btn--ghost export-option-btn export-option--active" data-view="2d">2D</button>
+          <button class="btn btn--ghost export-option-btn" data-view="3d">3D</button>
+        </div>
       </div>
-      <button class="btn btn--danger" id="export-option-cancel">취소</button>
+      <div class="settings-section">
+        <div class="settings-label">관객 방향</div>
+        <div class="export-options">
+          <button class="btn btn--ghost export-option-btn" data-dir="normal">↑ 위쪽</button>
+          <button class="btn btn--ghost export-option-btn" data-dir="rotated">↓ 아래쪽</button>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <button class="btn btn--primary" id="export-start-btn">내보내기</button>
+        <button class="btn btn--danger" id="export-option-cancel">취소</button>
+      </div>
     </div>
   `;
 
@@ -1464,6 +1667,17 @@ function setupHeader(container, noteId) {
     if (videoExporter.isExporting) return;
     if (engine.isPlaying) engine.pause();
 
+    // Set defaults based on current view mode
+    optionDialog.querySelectorAll('[data-view]').forEach(b => {
+      b.classList.toggle('export-option--active',
+        (b.dataset.view === '3d') === renderer.is3D);
+    });
+    optionDialog.querySelectorAll('[data-dir]').forEach(b => {
+      const isBottom = audienceDirection === 'bottom';
+      b.classList.toggle('export-option--active',
+        (b.dataset.dir === 'rotated') === isBottom);
+    });
+
     // Show option dialog
     container.appendChild(optionDialog);
 
@@ -1471,16 +1685,25 @@ function setupHeader(container, noteId) {
       optionDialog.remove();
     };
 
-    optionDialog.querySelectorAll('.export-option-btn').forEach((btn) => {
-      btn.onclick = () => {
-        const is3D = btn.dataset.mode === '3d';
-        optionDialog.remove();
-        startExport(is3D);
-      };
+    // Toggle selection within each group
+    optionDialog.querySelectorAll('.export-options').forEach(group => {
+      group.querySelectorAll('.export-option-btn').forEach(btn => {
+        btn.onclick = () => {
+          group.querySelectorAll('.export-option-btn').forEach(b => b.classList.remove('export-option--active'));
+          btn.classList.add('export-option--active');
+        };
+      });
     });
+
+    optionDialog.querySelector('#export-start-btn').onclick = () => {
+      const is3D = optionDialog.querySelector('[data-view].export-option--active')?.dataset.view === '3d';
+      const isRotated = optionDialog.querySelector('[data-dir].export-option--active')?.dataset.dir === 'rotated';
+      optionDialog.remove();
+      startExport(is3D, isRotated);
+    };
   });
 
-  function startExport(is3D) {
+  function startExport(is3D, isRotated = false) {
     container.appendChild(progressOverlay);
     const progressEl = progressOverlay.querySelector('#export-progress');
     progressEl.textContent = '0%';
@@ -1496,6 +1719,7 @@ function setupHeader(container, noteId) {
       audioBlob: noteData.musicBlob,
       duration: noteData.note.duration,
       is3D,
+      isRotated,
       showNames: renderer.showNames,
       onProgress: (percent) => {
         progressEl.textContent = `${percent}%`;
@@ -1517,6 +1741,198 @@ function setupHeader(container, noteId) {
       },
     });
   }
+}
+
+// --- Settings Panel ---
+function setupSettings(container, noteId) {
+  // Stage size options
+  const stageOptions = container.querySelector('#settings-stage-options');
+  stageOptions.querySelectorAll('[data-stage]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const [newW, newH] = btn.dataset.stage.split('x').map(Number);
+      const oldW = STAGE_WIDTH;
+      const oldH = STAGE_HEIGHT;
+      if (newW === oldW && newH === oldH) return;
+
+      // Ask user about dancer positions
+      const scale = confirm('댄서 위치를 새 무대 크기에 맞게 조정할까요?\n\n확인: 비율에 맞게 조정\n취소: 현재 좌표 유지');
+
+      setStageSize(newW, newH);
+      renderer.resize();
+
+      if (scale) {
+        const scaleX = newW / oldW;
+        const scaleY = newH / oldH;
+        for (const f of noteData.formations) {
+          for (const pos of f.positions) {
+            pos.x = Math.round(pos.x * scaleX);
+            pos.y = Math.round(pos.y * scaleY);
+            if (pos.waypoints) {
+              for (const wp of pos.waypoints) {
+                wp.x = Math.round(wp.x * scaleX);
+                wp.y = Math.round(wp.y * scaleY);
+              }
+            }
+          }
+        }
+      }
+
+      // Clamp all positions to canvas bounds with padding for dancer shape
+      const pad = 20;
+      const maxX = newW / 2 + WING_SIZE - pad;
+      const maxY = newH / 2 + WING_SIZE - pad;
+      for (const f of noteData.formations) {
+        for (const pos of f.positions) {
+          pos.x = clamp(pos.x, -maxX, maxX);
+          pos.y = clamp(pos.y, -maxY, maxY);
+          if (pos.waypoints) {
+            for (const wp of pos.waypoints) {
+              wp.x = clamp(wp.x, -maxX, maxX);
+              wp.y = clamp(wp.y, -maxY, maxY);
+            }
+          }
+        }
+      }
+
+      engine.setFormations(noteData.formations, noteData.dancers);
+      renderer._drawGridCache();
+      updateStage();
+      saveSnapshot();
+
+      stageOptions.querySelectorAll('.settings-option').forEach(b => b.classList.remove('settings-option--active'));
+      btn.classList.add('settings-option--active');
+      showToast(`무대 크기: ${newW} × ${newH}`);
+    });
+  });
+
+  // Grid gap options
+  const gridOptions = container.querySelector('#settings-grid-options');
+  gridOptions.querySelectorAll('[data-grid]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      renderer.gridGap = Number(btn.dataset.grid);
+      renderer._drawGridCache();
+      updateStage();
+      gridOptions.querySelectorAll('.settings-option').forEach(b => b.classList.remove('settings-option--active'));
+      btn.classList.add('settings-option--active');
+    });
+  });
+
+  // Duration
+  const durationEl = container.querySelector('#settings-duration');
+  container.querySelector('#settings-duration-btn').addEventListener('click', () => {
+    const currentSec = Math.round(noteData.note.duration / 1000);
+    const input = prompt('노래 길이 (초)', currentSec);
+    if (input === null) return;
+    const newSec = parseInt(input, 10);
+    if (isNaN(newSec) || newSec < 10 || newSec > 600) {
+      showToast('10초 ~ 600초 사이로 입력해주세요');
+      return;
+    }
+    const newDuration = newSec * 1000;
+    noteData.note.duration = newDuration;
+    engine.duration = newDuration;
+    durationEl.textContent = formatDurationFull(newDuration);
+    container.querySelector('#duration-display').textContent = formatTime(newDuration, true);
+
+    const dSec = newDuration / 1000;
+    const timelineWidth = TIMELINE_PADDING * 2 + dSec * pixelsPerSec;
+    container.querySelector('#timeline').style.width = `${timelineWidth}px`;
+    const ruler = container.querySelector('#timeline-ruler');
+    ruler.innerHTML = '';
+    buildRulerTicks(ruler, dSec);
+    renderFormationBoxes(container.querySelector('#timeline-formations'));
+    if (currentMs > newDuration) seekTo(0);
+    updateTimelineMarker();
+    if (noteData.musicBlob) drawWaveform(container, noteData.musicBlob, newDuration);
+    showToast(`노래 길이: ${newSec}초`);
+  });
+
+  // Dancer shape options
+  const shapeOptions = container.querySelector('#settings-shape-options');
+  shapeOptions.querySelectorAll('[data-shape]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      renderer.dancerShape = btn.dataset.shape;
+      shapeOptions.querySelectorAll('.settings-option').forEach(b => b.classList.remove('settings-option--active'));
+      btn.classList.add('settings-option--active');
+      updateStage();
+    });
+  });
+
+  // Theme options
+  const themeOptions = container.querySelector('#settings-theme-options');
+  themeOptions.querySelectorAll('[data-theme]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const wantLight = btn.dataset.theme === 'light';
+      if (wantLight !== isLightMode()) toggleTheme();
+      themeOptions.querySelectorAll('.settings-option').forEach(b => b.classList.remove('settings-option--active'));
+      btn.classList.add('settings-option--active');
+      renderer._drawGridCache();
+      updateStage();
+    });
+  });
+
+  // Audience direction
+  const audienceOptions = container.querySelector('#settings-audience-options');
+  audienceOptions.querySelectorAll('[data-audience]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const prevDirection = audienceDirection;
+      audienceDirection = btn.dataset.audience;
+      renderer.audienceDirection = audienceDirection;
+      renderer._drawGridCache();
+      audienceOptions.querySelectorAll('.settings-option').forEach(b => b.classList.remove('settings-option--active'));
+      btn.classList.add('settings-option--active');
+
+      // Rotate all positions and angles 180° (like flipping the stage)
+      if (prevDirection !== audienceDirection) {
+        for (const f of noteData.formations) {
+          for (const pos of f.positions) {
+            pos.x = -pos.x;
+            pos.y = -pos.y;
+            pos.angle = ((pos.angle || 0) + 180) % 360;
+            if (pos.waypoints) {
+              for (const wp of pos.waypoints) {
+                wp.x = -wp.x;
+                wp.y = -wp.y;
+              }
+            }
+          }
+        }
+        engine.setFormations(noteData.formations, noteData.dancers);
+        saveSnapshot();
+      }
+      updateStage();
+      showToast(`객석: ${audienceDirection === 'top' ? '위쪽' : '아래쪽'}`);
+    });
+  });
+
+  // Export JSON
+  container.querySelector('#settings-export-btn').addEventListener('click', async () => {
+    const json = await NoteStore.exportJSON(noteId);
+    if (!json) return;
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${noteData.note.title || 'choreonote'}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('백업 파일 다운로드됨');
+  });
+
+  // Import JSON
+  const importFile = container.querySelector('#settings-import-file');
+  container.querySelector('#settings-import-btn').addEventListener('click', () => importFile.click());
+  importFile.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const newNoteId = await NoteStore.importJSON(text);
+      navigate(`/edit/${newNoteId}`);
+    } catch (err) {
+      showToast('파일을 불러올 수 없습니다: ' + err.message);
+    }
+  });
 }
 
 // --- Music Upload ---
@@ -1585,14 +2001,10 @@ function seekTo(ms) {
   currentMs = ms;
   engine.seek(ms);
 
-  const positions = engine.calcPositionsAt(ms);
-  renderer.setCurrentState(noteData.dancers, positions);
-  renderer.drawFrame(noteData.dancers, positions);
-
   document.querySelector('#time-display').textContent = formatTime(ms, true);
   updateTimelineMarker();
 
-  // Auto-select formation, or deselect if in empty space
+  // Auto-select formation or transition gap
   const fIdx = noteData.formations.findIndex((f) => ms >= f.startTime && ms < f.startTime + f.duration);
   if (fIdx >= 0) {
     selectedFormation = fIdx;
@@ -1600,11 +2012,24 @@ function seekTo(ms) {
       selectedFormations.clear();
       selectedFormations.add(fIdx);
     }
+    selectedTransition = null;
   } else {
     selectedFormation = -1;
     selectedFormations.clear();
+    // Find which gap we're in
+    selectedTransition = null;
+    for (let i = 0; i < noteData.formations.length - 1; i++) {
+      const curEnd = noteData.formations[i].startTime + noteData.formations[i].duration;
+      const nextStart = noteData.formations[i + 1].startTime;
+      if (ms >= curEnd && ms < nextStart) {
+        selectedTransition = { fromIdx: i, toIdx: i + 1 };
+        break;
+      }
+    }
   }
   highlightFormation();
+  highlightTransition();
+  updateStage();
 
   document.querySelector('#play-btn').textContent = '▶';
 }
@@ -1612,6 +2037,43 @@ function seekTo(ms) {
 function updateStage() {
   const positions = engine.calcPositionsAt(currentMs);
   renderer.setCurrentState(noteData.dancers, positions);
+
+  // Build waypoint paths for selected transition gap
+  renderer._waypointPaths = null;
+  if (selectedTransition) {
+    const { fromIdx, toIdx } = selectedTransition;
+    const fromF = noteData.formations[fromIdx];
+    const toF = noteData.formations[toIdx];
+    if (fromF && toF) {
+      const paths = [];
+      const selected = renderer._selectedDancers;
+      const hasSelection = selected && selected.size > 0;
+      for (let i = 0; i < noteData.dancers.length; i++) {
+        if (hasSelection && !selected.has(i)) continue;
+        const d = noteData.dancers[i];
+        const fromPos = fromF.positions.find(p => p.dancerId === d.id);
+        const toPos = toF.positions.find(p => p.dancerId === d.id);
+        if (fromPos && toPos) {
+          // Auto-create default waypoint at midpoint if none exists
+          if (!toPos.waypoints || toPos.waypoints.length === 0) {
+            toPos.waypoints = [{
+              x: Math.round((fromPos.x + toPos.x) / 2),
+              y: Math.round((fromPos.y + toPos.y) / 2),
+              t: 0.5,
+            }];
+          }
+          const points = [
+            { x: fromPos.x, y: fromPos.y },
+            ...toPos.waypoints,
+            { x: toPos.x, y: toPos.y },
+          ];
+          paths.push({ dancerId: d.id, dancerIndex: i, color: d.color, points });
+        }
+      }
+      renderer._waypointPaths = paths;
+    }
+  }
+
   renderer.drawFrame(noteData.dancers, positions);
 }
 
@@ -1626,6 +2088,29 @@ function highlightFormation() {
   document.querySelectorAll('.formation-box').forEach((box, i) => {
     box.classList.toggle('formation-box--selected', selectedFormations.has(i));
   });
+}
+
+function highlightTransition() {
+  // Remove existing highlight
+  document.querySelectorAll('.transition-highlight').forEach(el => el.remove());
+
+  if (!selectedTransition) return;
+  const { fromIdx, toIdx } = selectedTransition;
+  const fromF = noteData.formations[fromIdx];
+  const toF = noteData.formations[toIdx];
+  if (!fromF || !toF) return;
+
+  const fromEnd = fromF.startTime + fromF.duration;
+  const left = TIMELINE_PADDING + fromEnd / 1000 * pixelsPerSec;
+  const width = (toF.startTime - fromEnd) / 1000 * pixelsPerSec;
+
+  const highlight = document.createElement('div');
+  highlight.className = 'transition-highlight';
+  highlight.style.left = `${left}px`;
+  highlight.style.width = `${width}px`;
+
+  const formationsEl = document.querySelector('#timeline-formations');
+  if (formationsEl) formationsEl.appendChild(highlight);
 }
 
 async function drawWaveform(container, audioBlob, durationMs) {
@@ -1782,6 +2267,13 @@ function toggleShortcutHelp(container) {
   modal.addEventListener('click', (e) => {
     if (e.target === modal) modal.remove();
   });
+}
+
+function formatDurationFull(ms) {
+  const totalSec = Math.round(ms / 1000);
+  const min = Math.floor(totalSec / 60);
+  const sec = totalSec % 60;
+  return `${min}분 ${String(sec).padStart(2, '0')}초 (총 ${totalSec}초)`;
 }
 
 function escapeAttr(str) {

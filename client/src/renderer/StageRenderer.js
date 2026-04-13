@@ -17,6 +17,8 @@ export class StageRenderer {
     this.isSnap = false;
     this.showNames = true;
     this.gridGap = GRID_GAP;
+    this.dancerShape = 'pentagon'; // 'pentagon', 'circle', 'heart'
+    this.audienceDirection = 'top'; // 'top' or 'bottom'
 
     // Drag state
     this._dragging = null; // { dancerIndex, startX, startY, offsetX, offsetY }
@@ -27,6 +29,14 @@ export class StageRenderer {
   }
 
   // --- Grid Cache (drawn once) ---
+  resize() {
+    this.canvas.width = CANVAS_WIDTH;
+    this.canvas.height = CANVAS_HEIGHT;
+    this.gridCanvas.width = CANVAS_WIDTH;
+    this.gridCanvas.height = CANVAS_HEIGHT;
+    this._drawGridCache();
+  }
+
   _drawGridCache() {
     const ctx = this.gridCanvas.getContext('2d');
     ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
@@ -57,7 +67,7 @@ export class StageRenderer {
     const gap = this.gridGap;
     for (let x = HALF_W % gap; x < STAGE_WIDTH; x += gap) {
       const isMajor = Math.round(Math.abs(x - HALF_W) / gap) % 4 === 0;
-      ctx.strokeStyle = isMajor ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.06)';
+      ctx.strokeStyle = isMajor ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.1)';
       ctx.lineWidth = isMajor ? 1 : 0.5;
       ctx.beginPath();
       ctx.moveTo(ox + x, oy);
@@ -66,7 +76,7 @@ export class StageRenderer {
     }
     for (let y = HALF_H % gap; y < STAGE_HEIGHT; y += gap) {
       const isMajor = Math.round(Math.abs(y - HALF_H) / gap) % 4 === 0;
-      ctx.strokeStyle = isMajor ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.06)';
+      ctx.strokeStyle = isMajor ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.1)';
       ctx.lineWidth = isMajor ? 1 : 0.5;
       ctx.beginPath();
       ctx.moveTo(ox, oy + y);
@@ -83,6 +93,29 @@ export class StageRenderer {
     ctx.moveTo(ox, oy + HALF_H);
     ctx.lineTo(ox + STAGE_WIDTH, oy + HALF_H);
     ctx.stroke();
+
+    // Audience indicator: rows of seat rectangles
+    const isTop = this.audienceDirection === 'top';
+    const seatW = 24;
+    const seatH = 18;
+    const seatGap = 6;
+    const cols = Math.floor((STAGE_WIDTH - seatGap) / (seatW + seatGap));
+    const rows = 2;
+    const totalW = cols * seatW + (cols - 1) * seatGap;
+    const startX = WING_SIZE + (STAGE_WIDTH - totalW) / 2;
+    const stageGap = 24;
+
+    for (let r = 0; r < rows; r++) {
+      const rowY = isTop
+        ? WING_SIZE - stageGap - seatH - r * (seatH + 5)
+        : WING_SIZE + STAGE_HEIGHT + stageGap + r * (seatH + 5);
+      const alpha = r === 0 ? 0.2 : 0.12;
+      ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+      for (let c = 0; c < cols; c++) {
+        const sx = startX + c * (seatW + seatGap);
+        ctx.fillRect(sx, rowY, seatW, seatH);
+      }
+    }
   }
 
   // --- Main Draw ---
@@ -90,6 +123,56 @@ export class StageRenderer {
     const ctx = this.ctx;
     // Grid from cache
     ctx.drawImage(this.gridCanvas, 0, 0);
+
+    // Draw waypoint path curves (below dancers)
+    if (this._waypointPaths) {
+      ctx.save();
+      ctx.setLineDash([4, 4]);
+      ctx.lineWidth = 1.5;
+      for (const path of this._waypointPaths) {
+        if (path.points.length < 3) continue;
+        const ox = WING_SIZE + HALF_W;
+        const oy = WING_SIZE + HALF_H;
+        const start = path.points[0];
+        const pt = path.points[1]; // passthrough point
+        const end = path.points[path.points.length - 1];
+        // Reverse-calculate Bezier control point so curve passes through pt at t=0.5
+        const cpx = 2 * pt.x - 0.5 * (start.x + end.x);
+        const cpy = 2 * pt.y - 0.5 * (start.y + end.y);
+
+        ctx.strokeStyle = path.color + '80';
+        ctx.beginPath();
+        ctx.moveTo(ox + start.x, oy + start.y);
+        ctx.quadraticCurveTo(ox + cpx, oy + cpy, ox + end.x, oy + end.y);
+        ctx.stroke();
+
+        // Start marker: small square
+        ctx.setLineDash([]);
+        const ss = 3;
+        ctx.fillStyle = path.color + '90';
+        ctx.fillRect(ox + start.x - ss, oy + start.y - ss, ss * 2, ss * 2);
+
+        // End marker: small triangle pointing along curve direction
+        const ts = 4;
+        const ex = ox + end.x;
+        const ey = oy + end.y;
+        const dx = end.x - cpx;
+        const dy = end.y - cpy;
+        const angle = Math.atan2(dy, dx);
+        ctx.fillStyle = path.color + '90';
+        ctx.beginPath();
+        ctx.moveTo(ex + Math.cos(angle) * ts, ey + Math.sin(angle) * ts);
+        ctx.lineTo(ex + Math.cos(angle + 2.4) * ts, ey + Math.sin(angle + 2.4) * ts);
+        ctx.lineTo(ex + Math.cos(angle - 2.4) * ts, ey + Math.sin(angle - 2.4) * ts);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.setLineDash([4, 4]);
+        ctx.lineWidth = 1.5;
+      }
+      ctx.setLineDash([]);
+      ctx.restore();
+    }
 
     // Build draw order: in 3D mode, sort by y (back to front)
     const drawOrder = dancers.map((d, i) => i);
@@ -194,14 +277,19 @@ export class StageRenderer {
         ctx.fillStyle = d.color;
         ctx.fill();
       } else {
-        // 2D mode: flat circle + subtle shadow
+        // 2D mode: shape with direction
+        const angle = pos.angle || 0;
+        const rad = angle * Math.PI / 180;
+
+        // Shadow
         ctx.beginPath();
-        ctx.arc(screenX, screenY + 2, radius, 0, Math.PI * 2);
+        this._drawShape(ctx, screenX, screenY + 2, radius, rad);
         ctx.fillStyle = 'rgba(0,0,0,0.3)';
         ctx.fill();
 
+        // Shape
         ctx.beginPath();
-        ctx.arc(screenX, screenY, radius, 0, Math.PI * 2);
+        this._drawShape(ctx, screenX, screenY, radius, rad);
         ctx.fillStyle = d.color;
         ctx.fill();
       }
@@ -216,6 +304,10 @@ export class StageRenderer {
           ctx.lineWidth = 2;
           ctx.stroke();
         } else {
+          const angle = pos.angle || 0;
+          const rad = angle * Math.PI / 180;
+          ctx.beginPath();
+          this._drawShape(ctx, screenX, screenY, radius + 2, rad);
           ctx.strokeStyle = '#ffffff';
           ctx.lineWidth = 2;
           ctx.stroke();
@@ -237,6 +329,7 @@ export class StageRenderer {
       ctx.textBaseline = 'middle';
       const labelOffset = isNumber ? fontSize * 0.15 : 0;
       ctx.fillText(label, screenX, labelY + labelOffset);
+
       if (needsCompensation) {
         ctx.restore();
       }
@@ -255,9 +348,62 @@ export class StageRenderer {
       );
       ctx.setLineDash([]);
     }
+
+    // Draw waypoint dots on top of everything
+    if (this._waypointPaths) {
+      const ox = WING_SIZE + HALF_W;
+      const oy = WING_SIZE + HALF_H;
+      for (const path of this._waypointPaths) {
+        if (path.points.length < 3) continue;
+        const cp = path.points[1];
+        ctx.beginPath();
+        ctx.arc(ox + cp.x, oy + cp.y, 6, 0, Math.PI * 2);
+        ctx.fillStyle = path.color;
+        ctx.fill();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+    }
   }
 
   // --- 3D Projection (for video export) ---
+  // Shape drawing: supports 'pentagon', 'circle', 'heart'
+  _drawShape(ctx, cx, cy, r, rotation) {
+    const shape = this.dancerShape || 'pentagon';
+    if (shape === 'circle') {
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      return;
+    }
+    if (shape === 'heart') {
+      // Inverted heart: wide, standard proportions, tip = direction
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(rotation + Math.PI);
+      const w = r * 1.2;
+      const h = r * 0.85;
+      ctx.moveTo(0, h); // bottom tip
+      ctx.bezierCurveTo(w * 0.3, h * 0.6, w, h * 0.1, w, -h * 0.35);
+      ctx.bezierCurveTo(w, -h * 0.85, w * 0.5, -h, 0, -h * 0.5);
+      ctx.bezierCurveTo(-w * 0.5, -h, -w, -h * 0.85, -w, -h * 0.35);
+      ctx.bezierCurveTo(-w, h * 0.1, -w * 0.3, h * 0.6, 0, h);
+      ctx.closePath();
+      ctx.restore();
+      return;
+    }
+    // Default: house pentagon (pointy top = direction, wider body)
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(rotation);
+    ctx.moveTo(0, -r);
+    ctx.lineTo(r * 0.95, -r * 0.2);
+    ctx.lineTo(r * 0.95, r * 0.8);
+    ctx.lineTo(-r * 0.95, r * 0.8);
+    ctx.lineTo(-r * 0.95, -r * 0.2);
+    ctx.closePath();
+    ctx.restore();
+  }
+
   _project3D(x, y) {
     const angle = 30 * (Math.PI / 180);
     const projectedY = y * Math.cos(angle);
@@ -300,11 +446,82 @@ export class StageRenderer {
     return -1;
   }
 
+  // Waypoint hit test (returns {dancerIndex, waypointIndex} or null)
+  hitTestWaypoint(canvasX, canvasY) {
+    if (!this._waypointPaths) return null;
+    for (const path of this._waypointPaths) {
+      // Skip start (index 0) and end (last) — only intermediate waypoints
+      for (let j = 1; j < path.points.length - 1; j++) {
+        const wp = path.points[j];
+        const dx = (WING_SIZE + HALF_W + wp.x) - canvasX;
+        const dy = (WING_SIZE + HALF_H + wp.y) - canvasY;
+        if (dx * dx + dy * dy <= 144) { // 12px radius for easier clicking
+          return { dancerIndex: path.dancerIndex, waypointIndex: j - 1 }; // j-1 because points[0] is start
+        }
+      }
+    }
+    return null;
+  }
+
+  // Find closest path segment for adding waypoint
+  findClosestPath(canvasX, canvasY) {
+    if (!this._waypointPaths) return null;
+    const px = canvasX - WING_SIZE - HALF_W;
+    const py = canvasY - WING_SIZE - HALF_H;
+    let bestDist = 20; // max distance in px
+    let bestResult = null;
+
+    for (const path of this._waypointPaths) {
+      for (let j = 0; j < path.points.length - 1; j++) {
+        const a = path.points[j];
+        const b = path.points[j + 1];
+        // Point-to-segment distance
+        const abx = b.x - a.x, aby = b.y - a.y;
+        const apx = px - a.x, apy = py - a.y;
+        const t = Math.max(0, Math.min(1, (apx * abx + apy * aby) / (abx * abx + aby * aby || 1)));
+        const projX = a.x + t * abx, projY = a.y + t * aby;
+        const dist = Math.sqrt((px - projX) ** 2 + (py - projY) ** 2);
+        if (dist < bestDist) {
+          bestDist = dist;
+          // Calculate t value for the waypoint (interpolate between segment t values)
+          const segStartT = j === 0 ? 0 : path.points[j].t;
+          const segEndT = j === path.points.length - 2 ? 1 : path.points[j + 1].t;
+          const wpT = segStartT + t * (segEndT - segStartT);
+          bestResult = { dancerIndex: path.dancerIndex, x: Math.round(px), y: Math.round(py), t: wpT, segIndex: j };
+        }
+      }
+    }
+    return bestResult;
+  }
+
   // --- Mouse & Touch Events ---
   _setupEvents() {
     this.canvas.addEventListener('mousedown', (e) => this._onMouseDown(e));
-    this.canvas.addEventListener('mousemove', (e) => this._onMouseMove(e));
-    this.canvas.addEventListener('mouseup', (e) => this._onMouseUp(e));
+    document.addEventListener('mousemove', (e) => this._onMouseMove(e));
+    document.addEventListener('mouseup', (e) => this._onMouseUp(e));
+
+    // Mouse wheel on dancer: rotate direction
+    this.canvas.addEventListener('wheel', (e) => {
+      if (!this._positions || !this._dancers) return;
+      const { x, y } = this._getCanvasPos(e);
+      const hit = this.hitTest(x, y, this._positions);
+      if (hit >= 0) {
+        e.preventDefault();
+        const delta = e.deltaY > 0 ? 15 : -15;
+        this.onDancerRotate?.(hit, delta);
+      }
+    }, { passive: false });
+
+    // Right click on waypoint: reset (cancel any active drag)
+    this.canvas.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      this._draggingWaypoint = null;
+      const { x, y } = this._getCanvasPos(e);
+      const wpHit = this.hitTestWaypoint(x, y);
+      if (wpHit) {
+        this.onWaypointReset?.(wpHit.dancerIndex);
+      }
+    });
 
     // Touch support
     this.canvas.addEventListener('touchstart', (e) => {
@@ -341,7 +558,16 @@ export class StageRenderer {
 
   _onMouseDown(e) {
     if (!this._positions || !this._dancers) return;
+    if (this.is3D || this.isRotated) return;
     const { x, y } = this._getCanvasPos(e);
+
+    // Check waypoint hit first
+    const wpHit = this.hitTestWaypoint(x, y);
+    if (wpHit) {
+      this._draggingWaypoint = { ...wpHit, offsetX: 0, offsetY: 0 };
+      return;
+    }
+
     const hit = this.hitTest(x, y, this._positions);
 
     if (hit >= 0) {
@@ -371,6 +597,9 @@ export class StageRenderer {
           this._selectedDancers.add(hit);
         }
         this.onDancerSelect?.(hit);
+        if (this._dancers && this._positions) {
+          this.drawFrame(this._dancers, this._positions);
+        }
       }
     } else {
       if (!e.shiftKey) {
@@ -384,6 +613,13 @@ export class StageRenderer {
 
   _onMouseMove(e) {
     const { x, y } = this._getCanvasPos(e);
+
+    if (this._draggingWaypoint) {
+      const newX = x - WING_SIZE - HALF_W;
+      const newY = y - WING_SIZE - HALF_H;
+      this.onWaypointDrag?.(this._draggingWaypoint.dancerIndex, this._draggingWaypoint.waypointIndex, newX, newY);
+      return;
+    }
 
     if (this._dragging) {
       const newX = x - this._dragging.offsetX - WING_SIZE - HALF_W;
@@ -402,6 +638,15 @@ export class StageRenderer {
   }
 
   _onMouseUp(e) {
+    if (this._draggingWaypoint) {
+      const { x, y } = this._getCanvasPos(e);
+      const newX = x - WING_SIZE - HALF_W;
+      const newY = y - WING_SIZE - HALF_H;
+      this.onWaypointDragEnd?.(this._draggingWaypoint.dancerIndex, this._draggingWaypoint.waypointIndex, newX, newY);
+      this._draggingWaypoint = null;
+      return;
+    }
+
     if (this._dragging) {
       const { x, y } = this._getCanvasPos(e);
       const newX = x - this._dragging.offsetX - WING_SIZE - HALF_W;
@@ -452,6 +697,10 @@ export class StageRenderer {
   onDancerSelect = null;
   onDancerDrag = null;
   onDancerDragEnd = null;
+  onWaypointDrag = null;
+  onWaypointDragEnd = null;
+  onWaypointReset = null;
+  onDancerRotate = null;
 }
 
 function parseColor(hex) {
