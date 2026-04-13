@@ -9,6 +9,14 @@ export function pushState(snapshot) {
   redoStack = [];
 }
 
+export function replaceState(snapshot) {
+  if (undoStack.length > 0) {
+    undoStack[undoStack.length - 1] = JSON.stringify(snapshot);
+  } else {
+    pushState(snapshot);
+  }
+}
+
 export function undo() {
   if (undoStack.length === 0) return null;
   const current = undoStack.pop();

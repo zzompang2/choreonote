@@ -14,14 +14,17 @@ export class StageRenderer {
     this._drawGridCache();
 
     this.is3D = false;
+    this.isRotated = false;
     this.isSnap = false;
-    this.showNames = true;
+    this.showNames = false;
+    this.showNumbers = true;
     this.gridGap = GRID_GAP;
     this.dancerShape = 'pentagon'; // 'pentagon', 'circle', 'heart'
     this.audienceDirection = 'top'; // 'top' or 'bottom'
 
     // Drag state
     this._dragging = null; // { dancerIndex, startX, startY, offsetX, offsetY }
+    this._draggingRotate = null; // { dancerIndex, centerX, centerY }
     this._boxSelect = null; // { startX, startY, endX, endY }
     this._selectedDancers = new Set();
 
@@ -205,7 +208,7 @@ export class StageRenderer {
       ctx.globalAlpha = isOffstage ? 0.4 : 1.0;
 
       // Compensate CSS transforms so dancers appear upright
-      const needsCompensation = this.isRotated || this.is3D;
+      const needsCompensation = !this._force2DRender && (this.isRotated || this.is3D);
       if (needsCompensation) {
         ctx.save();
         ctx.translate(screenX, screenY);
@@ -219,7 +222,7 @@ export class StageRenderer {
         ctx.translate(-screenX, -screenY);
       }
 
-      if (this.is3D) {
+      if (this.is3D && !this._force2DRender) {
         // 3D mode: simple person silhouette
         // Base position = screenY, figure extends upward
         const r = radius;
@@ -278,7 +281,8 @@ export class StageRenderer {
         ctx.fill();
       } else {
         // 2D mode: shape with direction
-        const angle = pos.angle || 0;
+        // In rotated mode, compensation flips 180° so add 180° to angle to counteract
+        const angle = (pos.angle || 0) + (this.isRotated ? 180 : 0);
         const rad = angle * Math.PI / 180;
 
         // Shadow
@@ -295,7 +299,7 @@ export class StageRenderer {
       }
 
       if (isSelected) {
-        if (this.is3D) {
+        if (this.is3D && !this._force2DRender) {
           // Highlight around head
           const headY = screenY - radius * 3.2 - radius * 0.7 * 0.8;
           ctx.beginPath();
@@ -304,31 +308,50 @@ export class StageRenderer {
           ctx.lineWidth = 2;
           ctx.stroke();
         } else {
-          const angle = pos.angle || 0;
+          const angle = (pos.angle || 0) + (this.isRotated ? 180 : 0);
           const rad = angle * Math.PI / 180;
           ctx.beginPath();
           this._drawShape(ctx, screenX, screenY, radius + 2, rad);
           ctx.strokeStyle = '#ffffff';
           ctx.lineWidth = 2;
           ctx.stroke();
+
+          // Direction handle (line + circle) pointing in dancer's facing direction
+          if (!this.is3D && !this.isRotated) {
+            const handleLen = radius + 14;
+            const handleR = 4;
+            const hx = screenX + Math.sin(rad) * handleLen;
+            const hy = screenY - Math.cos(rad) * handleLen;
+            ctx.beginPath();
+            ctx.moveTo(screenX, screenY);
+            ctx.lineTo(hx, hy);
+            ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.arc(hx, hy, handleR, 0, Math.PI * 2);
+            ctx.fillStyle = '#ffffff';
+            ctx.fill();
+          }
         }
       }
 
-      // Name/index label: prefer short unique label
-      let label;
-      if (!this.showNames) {
+      // Label: number, name, or none
+      let label = '';
+      let isNumber = false;
+      if (this.showNumbers) {
         label = String(i + 1);
-      } else {
-        // If name matches "댄서N" pattern, show just the number for clarity
+        isNumber = true;
+      } else if (this.showNames) {
         const numMatch = d.name.match(/\d+$/);
         label = (numMatch && d.name.length > 3) ? numMatch[0] : d.name.slice(0, 3);
       }
+      if (!label) { /* skip label drawing */ } else {
       ctx.fillStyle = isLightColor(d.color) ? (this._stageColor || '#1a1a2e') : '#ffffff';
-      // 3D: label in body center, 2D: label in circle center
+      const use3D = this.is3D && !this._force2DRender;
       const bodyCenter = screenY - radius * 3.2 * 0.45;
-      const labelY = this.is3D ? bodyCenter : screenY;
-      const isNumber = !this.showNames;
-      const fontSize = this.is3D
+      const labelY = use3D ? bodyCenter : screenY;
+      const fontSize = use3D
         ? Math.round(radius * (isNumber ? 1.0 : 0.75))
         : Math.round(radius * (isNumber ? 1.1 : 0.8));
       ctx.font = `bold ${fontSize}px sans-serif`;
@@ -336,6 +359,7 @@ export class StageRenderer {
       ctx.textBaseline = 'middle';
       const labelOffset = isNumber ? fontSize * 0.15 : 0;
       ctx.fillText(label, screenX, labelY + labelOffset);
+      } // end label block
 
       if (needsCompensation) {
         ctx.restore();
@@ -453,6 +477,27 @@ export class StageRenderer {
     return -1;
   }
 
+  // Direction handle hit test (returns dancerIndex or -1)
+  hitTestRotateHandle(canvasX, canvasY) {
+    if (this.is3D || this.isRotated) return -1;
+    if (!this._positions || !this._dancers) return -1;
+    const handleLen = DANCER_RADIUS + 14;
+    const hitR = 8; // generous hit area
+    for (const i of this._selectedDancers) {
+      const pos = this._positions[i];
+      if (!pos) continue;
+      const cx = WING_SIZE + HALF_W + pos.x;
+      const cy = WING_SIZE + HALF_H + pos.y;
+      const rad = (pos.angle || 0) * Math.PI / 180;
+      const hx = cx + Math.sin(rad) * handleLen;
+      const hy = cy - Math.cos(rad) * handleLen;
+      const dx = hx - canvasX;
+      const dy = hy - canvasY;
+      if (dx * dx + dy * dy <= hitR * hitR) return i;
+    }
+    return -1;
+  }
+
   // Waypoint hit test (returns {dancerIndex, waypointIndex} or null)
   hitTestWaypoint(canvasX, canvasY) {
     if (!this._waypointPaths) return null;
@@ -507,21 +552,29 @@ export class StageRenderer {
     document.addEventListener('mousemove', (e) => this._onMouseMove(e));
     document.addEventListener('mouseup', (e) => this._onMouseUp(e));
 
-    // Mouse wheel on dancer: rotate direction
+    // Mouse wheel on selected dancers: rotate direction (debounced snapshot)
+    let _wheelRotateTimer = null;
     this.canvas.addEventListener('wheel', (e) => {
       if (!this._positions || !this._dancers) return;
+      if (this._selectedDancers.size === 0) return;
       const { x, y } = this._getCanvasPos(e);
       const hit = this.hitTest(x, y, this._positions);
-      if (hit >= 0) {
+      if (hit >= 0 && this._selectedDancers.has(hit)) {
         e.preventDefault();
         const delta = e.deltaY > 0 ? 15 : -15;
-        this.onDancerRotate?.(hit, delta);
+        for (const idx of this._selectedDancers) {
+          this.onDancerRotate?.(idx, delta);
+        }
+        clearTimeout(_wheelRotateTimer);
+        _wheelRotateTimer = setTimeout(() => this.onDancerRotateEnd?.(hit), 400);
       }
     }, { passive: false });
 
-    // Right click on waypoint: reset (cancel any active drag)
-    this.canvas.addEventListener('contextmenu', (e) => {
-      e.preventDefault();
+    // Prevent context menu on canvas
+    this.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
+    // Double-click on waypoint: reset
+    this.canvas.addEventListener('dblclick', (e) => {
       this._draggingWaypoint = null;
       const { x, y } = this._getCanvasPos(e);
       const wpHit = this.hitTestWaypoint(x, y);
@@ -530,19 +583,42 @@ export class StageRenderer {
       }
     });
 
-    // Touch support
+    // Touch support: two-finger tap = shift key (multi-select) + long press = waypoint reset
+    let _longPressTimer = null;
+    let _longPressFired = false;
     this.canvas.addEventListener('touchstart', (e) => {
       e.preventDefault();
-      this._onMouseDown(this._touchToMouse(e));
+      _longPressFired = false;
+      const touch = e.touches[0];
+      const pos = this._getCanvasPos({ clientX: touch.clientX, clientY: touch.clientY });
+      _longPressTimer = setTimeout(() => {
+        const wpHit = this.hitTestWaypoint(pos.x, pos.y);
+        if (wpHit) {
+          _longPressFired = true;
+          this._draggingWaypoint = null;
+          this.onWaypointReset?.(wpHit.dancerIndex);
+        }
+      }, 500);
+      const mouseEvt = this._touchToMouse(e);
+      if (e.touches.length >= 2) {
+        mouseEvt.shiftKey = true;
+      }
+      this._onMouseDown(mouseEvt);
     }, { passive: false });
-    this.canvas.addEventListener('touchmove', (e) => {
-      e.preventDefault();
-      this._onMouseMove(this._touchToMouse(e));
+    document.addEventListener('touchmove', (e) => {
+      if (_longPressTimer) { clearTimeout(_longPressTimer); _longPressTimer = null; }
+      if (this._dragging || this._draggingWaypoint || this._draggingRotate || this._boxSelect) {
+        e.preventDefault();
+        this._onMouseMove(this._touchToMouse(e));
+      }
     }, { passive: false });
-    this.canvas.addEventListener('touchend', (e) => {
-      e.preventDefault();
-      this._onMouseUp(this._touchToMouse(e, true));
-    }, { passive: false });
+    document.addEventListener('touchend', (e) => {
+      if (_longPressTimer) { clearTimeout(_longPressTimer); _longPressTimer = null; }
+      if (!_longPressFired) {
+        this._onMouseUp(this._touchToMouse(e, true));
+      }
+      _longPressFired = false;
+    });
   }
 
   _touchToMouse(e, isEnd = false) {
@@ -568,7 +644,19 @@ export class StageRenderer {
     if (this.is3D || this.isRotated) return;
     const { x, y } = this._getCanvasPos(e);
 
-    // Check waypoint hit first
+    // Check rotation handle hit first
+    const rotHit = this.hitTestRotateHandle(x, y);
+    if (rotHit >= 0) {
+      const pos = this._positions[rotHit];
+      this._draggingRotate = {
+        dancerIndex: rotHit,
+        centerX: WING_SIZE + HALF_W + pos.x,
+        centerY: WING_SIZE + HALF_H + pos.y,
+      };
+      return;
+    }
+
+    // Check waypoint hit
     const wpHit = this.hitTestWaypoint(x, y);
     if (wpHit) {
       this._draggingWaypoint = { ...wpHit, offsetX: 0, offsetY: 0 };
@@ -621,6 +709,18 @@ export class StageRenderer {
   _onMouseMove(e) {
     const { x, y } = this._getCanvasPos(e);
 
+    if (this._draggingRotate) {
+      const dx = x - this._draggingRotate.centerX;
+      const dy = y - this._draggingRotate.centerY;
+      let angleDeg = Math.atan2(dx, -dy) * 180 / Math.PI; // 0° = up
+      // Snap to 15° increments
+      angleDeg = Math.round(angleDeg / 15) * 15;
+      // Normalize to 0-360
+      angleDeg = ((angleDeg % 360) + 360) % 360;
+      this.onDancerRotate?.(this._draggingRotate.dancerIndex, angleDeg, true);
+      return;
+    }
+
     if (this._draggingWaypoint) {
       const newX = x - WING_SIZE - HALF_W;
       const newY = y - WING_SIZE - HALF_H;
@@ -645,6 +745,12 @@ export class StageRenderer {
   }
 
   _onMouseUp(e) {
+    if (this._draggingRotate) {
+      this.onDancerRotateEnd?.(this._draggingRotate.dancerIndex);
+      this._draggingRotate = null;
+      return;
+    }
+
     if (this._draggingWaypoint) {
       const { x, y } = this._getCanvasPos(e);
       const newX = x - WING_SIZE - HALF_W;
@@ -708,6 +814,7 @@ export class StageRenderer {
   onWaypointDragEnd = null;
   onWaypointReset = null;
   onDancerRotate = null;
+  onDancerRotateEnd = null;
 }
 
 function parseColor(hex) {
