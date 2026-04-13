@@ -860,8 +860,8 @@ body {
 .formation-box {
   position: absolute;
   height: 44px;
-  background: rgba(78, 205, 196, 0.2);
-  border: 1px solid var(--accent);
+  background: rgba(78, 205, 196, 0.12);
+  border: 1px solid rgba(78, 205, 196, 0.5);
   border-radius: 6px;
   cursor: grab;
   display: flex;
@@ -870,6 +870,12 @@ body {
   font-size: 12px;
   color: var(--text-primary);
   user-select: none;
+}
+
+.formation-box--active {
+  background: rgba(78, 205, 196, 0.35);
+  border-color: var(--accent);
+  box-shadow: 0 0 8px rgba(78, 205, 196, 0.3);
 }
 
 .formation-box--selected {

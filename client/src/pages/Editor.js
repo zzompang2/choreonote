@@ -700,7 +700,7 @@ function renderFormationBoxes(formationsEl) {
   formationsEl.innerHTML = '';
   noteData.formations.forEach((f, i) => {
     const box = document.createElement('div');
-    box.className = 'formation-box' + (selectedFormations.has(i) ? ' formation-box--selected' : '');
+    box.className = 'formation-box' + (selectedFormations.has(i) ? ' formation-box--selected' : '') + (i === selectedFormation ? ' formation-box--active' : '');
     box.style.left = `${TIMELINE_PADDING + f.startTime / 1000 * pixelsPerSec}px`;
     box.style.width = `${f.duration / 1000 * pixelsPerSec}px`;
     box.textContent = `${i + 1}`;
