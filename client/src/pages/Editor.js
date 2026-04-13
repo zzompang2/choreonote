@@ -335,6 +335,27 @@ function setupPlayback(container) {
     if (e.code === 'Backspace') {
       e.preventDefault();
     }
+    if (e.code === 'Delete' || (e.code === 'Backspace' && !e.ctrlKey && !e.metaKey)) {
+      if (selectedFormations.size > 0 && noteData.formations.length > 1 && !engine.isPlaying) {
+        const toDelete = [...selectedFormations].sort((a, b) => b - a);
+        const remaining = noteData.formations.length - toDelete.length;
+        if (remaining >= 1) {
+          for (const idx of toDelete) {
+            noteData.formations.splice(idx, 1);
+          }
+          selectedFormations.clear();
+          selectedFormation = Math.min(selectedFormation, noteData.formations.length - 1);
+          if (selectedFormation >= 0) selectedFormations.add(selectedFormation);
+          engine.setFormations(noteData.formations, noteData.dancers);
+          const formationsEl = container.querySelector('#timeline-formations');
+          renderFormationBoxes(formationsEl);
+          updateStage(); saveSnapshot();
+          showToast(`대형 ${toDelete.length}개 삭제됨`);
+        } else {
+          showToast('최소 1개의 대형이 필요합니다');
+        }
+      }
+    }
     if ((e.ctrlKey || e.metaKey) && e.code === 'KeyZ' && !e.shiftKey) {
       e.preventDefault();
       const snapshot = undo();
@@ -762,14 +783,16 @@ function setupFormationDrag(el, fIdx, mode) {
       const dx = cx - startX;
       const dtMs = Math.round(dx / pixelsPerSec * 1000 / TIME_UNIT) * TIME_UNIT;
 
+      const maxTime = noteData.note.duration;
       if (mode === 'body') {
         if (Object.keys(origStarts).length > 1) {
           // Multi-drag: move all selected formations
           for (const [idx, orig] of Object.entries(origStarts)) {
-            noteData.formations[Number(idx)].startTime = Math.max(0, orig + dtMs);
+            const f = noteData.formations[Number(idx)];
+            f.startTime = clamp(orig + dtMs, 0, maxTime - f.duration);
           }
         } else {
-          targetFormation.startTime = Math.max(0, origStart + dtMs);
+          targetFormation.startTime = clamp(origStart + dtMs, 0, maxTime - targetFormation.duration);
         }
       } else if (mode === 'left') {
         const newStart = origStart + dtMs;
@@ -780,7 +803,8 @@ function setupFormationDrag(el, fIdx, mode) {
         }
       } else if (mode === 'right') {
         const newDur = origDuration + dtMs;
-        if (newDur >= TIME_UNIT) {
+        const endTime = targetFormation.startTime + newDur;
+        if (newDur >= TIME_UNIT && endTime <= maxTime) {
           targetFormation.duration = newDur;
         }
       }
@@ -2257,6 +2281,7 @@ function toggleShortcutHelp(container) {
         <div class="shortcut-row"><kbd>Ctrl+C</kbd><span>대형 복사</span></div>
         <div class="shortcut-row"><kbd>Ctrl+V</kbd><span>대형 붙여넣기</span></div>
         <div class="shortcut-row"><kbd>Shift+클릭</kbd><span>대형 다중 선택</span></div>
+        <div class="shortcut-row"><kbd>Delete</kbd><span>선택된 대형 삭제</span></div>
         <div class="shortcut-row"><kbd>?</kbd><span>이 도움말 열기/닫기</span></div>
       </div>
       <button class="btn btn--ghost shortcut-modal__close" id="shortcut-close">닫기</button>
