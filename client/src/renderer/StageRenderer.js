@@ -109,7 +109,7 @@ export class StageRenderer {
       const rowY = isTop
         ? WING_SIZE - stageGap - seatH - r * (seatH + 5)
         : WING_SIZE + STAGE_HEIGHT + stageGap + r * (seatH + 5);
-      const alpha = r === 0 ? 0.2 : 0.12;
+      const alpha = r === 0 ? 0.12 : 0.06;
       ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
       for (let c = 0; c < cols; c++) {
         const sx = startX + c * (seatW + seatGap);
