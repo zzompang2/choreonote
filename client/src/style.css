@@ -1277,6 +1277,7 @@ body {
 
 /* --- Demo Stage Animation --- */
 .landing__demo {
+  width: 100%;
   max-width: 520px;
   margin: 0 auto;
   padding: 0 24px 60px;
@@ -1337,6 +1338,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 0;
+  width: 100%;
   max-width: 520px;
   margin: 0 auto;
   padding: 0 24px 60px;
