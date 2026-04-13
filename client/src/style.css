@@ -1286,10 +1286,11 @@ body {
   position: relative;
   width: 100%;
   aspect-ratio: 3 / 2;
-  background: var(--bg-card);
+  background: var(--stage-bg);
   border-radius: 12px;
   border: 1px solid var(--border-strong);
   overflow: hidden;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.4);
 }
 
 .demo-stage__label {
@@ -1306,8 +1307,8 @@ body {
 
 .demo-dancer {
   position: absolute;
-  width: 28px;
-  height: 28px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   background: var(--accent);
   display: flex;
@@ -1317,6 +1318,7 @@ body {
   left: var(--from-x);
   top: var(--from-y);
   transform: translate(-50%, -50%);
+  box-shadow: 0 0 12px rgba(78, 205, 196, 0.4);
 }
 
 .demo-dancer span {
