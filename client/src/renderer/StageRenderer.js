@@ -96,9 +96,9 @@ export class StageRenderer {
 
     // Audience indicator: rows of seat rectangles
     const isTop = this.audienceDirection === 'top';
-    const seatW = 24;
+    const seatW = 32;
     const seatH = 18;
-    const seatGap = 6;
+    const seatGap = 5;
     const cols = Math.floor((STAGE_WIDTH - seatGap) / (seatW + seatGap));
     const rows = 2;
     const totalW = cols * seatW + (cols - 1) * seatGap;
