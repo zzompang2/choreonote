@@ -1220,7 +1220,7 @@ body {
   padding: 16px 32px;
   position: sticky;
   top: 0;
-  background: rgba(15, 15, 26, 0.9);
+  background: color-mix(in srgb, var(--bg-primary) 90%, transparent);
   backdrop-filter: blur(10px);
   z-index: 100;
   border-bottom: 1px solid var(--border);
