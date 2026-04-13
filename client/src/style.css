@@ -406,15 +406,18 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.15s;
+  transition: background 0.15s, color 0.15s;
+  color: var(--text-secondary);
 }
 
 .sidebar-rail__icon:hover {
   background: var(--border-strong);
+  color: var(--text-primary);
 }
 
 .sidebar-rail__icon--active {
   background: rgba(78, 205, 196, 0.2);
+  color: var(--accent);
 }
 
 .sidebar__tabs {
