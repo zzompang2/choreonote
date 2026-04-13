@@ -314,8 +314,15 @@ export class StageRenderer {
         }
       }
 
-      // Name/index label
-      const label = this.showNames ? d.name.slice(0, 3) : String(i + 1);
+      // Name/index label: prefer short unique label
+      let label;
+      if (!this.showNames) {
+        label = String(i + 1);
+      } else {
+        // If name matches "댄서N" pattern, show just the number for clarity
+        const numMatch = d.name.match(/\d+$/);
+        label = (numMatch && d.name.length > 3) ? numMatch[0] : d.name.slice(0, 3);
+      }
       ctx.fillStyle = isLightColor(d.color) ? (this._stageColor || '#1a1a2e') : '#ffffff';
       // 3D: label in body center, 2D: label in circle center
       const bodyCenter = screenY - radius * 3.2 * 0.45;
