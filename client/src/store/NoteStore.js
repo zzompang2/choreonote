@@ -94,12 +94,20 @@ export const NoteStore = {
     };
   },
 
-  async saveNote(noteId, { dancers, formations }) {
+  async saveNote(noteId, { dancers, formations, stageWidth, stageHeight, dancerScale, audienceDirection, dancerShape, gridGap, showWings }) {
     return db.transaction(
       'rw',
       db.notes, db.dancers, db.formations, db.positions,
       async () => {
-        await db.notes.update(noteId, { editedAt: new Date() });
+        const noteUpdate = { editedAt: new Date() };
+        if (stageWidth != null) noteUpdate.stageWidth = stageWidth;
+        if (stageHeight != null) noteUpdate.stageHeight = stageHeight;
+        if (dancerScale != null) noteUpdate.dancerScale = dancerScale;
+        if (audienceDirection != null) noteUpdate.audienceDirection = audienceDirection;
+        if (dancerShape != null) noteUpdate.dancerShape = dancerShape;
+        if (gridGap != null) noteUpdate.gridGap = gridGap;
+        if (showWings != null) noteUpdate.showWings = showWings;
+        await db.notes.update(noteId, noteUpdate);
 
         // Clear and rewrite dancers
         await db.dancers.where('noteId').equals(noteId).delete();
@@ -193,7 +201,13 @@ export const NoteStore = {
 
     const exportData = {
       version: 2,
-      note: { title: data.note.title, duration: data.note.duration, musicName: data.note.musicName },
+      note: {
+        title: data.note.title, duration: data.note.duration, musicName: data.note.musicName,
+        stageWidth: data.note.stageWidth, stageHeight: data.note.stageHeight,
+        dancerScale: data.note.dancerScale, audienceDirection: data.note.audienceDirection,
+        dancerShape: data.note.dancerShape, gridGap: data.note.gridGap,
+        showWings: data.note.showWings,
+      },
       dancers: data.dancers.map((d) => ({ name: d.name, color: d.color })),
       formations: data.formations.map((f) => ({
         startTime: f.startTime,
@@ -226,6 +240,13 @@ export const NoteStore = {
         musicName: data.note.musicName,
         musicBlobId: null,
         duration: data.note.duration || 30000,
+        stageWidth: data.note.stageWidth || undefined,
+        stageHeight: data.note.stageHeight || undefined,
+        dancerScale: data.note.dancerScale || undefined,
+        audienceDirection: data.note.audienceDirection || undefined,
+        dancerShape: data.note.dancerShape || undefined,
+        gridGap: data.note.gridGap || undefined,
+        showWings: data.note.showWings != null ? data.note.showWings : undefined,
         createdAt: now,
         editedAt: now,
       });
@@ -290,6 +311,27 @@ export const NoteStore = {
     };
 
     return this._importV2(v2Data);
+  },
+
+  async getThumbnailData(noteId) {
+    const dancers = await db.dancers.where('noteId').equals(noteId).sortBy('order');
+    if (dancers.length === 0) return null;
+
+    const firstFormation = await db.formations.where('noteId').equals(noteId).sortBy('order');
+    if (firstFormation.length === 0) return null;
+
+    const positions = await db.positions.where('formationId').equals(firstFormation[0].id).toArray();
+    const note = await db.notes.get(noteId);
+
+    return {
+      dancers,
+      positions,
+      stageWidth: note?.stageWidth || 600,
+      stageHeight: note?.stageHeight || 400,
+      dancerShape: note?.dancerShape || 'pentagon',
+      dancerScale: note?.dancerScale || 1.0,
+      showWings: note?.showWings !== false,
+    };
   },
 
   async requestPersistence() {

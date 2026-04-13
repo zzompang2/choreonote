@@ -21,12 +21,15 @@ export class StageRenderer {
     this.gridGap = GRID_GAP;
     this.dancerShape = 'pentagon'; // 'pentagon', 'circle', 'heart'
     this.audienceDirection = 'top'; // 'top' or 'bottom'
+    this.dancerScale = 1.0; // 0.5 ~ 2.0
+    this.showWings = true; // show offstage wing areas
 
     // Drag state
     this._dragging = null; // { dancerIndex, startX, startY, offsetX, offsetY }
     this._draggingRotate = null; // { dancerIndex, centerX, centerY }
     this._boxSelect = null; // { startX, startY, endX, endY }
     this._selectedDancers = new Set();
+    this._swapHighlight = new Set(); // separate highlight for swap mode (no handle, amber)
 
     this._setupEvents();
   }
@@ -50,19 +53,27 @@ export class StageRenderer {
     const stageColor = styles.getPropertyValue('--stage-bg').trim() || '#1a1a2e';
     this._stageColor = stageColor;
 
-    ctx.fillStyle = wingColor;
-    ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+    if (this.showWings) {
+      ctx.fillStyle = wingColor;
+      ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+    } else {
+      const bgColor = styles.getPropertyValue('--bg-primary').trim() || '#0f0f1a';
+      ctx.fillStyle = bgColor;
+      ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+    }
 
     // Stage background
     ctx.fillStyle = stageColor;
     ctx.fillRect(WING_SIZE, WING_SIZE, STAGE_WIDTH, STAGE_HEIGHT);
 
     // Stage border
-    ctx.strokeStyle = 'rgba(255,255,255,0.25)';
-    ctx.lineWidth = 1;
-    ctx.setLineDash([6, 4]);
-    ctx.strokeRect(WING_SIZE, WING_SIZE, STAGE_WIDTH, STAGE_HEIGHT);
-    ctx.setLineDash([]);
+    if (this.showWings) {
+      ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([6, 4]);
+      ctx.strokeRect(WING_SIZE, WING_SIZE, STAGE_WIDTH, STAGE_HEIGHT);
+      ctx.setLineDash([]);
+    }
 
     // Grid lines (inside stage only)
     const ox = WING_SIZE;
@@ -97,7 +108,8 @@ export class StageRenderer {
     ctx.lineTo(ox + STAGE_WIDTH, oy + HALF_H);
     ctx.stroke();
 
-    // Audience indicator: rows of seat rectangles
+    // Audience indicator: rows of seat rectangles (skip if 'none')
+    if (this.audienceDirection === 'none') return;
     const isTop = this.audienceDirection === 'top';
     const seatW = 32;
     const seatH = 18;
@@ -191,17 +203,18 @@ export class StageRenderer {
 
       let screenX = WING_SIZE + HALF_W + pos.x;
       let screenY = WING_SIZE + HALF_H + pos.y;
-      let radius = DANCER_RADIUS;
+      const scaledRadius = DANCER_RADIUS * this.dancerScale;
+      let radius = scaledRadius;
 
       // Check if dancer is offstage
       const isOffstage = Math.abs(pos.x) > HALF_W || Math.abs(pos.y) > HALF_H;
 
-      // 3D projection for video export
+      // 3D projection (video export only — UI uses CSS transform)
       if (this.is3D && this._projectionMode === 'render') {
         const projected = this._project3D(pos.x, pos.y);
         screenX = WING_SIZE + HALF_W + projected.x;
         screenY = WING_SIZE + HALF_H + projected.y;
-        radius = DANCER_RADIUS * projected.scale;
+        radius = scaledRadius * projected.scale;
       }
 
       const isSelected = this._selectedDancers.has(i);
@@ -212,9 +225,7 @@ export class StageRenderer {
       if (needsCompensation) {
         ctx.save();
         ctx.translate(screenX, screenY);
-        // Undo CSS rotateZ(180deg)
         if (this.isRotated) ctx.rotate(Math.PI);
-        // Undo CSS rotateX by scaling Y back (perspective approximation)
         if (this.is3D) {
           const angle = 55 * Math.PI / 180;
           ctx.scale(1, 1 / Math.cos(angle));
@@ -298,13 +309,15 @@ export class StageRenderer {
         ctx.fill();
       }
 
-      if (isSelected) {
+      const isSwapHighlighted = this._swapHighlight.has(i);
+      if (isSelected || isSwapHighlighted) {
+        const highlightColor = isSwapHighlighted ? '#F59E0B' : '#ffffff';
         if (this.is3D && !this._force2DRender) {
           // Highlight around head
           const headY = screenY - radius * 3.2 - radius * 0.7 * 0.8;
           ctx.beginPath();
           ctx.arc(screenX, headY, radius * 0.7 + 3, 0, Math.PI * 2);
-          ctx.strokeStyle = '#ffffff';
+          ctx.strokeStyle = highlightColor;
           ctx.lineWidth = 2;
           ctx.stroke();
         } else {
@@ -312,12 +325,12 @@ export class StageRenderer {
           const rad = angle * Math.PI / 180;
           ctx.beginPath();
           this._drawShape(ctx, screenX, screenY, radius + 2, rad);
-          ctx.strokeStyle = '#ffffff';
+          ctx.strokeStyle = highlightColor;
           ctx.lineWidth = 2;
           ctx.stroke();
 
-          // Direction handle (line + circle) pointing in dancer's facing direction
-          if (!this.is3D && !this.isRotated) {
+          // Direction handle (line + circle) — only for real selection, not swap
+          if (isSelected && !isSwapHighlighted && !this.is3D && !this.isRotated && !this._waypointPaths) {
             const handleLen = radius + 14;
             const handleR = 4;
             const hx = screenX + Math.sin(rad) * handleLen;
@@ -380,12 +393,13 @@ export class StageRenderer {
       ctx.setLineDash([]);
     }
 
-    // Draw waypoint dots on top of everything
-    if (this._waypointPaths) {
+    // Draw waypoint dots on top of everything (only for selected dancers)
+    if (this._waypointPaths && this._selectedDancers.size > 0) {
       const ox = WING_SIZE + HALF_W;
       const oy = WING_SIZE + HALF_H;
       for (const path of this._waypointPaths) {
         if (path.points.length < 3) continue;
+        if (!this._selectedDancers.has(path.dancerIndex)) continue;
         const cp = path.points[1];
         ctx.beginPath();
         ctx.arc(ox + cp.x, oy + cp.y, 6, 0, Math.PI * 2);
@@ -412,7 +426,7 @@ export class StageRenderer {
       ctx.translate(cx, cy);
       ctx.rotate(rotation + Math.PI);
       const w = r * 1.2;
-      const h = r * 0.85;
+      const h = r * 1.05;
       ctx.moveTo(0, h); // bottom tip
       ctx.bezierCurveTo(w * 0.3, h * 0.6, w, h * 0.1, w, -h * 0.35);
       ctx.bezierCurveTo(w, -h * 0.85, w * 0.5, -h, 0, -h * 0.5);
@@ -464,13 +478,21 @@ export class StageRenderer {
   }
 
   // --- Hit Test ---
+  // Minimum hit radius: at least 22 physical px converted to canvas coords
+  _minHitRadius() {
+    const minPhysical = 22;
+    return this._cssScale ? minPhysical * this._cssScale : DANCER_RADIUS;
+  }
+
   hitTest(canvasX, canvasY, positions) {
+    const r = Math.max(DANCER_RADIUS * this.dancerScale, this._minHitRadius());
+    const r2 = r * r;
     for (let i = positions.length - 1; i >= 0; i--) {
       const pos = positions[i];
       if (!pos) continue;
       const dx = (WING_SIZE + HALF_W + pos.x) - canvasX;
       const dy = (WING_SIZE + HALF_H + pos.y) - canvasY;
-      if (dx * dx + dy * dy <= DANCER_RADIUS * DANCER_RADIUS) {
+      if (dx * dx + dy * dy <= r2) {
         return i;
       }
     }
@@ -479,10 +501,11 @@ export class StageRenderer {
 
   // Direction handle hit test (returns dancerIndex or -1)
   hitTestRotateHandle(canvasX, canvasY) {
-    if (this.is3D || this.isRotated) return -1;
+    if (this.is3D || this.isRotated || this._waypointPaths) return -1;
     if (!this._positions || !this._dancers) return -1;
-    const handleLen = DANCER_RADIUS + 14;
-    const hitR = 8; // generous hit area
+    const minR = this._minHitRadius();
+    const handleLen = Math.max(DANCER_RADIUS * this.dancerScale, minR) + 14;
+    const hitR = Math.max(8 * this.dancerScale, minR * 0.6);
     for (const i of this._selectedDancers) {
       const pos = this._positions[i];
       if (!pos) continue;
@@ -500,14 +523,16 @@ export class StageRenderer {
 
   // Waypoint hit test (returns {dancerIndex, waypointIndex} or null)
   hitTestWaypoint(canvasX, canvasY) {
-    if (!this._waypointPaths) return null;
+    if (!this._waypointPaths || this._selectedDancers.size === 0) return null;
     for (const path of this._waypointPaths) {
+      if (!this._selectedDancers.has(path.dancerIndex)) continue;
       // Skip start (index 0) and end (last) — only intermediate waypoints
       for (let j = 1; j < path.points.length - 1; j++) {
         const wp = path.points[j];
         const dx = (WING_SIZE + HALF_W + wp.x) - canvasX;
         const dy = (WING_SIZE + HALF_H + wp.y) - canvasY;
-        if (dx * dx + dy * dy <= 144) { // 12px radius for easier clicking
+        const wpHitR = Math.max(12, this._minHitRadius());
+        if (dx * dx + dy * dy <= wpHitR * wpHitR) {
           return { dancerIndex: path.dancerIndex, waypointIndex: j - 1 }; // j-1 because points[0] is start
         }
       }
@@ -517,7 +542,7 @@ export class StageRenderer {
 
   // Find closest path segment for adding waypoint
   findClosestPath(canvasX, canvasY) {
-    if (!this._waypointPaths) return null;
+    if (!this._waypointPaths || this._selectedDancers.size === 0) return null;
     const px = canvasX - WING_SIZE - HALF_W;
     const py = canvasY - WING_SIZE - HALF_H;
     let bestDist = 20; // max distance in px
@@ -633,8 +658,9 @@ export class StageRenderer {
 
   _getCanvasPos(e) {
     const rect = this.canvas.getBoundingClientRect();
+    this._cssScale = CANVAS_WIDTH / rect.width; // cache for hit tests
     return {
-      x: (e.clientX - rect.left) * (CANVAS_WIDTH / rect.width),
+      x: (e.clientX - rect.left) * this._cssScale,
       y: (e.clientY - rect.top) * (CANVAS_HEIGHT / rect.height),
     };
   }
@@ -648,11 +674,20 @@ export class StageRenderer {
     const rotHit = this.hitTestRotateHandle(x, y);
     if (rotHit >= 0) {
       const pos = this._positions[rotHit];
-      this._draggingRotate = {
+      const info = {
         dancerIndex: rotHit,
         centerX: WING_SIZE + HALF_W + pos.x,
         centerY: WING_SIZE + HALF_H + pos.y,
+        startAngle: pos.angle || 0,
       };
+      // Multi-select: store initial angles for all selected dancers
+      if (this._selectedDancers.size > 1 && this._selectedDancers.has(rotHit)) {
+        info.startAngles = new Map();
+        for (const idx of this._selectedDancers) {
+          info.startAngles.set(idx, this._positions[idx]?.angle || 0);
+        }
+      }
+      this._draggingRotate = info;
       return;
     }
 
@@ -678,7 +713,7 @@ export class StageRenderer {
           this.drawFrame(this._dancers, this._positions);
         }
       } else {
-        // Normal click: start drag
+        // Normal click: prepare drag (actual drag starts after dead zone)
         const pos = this._positions[hit];
         this._dragging = {
           dancerIndex: hit,
@@ -686,6 +721,9 @@ export class StageRenderer {
           startY: WING_SIZE + HALF_H + pos.y,
           offsetX: x - (WING_SIZE + HALF_W + pos.x),
           offsetY: y - (WING_SIZE + HALF_H + pos.y),
+          originX: x,
+          originY: y,
+          started: false,
         };
         if (!this._selectedDancers.has(hit)) {
           this._selectedDancers.clear();
@@ -717,7 +755,16 @@ export class StageRenderer {
       angleDeg = Math.round(angleDeg / 15) * 15;
       // Normalize to 0-360
       angleDeg = ((angleDeg % 360) + 360) % 360;
-      this.onDancerRotate?.(this._draggingRotate.dancerIndex, angleDeg, true);
+      if (this._draggingRotate.startAngles) {
+        // Multi-select: apply same delta to all selected dancers
+        const delta = angleDeg - this._draggingRotate.startAngle;
+        for (const [idx, initAngle] of this._draggingRotate.startAngles) {
+          const newAngle = ((initAngle + delta) % 360 + 360) % 360;
+          this.onDancerRotate?.(idx, newAngle, true);
+        }
+      } else {
+        this.onDancerRotate?.(this._draggingRotate.dancerIndex, angleDeg, true);
+      }
       return;
     }
 
@@ -729,6 +776,14 @@ export class StageRenderer {
     }
 
     if (this._dragging) {
+      // Dead zone: require minimum movement before starting drag
+      if (!this._dragging.started) {
+        const dx = x - this._dragging.originX;
+        const dy = y - this._dragging.originY;
+        const threshold = Math.max(5, this._cssScale ? 5 * this._cssScale : 5);
+        if (dx * dx + dy * dy < threshold * threshold) return;
+        this._dragging.started = true;
+      }
       const newX = x - this._dragging.offsetX - WING_SIZE - HALF_W;
       const newY = y - this._dragging.offsetY - WING_SIZE - HALF_H;
       this.onDancerDrag?.(this._dragging.dancerIndex, newX, newY, this._selectedDancers);
@@ -761,16 +816,20 @@ export class StageRenderer {
     }
 
     if (this._dragging) {
-      const { x, y } = this._getCanvasPos(e);
-      const newX = x - this._dragging.offsetX - WING_SIZE - HALF_W;
-      const newY = y - this._dragging.offsetY - WING_SIZE - HALF_H;
-      this.onDancerDragEnd?.(this._dragging.dancerIndex, newX, newY, this._selectedDancers);
+      if (this._dragging.started) {
+        const { x, y } = this._getCanvasPos(e);
+        const newX = x - this._dragging.offsetX - WING_SIZE - HALF_W;
+        const newY = y - this._dragging.offsetY - WING_SIZE - HALF_H;
+        this.onDancerDragEnd?.(this._dragging.dancerIndex, newX, newY, this._selectedDancers);
+      }
       this._dragging = null;
     }
 
     if (this._boxSelect) {
       this._selectDancersInBox();
       this._boxSelect = null;
+      // Notify selection change for sidebar sync
+      this.onDancerSelect?.(-1);
       // Redraw to show selected dancers highlight
       if (this._dancers && this._positions) {
         this.drawFrame(this._dancers, this._positions);

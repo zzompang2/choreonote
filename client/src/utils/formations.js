@@ -82,8 +82,35 @@ export const PRESETS = {
   },
 };
 
+const CUSTOM_STORAGE_KEY = 'choreonote-custom-presets';
+
 export function getPresetNames() {
   return Object.keys(PRESETS);
+}
+
+export function getCustomPresets() {
+  try {
+    return JSON.parse(localStorage.getItem(CUSTOM_STORAGE_KEY)) || {};
+  } catch { return {}; }
+}
+
+export function saveCustomPreset(name, positions) {
+  const custom = getCustomPresets();
+  // Store relative positions (centered)
+  const minX = Math.min(...positions.map(p => p.x));
+  const maxX = Math.max(...positions.map(p => p.x));
+  const minY = Math.min(...positions.map(p => p.y));
+  const maxY = Math.max(...positions.map(p => p.y));
+  const cx = (minX + maxX) / 2;
+  const cy = (minY + maxY) / 2;
+  custom[name] = positions.map(p => ({ x: Math.round(p.x - cx), y: Math.round(p.y - cy) }));
+  localStorage.setItem(CUSTOM_STORAGE_KEY, JSON.stringify(custom));
+}
+
+export function deleteCustomPreset(name) {
+  const custom = getCustomPresets();
+  delete custom[name];
+  localStorage.setItem(CUSTOM_STORAGE_KEY, JSON.stringify(custom));
 }
 
 export function applyPreset(name, dancerCount, spacing, stageW = 300, stageH = 200) {

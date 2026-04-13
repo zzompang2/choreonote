@@ -5,7 +5,7 @@ import { VideoExporter } from '../engine/VideoExporter.js';
 import { navigate, setNavigationGuard, clearNavigationGuard } from '../utils/router.js';
 import { showToast } from '../utils/toast.js';
 import { pushState, replaceState, undo, redo, canUndo, canRedo, clearHistory } from '../utils/history.js';
-import { getPresetNames, applyPreset } from '../utils/formations.js';
+import { getPresetNames, applyPreset, getCustomPresets, saveCustomPreset, deleteCustomPreset } from '../utils/formations.js';
 import { toggleTheme, isLightMode } from '../utils/theme.js';
 import {
   PIXEL_PER_SEC, TIMELINE_PADDING, TIME_UNIT, WING_SIZE,
@@ -21,6 +21,8 @@ let selectedFormations = new Set([0]); // multi-select set
 let selectedTransition = null; // { fromIdx, toIdx } — selected gap between formations
 let currentMs = 0;
 let unsaved = false;
+let _rotationInProgress = false;
+let _snapshotDuringRotation = false;
 let swapMode = false;
 let audienceDirection = 'top';
 let pixelsPerSec = PIXEL_PER_SEC;
@@ -35,6 +37,10 @@ export async function renderEditor(container, noteId) {
     navigate('/dashboard');
     return;
   }
+
+  // Restore saved settings before building HTML / renderer
+  setStageSize(noteData.note.stageWidth || 600, noteData.note.stageHeight || 400);
+  audienceDirection = noteData.note.audienceDirection || 'top';
 
   container.innerHTML = buildEditorHTML(noteData);
 
@@ -57,6 +63,14 @@ export async function renderEditor(container, noteId) {
   // Init renderer
   const canvas = container.querySelector('#stage-canvas');
   renderer = new StageRenderer(canvas);
+
+  // Restore saved view settings
+  renderer.audienceDirection = audienceDirection;
+  if (noteData.note.dancerShape) renderer.dancerShape = noteData.note.dancerShape;
+  if (noteData.note.gridGap) renderer.gridGap = noteData.note.gridGap;
+  if (noteData.note.dancerScale) renderer.dancerScale = noteData.note.dancerScale;
+  if (noteData.note.showWings === false) renderer.showWings = false;
+  renderer._drawGridCache();
 
   // Fit canvas to available space (both width & height)
   fitStage = () => {
@@ -82,6 +96,7 @@ export async function renderEditor(container, noteId) {
   setupPlayback(container);
   setupTimeline(container);
   setupSidebar(container);
+  setupInspector(container);
   setupToolbar(container);
   setupHeader(container, noteId);
   setupSettings(container, noteId);
@@ -131,10 +146,59 @@ function buildEditorHTML(data) {
             <canvas id="stage-canvas" class="stage-canvas"></canvas>
           </div>
           <div class="stage-3d-banner" id="stage-3d-banner">미리보기 모드 — 클릭하면 편집 모드로</div>
+          <div class="stage-swap-banner" id="stage-swap-banner">교환 모드 — 두 댄서를 차례로 클릭</div>
         </div>
       </div>
 
       <div class="editor__sidebar" id="sidebar">
+
+        <div class="sidebar__panel sidebar__panel--hidden" id="panel-inspector">
+          <div class="sidebar__panel-title">
+            <span id="inspector-title">댄서 정보</span>
+          </div>
+          <div class="inspector-empty" id="inspector-empty">
+            <div class="inspector-empty__icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.4"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+            <div class="inspector-empty__text">스테이지에서 댄서를 선택하세요</div>
+          </div>
+          <div class="sidebar__scroll sidebar__scroll--hidden" id="inspector-content" style="padding:12px 16px">
+            <div class="inspector-header" id="inspector-header"></div>
+            <div class="settings-section">
+              <div class="settings-label">좌표</div>
+              <div class="inspector-row">
+                <label class="inspector-field">
+                  <span class="inspector-field__label">X</span>
+                  <input type="number" class="inspector-field__input" id="inspector-x" step="0.1" />
+                </label>
+                <label class="inspector-field">
+                  <span class="inspector-field__label">Y</span>
+                  <input type="number" class="inspector-field__input" id="inspector-y" step="0.1" />
+                </label>
+              </div>
+            </div>
+            <div class="settings-section">
+              <div class="settings-label">방향</div>
+              <div class="inspector-direction" id="inspector-direction">
+                <button class="inspector-dir-btn" data-angle="315" title="↖">↖</button>
+                <button class="inspector-dir-btn" data-angle="0" title="↑">↑</button>
+                <button class="inspector-dir-btn" data-angle="45" title="↗">↗</button>
+                <button class="inspector-dir-btn" data-angle="270" title="←">←</button>
+                <div class="inspector-dir-center" id="inspector-angle-display">0°</div>
+                <button class="inspector-dir-btn" data-angle="90" title="→">→</button>
+                <button class="inspector-dir-btn" data-angle="225" title="↙">↙</button>
+                <button class="inspector-dir-btn" data-angle="180" title="↓">↓</button>
+                <button class="inspector-dir-btn" data-angle="135" title="↘">↘</button>
+              </div>
+            </div>
+            <div class="settings-section">
+              <div class="settings-label">색상</div>
+              <div class="inspector-palette" id="inspector-palette"></div>
+              <input type="color" id="inspector-color" style="display:none" />
+            </div>
+          </div>
+          <div class="sidebar__actions sidebar__actions--hidden" id="inspector-actions">
+            <button class="btn btn--ghost" id="inspector-preset-btn" style="width:100%;font-size:12px">선택 댄서로 대열 만들기</button>
+          </div>
+        </div>
 
         <div class="sidebar__panel" id="panel-dancers">
           <div class="sidebar__panel-title">댄서</div>
@@ -143,12 +207,12 @@ function buildEditorHTML(data) {
           </div>
           <div class="sidebar__actions">
             <button class="btn btn--ghost" id="add-dancer-btn" style="width:100%;font-size:12px">+ 댄서 추가</button>
-            <button class="btn btn--ghost" id="batch-color-btn" style="width:100%;font-size:12px">선택 댄서 색 변경</button>
           </div>
         </div>
         <div class="sidebar__panel sidebar__panel--hidden" id="panel-presets">
           <div class="sidebar__panel-title">추천 대열</div>
           <div class="sidebar__scroll">
+            <div class="preset-selection-info" id="preset-selection-info"></div>
             <div class="preset-spacing">
               <span class="settings-label">간격</span>
               <button class="btn btn--ghost preset-btn-box" id="preset-spacing-down">−</button>
@@ -171,6 +235,10 @@ function buildEditorHTML(data) {
                 <span>회전</span>
                 <div class="toggle-switch" id="sidebar-rotate-toggle"><div class="toggle-switch__thumb"></div></div>
               </label>
+              <label class="toggle-row">
+                <span>퇴장 영역</span>
+                <div class="toggle-switch${data.note.showWings !== false ? ' toggle-switch--on' : ''}" id="sidebar-wing-toggle"><div class="toggle-switch__thumb"></div></div>
+              </label>
             </div>
             <div class="settings-section">
               <div class="settings-label">댄서 라벨</div>
@@ -183,17 +251,17 @@ function buildEditorHTML(data) {
             <div class="settings-section">
               <div class="settings-label">댄서 모양</div>
               <div class="settings-options" id="view-shape-options">
-                <button class="settings-option settings-option--active" data-shape="pentagon">오각형</button>
-                <button class="settings-option" data-shape="circle">원형</button>
-                <button class="settings-option" data-shape="heart">하트</button>
+                <button class="settings-option${(data.note.dancerShape || 'pentagon') === 'pentagon' ? ' settings-option--active' : ''}" data-shape="pentagon">오각형</button>
+                <button class="settings-option${data.note.dancerShape === 'circle' ? ' settings-option--active' : ''}" data-shape="circle">원형</button>
+                <button class="settings-option${data.note.dancerShape === 'heart' ? ' settings-option--active' : ''}" data-shape="heart">하트</button>
               </div>
             </div>
             <div class="settings-section">
               <div class="settings-label">격자 간격</div>
               <div class="settings-options" id="view-grid-options">
-                <button class="settings-option" data-grid="15">촘촘</button>
-                <button class="settings-option settings-option--active" data-grid="30">보통</button>
-                <button class="settings-option" data-grid="60">넓음</button>
+                <button class="settings-option${(data.note.gridGap || 30) === 15 ? ' settings-option--active' : ''}" data-grid="15">촘촘</button>
+                <button class="settings-option${(data.note.gridGap || 30) === 30 ? ' settings-option--active' : ''}" data-grid="30">보통</button>
+                <button class="settings-option${(data.note.gridGap || 30) === 60 ? ' settings-option--active' : ''}" data-grid="60">넓음</button>
               </div>
             </div>
           </div>
@@ -219,19 +287,42 @@ function buildEditorHTML(data) {
             <div class="settings-section">
               <div class="settings-label">무대 크기</div>
               <div class="settings-options" id="settings-stage-options">
-                <button class="settings-option" data-stage="400x260">작은 무대</button>
-                <button class="settings-option settings-option--active" data-stage="600x400">보통</button>
-                <button class="settings-option" data-stage="800x500">넓은 무대</button>
+                <button class="settings-option${STAGE_WIDTH === 400 ? ' settings-option--active' : ''}" data-stage="400x260">작게</button>
+                <button class="settings-option${STAGE_WIDTH === 600 ? ' settings-option--active' : ''}" data-stage="600x400">보통</button>
+                <button class="settings-option${STAGE_WIDTH === 800 ? ' settings-option--active' : ''}" data-stage="800x500">넓게</button>
+              </div>
+              <div class="settings-slider-row">
+                <span class="settings-slider-label">가로</span>
+                <input type="range" class="settings-slider" id="stage-width-slider" min="200" max="1200" step="5" value="${STAGE_WIDTH}" />
+                <span class="settings-slider-value" id="stage-width-value">${STAGE_WIDTH}</span>
+              </div>
+              <div class="settings-slider-row">
+                <span class="settings-slider-label">세로</span>
+                <input type="range" class="settings-slider" id="stage-height-slider" min="150" max="800" step="5" value="${STAGE_HEIGHT}" />
+                <span class="settings-slider-value" id="stage-height-value">${STAGE_HEIGHT}</span>
+              </div>
+              <div class="settings-slider-row">
+                <span class="settings-slider-label">댄서</span>
+                <input type="range" class="settings-slider" id="dancer-scale-slider" min="50" max="200" step="5" value="${Math.round((noteData.note.dancerScale || 1) * 100)}" />
+                <span class="settings-slider-value" id="dancer-scale-value">${Math.round((noteData.note.dancerScale || 1) * 100)}%</span>
               </div>
             </div>
             <div class="settings-section">
               <div class="settings-label">객석 방향</div>
               <div class="settings-options" id="settings-audience-options">
-                <button class="settings-option settings-option--active" data-audience="top">↑ 위쪽</button>
-                <button class="settings-option" data-audience="bottom">↓ 아래쪽</button>
+                <button class="settings-option${audienceDirection === 'top' ? ' settings-option--active' : ''}" data-audience="top">위쪽</button>
+                <button class="settings-option${audienceDirection === 'bottom' ? ' settings-option--active' : ''}" data-audience="bottom">아래쪽</button>
+                <button class="settings-option${audienceDirection === 'none' ? ' settings-option--active' : ''}" data-audience="none">없음</button>
               </div>
             </div>
             <div class="settings-divider"></div>
+            <div class="settings-section">
+              <div class="settings-label">자동저장</div>
+              <label class="toggle-row">
+                <span>30초마다 자동 저장</span>
+                <div class="toggle-switch toggle-switch--on" id="autosave-toggle"><div class="toggle-switch__thumb"></div></div>
+              </label>
+            </div>
             <div class="settings-section">
               <div class="settings-label">테마</div>
               <div class="settings-options" id="settings-theme-options">
@@ -253,19 +344,18 @@ function buildEditorHTML(data) {
       </div>
       <div class="sidebar-rail" id="sidebar-rail">
         <button class="sidebar-rail__icon sidebar-rail__icon--active" data-panel="dancers" title="댄서"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></button>
+        <button class="sidebar-rail__icon" data-panel="inspector" title="댄서 정보"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
         <button class="sidebar-rail__icon" data-panel="presets" title="추천 대열"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></button>
         <button class="sidebar-rail__icon" data-panel="view" title="뷰 모드"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg></button>
         <button class="sidebar-rail__icon" data-panel="settings" title="설정"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg></button>
       </div>
 
       <div class="player-bar">
-        <button class="player-bar__btn" id="prev-formation-btn" title="이전 대열"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg></button>
         <button class="player-bar__btn" id="play-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>
         <button class="player-bar__btn" id="stop-btn" title="정지 (처음으로)"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12"/></svg></button>
+        <button class="player-bar__btn" id="prev-formation-btn" title="이전 대열"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg></button>
         <button class="player-bar__btn" id="next-formation-btn" title="다음 대열"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg></button>
-        <span class="player-bar__time" id="time-display">${formatTime(0, true)}</span>
-        <span class="player-bar__time" style="color:var(--text-secondary)">/</span>
-        <span class="player-bar__time" id="duration-display">${formatTime(data.note.duration, true)}</span>
+        <span class="player-bar__time" id="time-display">${formatTime(0, true)}</span><span class="player-bar__time player-bar__time--sep">/</span><span class="player-bar__time" id="duration-display">${formatTime(data.note.duration, true)}</span>
         <span class="player-bar__music-name" id="music-name">${data.note.musicName ? escapeAttr(data.note.musicName) : '음악 없음'}</span>
 
         <div class="toolbar__separator"></div>
@@ -479,6 +569,20 @@ function setupPlayback(container) {
       const snapBtn = container.querySelector('#snap-btn');
       if (snapBtn) snapBtn.click();
     }
+    if ((e.ctrlKey || e.metaKey) && e.code === 'KeyA') {
+      e.preventDefault();
+      renderer._selectedDancers.clear();
+      for (let i = 0; i < noteData.dancers.length; i++) {
+        renderer._selectedDancers.add(i);
+      }
+      renderer.onDancerSelect?.(-1);
+      updateStage();
+    }
+    if (e.code === 'Escape') {
+      renderer._selectedDancers.clear();
+      renderer.onDancerSelect?.(-1);
+      updateStage();
+    }
     if (e.key === '?' || (e.shiftKey && e.code === 'Slash')) {
       e.preventDefault();
       toggleShortcutHelp(container);
@@ -607,18 +711,21 @@ function setupPlayback(container) {
     } else {
       pos.angle = ((pos.angle || 0) + value + 360) % 360;
     }
+    _rotationInProgress = true;
     updateStage();
   };
 
-  let _rotateSnapshotPushed = false;
   renderer.onDancerRotateEnd = () => {
-    if (_rotateSnapshotPushed) {
+    if (_snapshotDuringRotation) {
+      // Another action already pushed a snapshot during the debounce window;
+      // just update it with the final rotation angle.
       replaceState(takeSnapshot());
     } else {
       saveSnapshot();
-      _rotateSnapshotPushed = true;
     }
     unsaved = true;
+    _rotationInProgress = false;
+    _snapshotDuringRotation = false;
   };
 
   // Waypoint callbacks (drag only, waypoints auto-created)
@@ -1147,61 +1254,128 @@ function setupSidebar(container) {
   const spacingValue = container.querySelector('#preset-spacing-value');
   const presetGrid = container.querySelector('#preset-grid');
 
+  let _lastPresetName = null;
+  let _presetRotation = 0;
+
+  function _drawPresetThumb(positions, indices) {
+    const cvs = document.createElement('canvas');
+    cvs.width = 120;
+    cvs.height = 80;
+    const ctx = cvs.getContext('2d');
+    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--stage-bg').trim() || '#1a1a2e';
+    ctx.fillRect(0, 0, 120, 80);
+    for (let i = 0; i < positions.length && i < indices.length; i++) {
+      const p = positions[i];
+      ctx.beginPath();
+      ctx.arc(60 + p.x * 0.15, 40 + p.y * 0.15, 4, 0, Math.PI * 2);
+      ctx.fillStyle = noteData.dancers[indices[i]]?.color || '#4ECDC4';
+      ctx.fill();
+    }
+    return cvs;
+  }
+
   function renderPresetThumbnails() {
     presetGrid.innerHTML = '';
     const names = getPresetNames();
-    const count = noteData.dancers.length;
+    const customPresets = getCustomPresets();
+    const selected = renderer._selectedDancers;
+    const hasSelection = selected && selected.size > 0;
+    const targetIndices = hasSelection ? Array.from(selected).sort((a, b) => a - b) : noteData.dancers.map((_, i) => i);
+    const count = targetIndices.length;
+
+    const infoEl = container.querySelector('#preset-selection-info');
+    if (infoEl) {
+      infoEl.textContent = hasSelection ? `${count}명 선택됨 — 선택된 댄서에만 적용` : '';
+    }
+
+    function applyWithRotation(name, positions) {
+      if (selectedFormation < 0) { showToast('대열을 먼저 선택하세요'); return; }
+      // Rotate dancer order on repeated click
+      if (_lastPresetName === name) {
+        _presetRotation = (_presetRotation + 1) % count;
+      } else {
+        _lastPresetName = name;
+        _presetRotation = 0;
+      }
+      const f = noteData.formations[selectedFormation];
+      for (let i = 0; i < count && i < positions.length; i++) {
+        const rotatedIdx = (i + _presetRotation) % count;
+        const dancerIdx = targetIndices[rotatedIdx];
+        const d = noteData.dancers[dancerIdx];
+        if (!d) continue;
+        const pos = f.positions.find(p => p.dancerId === d.id);
+        if (pos) { pos.x = positions[i].x; pos.y = positions[i].y; }
+      }
+      updateStage(); saveSnapshot();
+      const rotLabel = _presetRotation > 0 ? ` (순서 ${_presetRotation + 1})` : '';
+      showToast(`${name} 대열 적용됨${rotLabel}`);
+    }
+
+    // Built-in presets
     for (const name of names) {
       const positions = applyPreset(name, count, presetSpacing, HALF_W, HALF_H);
       if (!positions) continue;
-
       const card = document.createElement('div');
       card.className = 'preset-card';
-
-      // Mini canvas thumbnail
-      const cvs = document.createElement('canvas');
-      cvs.width = 120;
-      cvs.height = 80;
-      const ctx = cvs.getContext('2d');
-
-      // Background
-      ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--stage-bg').trim() || '#1a1a2e';
-      ctx.fillRect(0, 0, 120, 80);
-
-      // Draw dots
-      for (let i = 0; i < positions.length && i < noteData.dancers.length; i++) {
-        const p = positions[i];
-        const sx = 60 + p.x * 0.15;
-        const sy = 40 + p.y * 0.15;
-        ctx.beginPath();
-        ctx.arc(sx, sy, 4, 0, Math.PI * 2);
-        ctx.fillStyle = noteData.dancers[i]?.color || '#4ECDC4';
-        ctx.fill();
-      }
-
-      card.appendChild(cvs);
-
+      card.appendChild(_drawPresetThumb(positions, targetIndices));
       const label = document.createElement('div');
       label.className = 'preset-card__name';
       label.textContent = name;
       card.appendChild(label);
-
-      card.addEventListener('click', () => {
-        if (selectedFormation < 0) {
-          showToast('대열을 먼저 선택하세요');
-          return;
-        }
-        const f = noteData.formations[selectedFormation];
-        for (let i = 0; i < f.positions.length && i < positions.length; i++) {
-          f.positions[i].x = positions[i].x;
-          f.positions[i].y = positions[i].y;
-        }
-        updateStage(); saveSnapshot();
-        showToast(`${name} 대열 적용됨`);
-      });
-
+      card.addEventListener('click', () => applyWithRotation(name, positions));
       presetGrid.appendChild(card);
     }
+
+    // Custom presets
+    for (const [name, rawPositions] of Object.entries(customPresets)) {
+      const presetCount = rawPositions.length;
+      const mismatch = presetCount !== count;
+      const positions = mismatch ? rawPositions.slice(0, count) : rawPositions;
+      if (positions.length === 0) continue;
+      const card = document.createElement('div');
+      card.className = 'preset-card preset-card--custom' + (mismatch ? ' preset-card--mismatch' : '');
+      card.appendChild(_drawPresetThumb(positions, targetIndices));
+      const label = document.createElement('div');
+      label.className = 'preset-card__name';
+      label.innerHTML = `${name} <span class="preset-card__count">${presetCount}명</span>`;
+      card.appendChild(label);
+      // Delete button
+      const delBtn = document.createElement('button');
+      delBtn.className = 'preset-card__delete';
+      delBtn.textContent = '✕';
+      delBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        deleteCustomPreset(name);
+        renderPresetThumbnails();
+        showToast(`"${name}" 프리셋 삭제됨`);
+      });
+      card.appendChild(delBtn);
+      card.addEventListener('click', () => applyWithRotation(name, positions));
+      presetGrid.appendChild(card);
+    }
+
+    // "Save current" button
+    const addCard = document.createElement('div');
+    addCard.className = 'preset-card preset-card--add';
+    addCard.innerHTML = '<div class="preset-card__add-icon">+</div><div class="preset-card__name">현재 배치 저장</div>';
+    addCard.addEventListener('click', () => {
+      if (selectedFormation < 0) { showToast('대열을 먼저 선택하세요'); return; }
+      let name = prompt('프리셋 이름 (최대 16자)');
+      if (!name || !name.trim()) return;
+      name = name.trim().slice(0, 16);
+      const f = noteData.formations[selectedFormation];
+      const positions = [];
+      for (const idx of targetIndices) {
+        const d = noteData.dancers[idx];
+        if (!d) continue;
+        const pos = f.positions.find(p => p.dancerId === d.id);
+        positions.push(pos ? { x: pos.x, y: pos.y } : { x: 0, y: 0 });
+      }
+      saveCustomPreset(name.trim(), positions);
+      renderPresetThumbnails();
+      showToast(`"${name.trim()}" 프리셋 저장됨`);
+    });
+    presetGrid.appendChild(addCard);
   }
 
   container.querySelector('#preset-spacing-down').addEventListener('click', () => {
@@ -1240,21 +1414,31 @@ function setupSidebar(container) {
     };
     noteData.dancers.push(newDancer);
 
-    // Add position to all formations (offstage left, stacked vertically)
-    const offstageX = -(HALF_W + Math.round(WING_SIZE / 2));
-    // Count existing offstage dancers to stack vertically
-    const offstageCount = noteData.dancers.filter((d, i) => {
-      if (i === noteData.dancers.length - 1) return false; // skip the one we just added
-      const f0 = noteData.formations[0];
-      if (!f0) return false;
-      const pos = f0.positions.find(p => p.dancerId === d.id);
-      return pos && Math.abs(pos.x) > HALF_W;
-    }).length;
-    const offstageY = -HALF_H + 40 + offstageCount * 40;
+    // Add position to all formations
+    const defaultAngle = audienceDirection === 'bottom' ? 180 : 0;
 
-    for (const f of noteData.formations) {
-      const defaultAngle = audienceDirection === 'bottom' ? 180 : 0;
-      f.positions.push({ dancerId: newDancer.id, x: offstageX, y: clamp(offstageY, -HALF_H, HALF_H), angle: defaultAngle });
+    if (renderer.showWings) {
+      // Place in offstage left wing, stacked vertically
+      const offstageX = -(HALF_W + Math.round(WING_SIZE / 2));
+      const offstageCount = noteData.dancers.filter((d, i) => {
+        if (i === noteData.dancers.length - 1) return false;
+        const f0 = noteData.formations[0];
+        if (!f0) return false;
+        const pos = f0.positions.find(p => p.dancerId === d.id);
+        return pos && Math.abs(pos.x) > HALF_W;
+      }).length;
+      const offstageY = -HALF_H + 40 + offstageCount * 40;
+      for (const f of noteData.formations) {
+        f.positions.push({ dancerId: newDancer.id, x: offstageX, y: clamp(offstageY, -HALF_H, HALF_H), angle: defaultAngle });
+      }
+    } else {
+      // Wings hidden — place at bottom-left corner of stage
+      const margin = 20;
+      const stageX = -HALF_W + margin + ((noteData.dancers.length - 1) % 5) * 30;
+      const stageY = HALF_H - margin;
+      for (const f of noteData.formations) {
+        f.positions.push({ dancerId: newDancer.id, x: stageX, y: stageY, angle: defaultAngle });
+      }
     }
 
     engine.setFormations(noteData.formations, noteData.dancers);
@@ -1270,78 +1454,204 @@ function setupSidebar(container) {
     }
   });
 
-  // Batch color change for selected dancers
-  container.querySelector('#batch-color-btn').addEventListener('click', () => {
-    const selected = renderer._selectedDancers;
-    if (!selected || selected.size === 0) {
-      showToast('스테이지에서 댄서를 먼저 선택하세요');
-      return;
-    }
-
-    document.querySelectorAll('.color-palette-popup').forEach(p => p.remove());
-
-    const popup = document.createElement('div');
-    popup.className = 'color-palette-popup';
-    popup.style.position = 'fixed';
-    popup.style.zIndex = '300';
-    const bRect = container.querySelector('#batch-color-btn').getBoundingClientRect();
-    popup.style.left = `${bRect.left}px`;
-    popup.style.top = `${bRect.top - 6}px`;
-    popup.style.transform = 'translateY(-100%)';
-
-    popup.innerHTML = PALETTE.map(c =>
-      `<div class="color-palette__swatch" data-swatch="${c}" style="background:${c}"></div>`
-    ).join('') + `<label class="color-palette__custom"><input type="color" value="#ffffff" />커스텀</label>`;
-
-    popup.querySelectorAll('[data-swatch]').forEach(swatch => {
-      swatch.addEventListener('click', (ev) => {
-        ev.stopPropagation();
-        for (const idx of selected) {
-          noteData.dancers[idx].color = swatch.dataset.swatch;
-        }
-        renderDancerList(list);
-        updateStage(); saveSnapshot();
-        popup.remove();
-        showToast(`${selected.size}명 색상 변경됨`);
-      });
-    });
-
-    popup.querySelector('input[type="color"]').addEventListener('input', (ev) => {
-      for (const idx of selected) {
-        noteData.dancers[idx].color = ev.target.value;
-      }
-      updateStage();
-    });
-
-    popup.querySelector('input[type="color"]').addEventListener('change', () => {
-      renderDancerList(list);
-      saveSnapshot();
-      popup.remove();
-    });
-
-    document.body.appendChild(popup);
-    setTimeout(() => {
-      const close = (e) => {
-        if (!popup.contains(e.target)) {
-          popup.remove();
-          document.removeEventListener('click', close);
-        }
-      };
-      document.addEventListener('click', close);
-    }, 0);
-  });
-
 }
 
 const PALETTE = [
   '#EF4444', '#3B82F6', '#22C55E', '#EAB308',
   '#F97316', '#A855F7', '#EC4899', '#06B6D4',
-  '#1F2937', '#F1F5F9', '#92400E', '#6B7280',
+  '#F1F5F9', '#92400E', '#6B7280',
 ];
+
+// --- Dancer Inspector ---
+const INSPECTOR_UNIT = 15; // fixed grid unit for coordinate display (min snap)
+
+function updateInspector() {
+  const selected = Array.from(renderer._selectedDancers);
+  const emptyEl = document.querySelector('#inspector-empty');
+  const contentEl = document.querySelector('#inspector-content');
+  const titleEl = document.querySelector('#inspector-title');
+  const headerEl = document.querySelector('#inspector-header');
+
+  if (selected.length === 0) {
+    if (emptyEl) emptyEl.style.display = '';
+    if (contentEl) contentEl.classList.add('sidebar__scroll--hidden');
+    if (titleEl) titleEl.textContent = '댄서 정보';
+    return;
+  }
+
+  if (emptyEl) emptyEl.style.display = 'none';
+  if (contentEl) contentEl.classList.remove('sidebar__scroll--hidden');
+
+  // Show preset shortcut button for multi-selection
+  const actionsEl = document.querySelector('#inspector-actions');
+  if (actionsEl) actionsEl.classList.toggle('sidebar__actions--hidden', selected.length < 2);
+
+  // Header
+  if (selected.length === 1) {
+    const d = noteData.dancers[selected[0]];
+    if (headerEl) {
+      headerEl.innerHTML = d ? `<div class="inspector-field" style="flex:1"><span class="inspector-field__label">${selected[0] + 1}</span><input class="inspector-header__name" id="inspector-name" value="${escapeAttr(d.name)}" /></div>` : '';
+    }
+  } else {
+    if (headerEl) headerEl.innerHTML = `<span class="inspector-header__multi">${selected.length}명 선택됨</span>`;
+  }
+
+  // Determine if in transition (read-only for position/direction)
+  const isTransition = !!selectedTransition;
+  const f = isTransition ? null : noteData.formations[selectedFormation];
+  const interpolated = isTransition ? engine.calcPositionsAt(currentMs) : null;
+
+  // Gather properties from selected dancers
+  let xs = [], ys = [], angles = [], colors = [];
+  for (const idx of selected) {
+    const d = noteData.dancers[idx];
+    if (!d) continue;
+    if (isTransition && interpolated && interpolated[idx]) {
+      const p = interpolated[idx];
+      xs.push(Math.round(p.x / INSPECTOR_UNIT * 10) / 10);
+      ys.push(Math.round(p.y / INSPECTOR_UNIT * 10) / 10);
+      angles.push(Math.round(p.angle || 0));
+    } else if (f) {
+      const pos = f.positions.find(p => p.dancerId === d.id);
+      if (pos) {
+        xs.push(Math.round(pos.x / INSPECTOR_UNIT * 10) / 10);
+        ys.push(Math.round(pos.y / INSPECTOR_UNIT * 10) / 10);
+        angles.push(pos.angle || 0);
+      }
+    }
+    colors.push(d.color);
+  }
+
+  // X/Y inputs
+  const xInput = document.querySelector('#inspector-x');
+  const yInput = document.querySelector('#inspector-y');
+  if (xInput) {
+    const allSame = xs.every(v => v === xs[0]);
+    xInput.value = allSame && xs.length > 0 ? xs[0] : '';
+    xInput.placeholder = allSame ? '' : '—';
+    xInput.disabled = isTransition;
+  }
+  if (yInput) {
+    const allSame = ys.every(v => v === ys[0]);
+    yInput.value = allSame && ys.length > 0 ? ys[0] : '';
+    yInput.placeholder = allSame ? '' : '—';
+    yInput.disabled = isTransition;
+  }
+
+  // Direction buttons + angle display
+  const dirContainer = document.querySelector('#inspector-direction');
+  const angleDisplay = document.querySelector('#inspector-angle-display');
+  if (dirContainer) {
+    const allSameAngle = angles.length > 0 && angles.every(a => a === angles[0]);
+    dirContainer.querySelectorAll('.inspector-dir-btn').forEach(btn => {
+      const btnAngle = Number(btn.dataset.angle);
+      btn.classList.toggle('inspector-dir-btn--active', !isTransition && allSameAngle && btnAngle === angles[0]);
+      btn.disabled = isTransition;
+    });
+    if (angleDisplay) {
+      angleDisplay.textContent = allSameAngle && angles.length > 0 ? `${angles[0]}°` : '—';
+    }
+    dirContainer.classList.toggle('inspector-direction--disabled', isTransition);
+  }
+
+  // Color palette swatches + custom button
+  const paletteEl = document.querySelector('#inspector-palette');
+  if (paletteEl) {
+    const allSameColor = colors.length > 0 && colors.every(c => c === colors[0]);
+    const isCustom = allSameColor && !PALETTE.includes(colors[0]);
+    const customBg = isCustom ? colors[0] : '';
+    paletteEl.innerHTML = PALETTE.map(c =>
+      `<div class="inspector-palette__swatch${allSameColor && c === colors[0] ? ' inspector-palette__swatch--active' : ''}" data-swatch="${c}" style="background:${c}"></div>`
+    ).join('') + `<div class="inspector-palette__swatch inspector-palette__custom${isCustom ? ' inspector-palette__swatch--active' : ''}" data-custom="true" title="커스텀"${customBg ? ` style="background:${customBg}"` : ''}>+</div>`;
+
+    paletteEl.querySelectorAll('[data-swatch]').forEach(swatch => {
+      swatch.addEventListener('click', () => {
+        const color = swatch.dataset.swatch;
+        for (const idx of renderer._selectedDancers) {
+          noteData.dancers[idx].color = color;
+        }
+        renderDancerList(document.querySelector('#dancer-list'));
+        updateStage(); saveSnapshot();
+      });
+    });
+
+    paletteEl.querySelector('[data-custom]')?.addEventListener('click', () => {
+      const colorInput = document.querySelector('#inspector-color');
+      if (!colorInput) return;
+      colorInput.value = allSameColor ? colors[0] : '#888888';
+      colorInput.click();
+    });
+  }
+}
+
+function setupInspector(container) {
+  const xInput = container.querySelector('#inspector-x');
+  const yInput = container.querySelector('#inspector-y');
+
+  function applyCoord(axis) {
+    const input = axis === 'x' ? xInput : yInput;
+    const val = parseFloat(input.value);
+    if (isNaN(val)) return;
+    const f = noteData.formations[selectedFormation];
+    if (!f) return;
+    const limit = axis === 'x' ? HALF_W : HALF_H;
+    const px = clamp(Math.round(val * INSPECTOR_UNIT), -limit, limit);
+    for (const idx of renderer._selectedDancers) {
+      const d = noteData.dancers[idx];
+      if (!d) continue;
+      const pos = f.positions.find(p => p.dancerId === d.id);
+      if (pos) pos[axis] = px;
+    }
+    updateStage(); saveSnapshot();
+  }
+
+  xInput.addEventListener('change', () => applyCoord('x'));
+  yInput.addEventListener('change', () => applyCoord('y'));
+
+  // Direction buttons
+  container.querySelector('#inspector-direction').addEventListener('click', (e) => {
+    const btn = e.target.closest('.inspector-dir-btn');
+    if (!btn) return;
+    const angle = Number(btn.dataset.angle);
+    const f = noteData.formations[selectedFormation];
+    if (!f) return;
+    for (const idx of renderer._selectedDancers) {
+      const d = noteData.dancers[idx];
+      if (!d) continue;
+      const pos = f.positions.find(p => p.dancerId === d.id);
+      if (pos) pos.angle = angle;
+    }
+    updateStage(); saveSnapshot();
+  });
+
+  // Name editing (delegated, since header is re-rendered)
+  container.querySelector('#inspector-header').addEventListener('change', (e) => {
+    if (e.target.id !== 'inspector-name') return;
+    const selected = Array.from(renderer._selectedDancers);
+    if (selected.length !== 1) return;
+    noteData.dancers[selected[0]].name = e.target.value;
+    renderDancerList(document.querySelector('#dancer-list'));
+    updateStage(); saveSnapshot();
+  });
+
+  // Hidden color input (triggered by custom button)
+  const colorInput = container.querySelector('#inspector-color');
+  colorInput.addEventListener('input', (e) => {
+    for (const idx of renderer._selectedDancers) {
+      noteData.dancers[idx].color = e.target.value;
+    }
+    renderDancerList(document.querySelector('#dancer-list'));
+    updateStage();
+  });
+  colorInput.addEventListener('change', () => {
+    saveSnapshot();
+  });
+}
 
 function renderDancerList(list) {
   list.innerHTML = noteData.dancers.map((d, i) => `
-    <div class="dancer-item" data-index="${i}">
+    <div class="dancer-item${renderer._selectedDancers.has(i) ? ' dancer-item--selected' : ''}" data-index="${i}">
+      <span class="dancer-item__number">${i + 1}</span>
       <div class="dancer-item__color-btn" data-colorbtn="${i}" style="background:${d.color}"></div>
       <input class="dancer-item__name" value="${escapeAttr(d.name)}" data-name="${i}" />
       <button class="dancer-item__remove" data-remove="${i}">✕</button>
@@ -1579,31 +1889,66 @@ function setupToolbar(container) {
   // Swap mode
   swapMode = false;
   let swapFirst = -1;
+  const swapBanner = container.querySelector('#stage-swap-banner');
 
-  swapBtn.addEventListener('click', () => {
-    swapMode = !swapMode;
+  function setSwapMode(on) {
+    swapMode = on;
     swapFirst = -1;
-    swapBtn.classList.toggle('toolbar__btn--active', swapMode);
-    renderer._selectedDancers.clear();
-    updateStage();
-    if (swapMode) {
-      showToast('교환할 첫 번째 댄서를 클릭하세요');
+    swapBtn.classList.toggle('toolbar__btn--active', on);
+    swapBanner.classList.toggle('stage-swap-banner--visible', on);
+    stageContainer.classList.toggle('stage-container--swap', on);
+    renderer._swapHighlight.clear();
+    if (on) {
+      swapBanner.textContent = '교환 모드 — 두 댄서를 차례로 클릭';
+      renderer._selectedDancers.clear();
+      renderer.onDancerSelect?.(-1);
     }
-  });
+    updateStage();
+  }
+
+  function updateSwapBanner(text) {
+    swapBanner.textContent = text;
+  }
+
+  swapBtn.addEventListener('click', () => setSwapMode(!swapMode));
+
+  swapBanner.addEventListener('click', () => setSwapMode(false));
 
   renderer.onDancerSelect = (dancerIndex) => {
-    _rotateSnapshotPushed = false;
     // Always update stage to refresh waypoint path filtering
     if (selectedTransition) updateStage();
 
+    // Sync sidebar dancer list highlight with stage selection
+    const dancerList = document.querySelector('#dancer-list');
+    if (dancerList) {
+      dancerList.querySelectorAll('.dancer-item').forEach(el => {
+        const idx = Number(el.dataset.index);
+        el.classList.toggle('dancer-item--selected', renderer._selectedDancers.has(idx));
+      });
+    }
+
+    // Inspector: show when dancers selected, update empty state when deselected
+    if (renderer._selectedDancers.size > 0) {
+      if (activePanel !== 'inspector') {
+        openPanel('inspector');
+      }
+      updateInspector();
+    } else if (activePanel === 'inspector') {
+      updateInspector();
+    }
+
+    // Update preset thumbnails to reflect selection
+    if (_renderPresetThumbnails) _renderPresetThumbnails();
+
     if (!swapMode) return;
+    // Prevent real selection in swap mode
+    renderer._selectedDancers.clear();
     if (dancerIndex < 0) {
-      // Empty space click: cancel first selection
       if (swapFirst >= 0) {
         swapFirst = -1;
-        renderer._selectedDancers.clear();
+        renderer._swapHighlight.clear();
         updateStage();
-        showToast('선택 취소됨');
+        updateSwapBanner('교환 모드 — 두 댄서를 차례로 클릭');
       }
       return;
     }
@@ -1614,18 +1959,16 @@ function setupToolbar(container) {
 
     if (swapFirst < 0) {
       swapFirst = dancerIndex;
-      // Highlight first selected dancer
-      renderer._selectedDancers.clear();
-      renderer._selectedDancers.add(dancerIndex);
+      renderer._swapHighlight.clear();
+      renderer._swapHighlight.add(dancerIndex);
       updateStage();
-      showToast(`${noteData.dancers[dancerIndex].name} 선택됨 — 두 번째 댄서를 클릭하세요`);
+      updateSwapBanner(`${noteData.dancers[dancerIndex].name} 선택됨 — 교환할 댄서를 클릭`);
     } else {
       if (swapFirst === dancerIndex) {
-        // Deselect
         swapFirst = -1;
-        renderer._selectedDancers.clear();
+        renderer._swapHighlight.clear();
         updateStage();
-        showToast('선택 취소됨');
+        updateSwapBanner('교환 모드 — 두 댄서를 차례로 클릭');
         return;
       }
       // Swap with animation
@@ -1640,9 +1983,9 @@ function setupToolbar(container) {
         const duration = 300;
         const start = performance.now();
 
-        renderer._selectedDancers.clear();
-        renderer._selectedDancers.add(swapFirst);
-        renderer._selectedDancers.add(dancerIndex);
+        renderer._swapHighlight.clear();
+        renderer._swapHighlight.add(swapFirst);
+        renderer._swapHighlight.add(dancerIndex);
 
         const animate = (now) => {
           const t = Math.min((now - start) / duration, 1);
@@ -1658,7 +2001,7 @@ function setupToolbar(container) {
             // Finalize
             pos1.x = Math.round(from2.x); pos1.y = Math.round(from2.y);
             pos2.x = Math.round(from1.x); pos2.y = Math.round(from1.y);
-            renderer._selectedDancers.clear();
+            renderer._swapHighlight.clear();
             updateStage(); saveSnapshot();
             showToast(`${d1.name} ↔ ${d2.name} 교환 완료`);
           }
@@ -1682,7 +2025,6 @@ function setupToolbar(container) {
   const banner3d = container.querySelector('#stage-3d-banner');
 
   function _transitionView(fn) {
-    // Temporarily disable 3D rendering during CSS transition
     const was3D = renderer.is3D;
     if (was3D) {
       renderer._force2DRender = true;
@@ -1698,7 +2040,7 @@ function setupToolbar(container) {
       setTimeout(() => {
         renderer._force2DRender = false;
         updateStage();
-      }, 420); // match CSS transition 0.4s
+      }, 420);
     }
   }
 
@@ -1725,22 +2067,45 @@ function setupToolbar(container) {
     if (tRot) tRot.classList.toggle('toggle-switch--on', renderer.isRotated);
   }
 
+  const stageContainer = container.querySelector('.stage-container');
+
   function updateBanner() {
     const is3D = renderer.is3D;
     const isRotated = renderer.isRotated;
     const visible = is3D || isRotated;
     let text = '';
-    if (is3D && isRotated) text += '3D + 회전 뷰';
-    else if (is3D) text += '3D 뷰';
-    else if (isRotated) text += '회전 뷰';
-    text += ' — 클릭하면 편집 모드로';
+    if (is3D && isRotated) text += '3D + 회전';
+    else if (is3D) text += '3D';
+    else if (isRotated) text += '회전';
+    text += ' 미리보기 — 클릭 또는 Esc로 편집 모드로';
     banner3d.textContent = text;
     banner3d.classList.toggle('stage-3d-banner--visible', visible);
+    stageContainer.classList.toggle('stage-container--preview', visible);
   }
 
   banner3d.addEventListener('click', () => {
     if (renderer.is3D) toggle3D(true);
     if (renderer.isRotated) toggleRotate(true);
+  });
+
+  // Esc key exits preview/swap mode; 3/R toggle view
+  document.addEventListener('keydown', (e) => {
+    if (e.target.tagName === 'INPUT') return;
+    if (e.key === 'Escape') {
+      if (swapMode) { setSwapMode(false); return; }
+      if (renderer.is3D || renderer.isRotated) {
+        if (renderer.is3D) toggle3D(true);
+        if (renderer.isRotated) toggleRotate(true);
+      }
+    }
+    if (e.code === 'Digit3' && !e.ctrlKey && !e.metaKey) {
+      e.preventDefault();
+      toggle3D();
+    }
+    if (e.code === 'KeyR' && !e.ctrlKey && !e.metaKey) {
+      e.preventDefault();
+      toggleRotate();
+    }
   });
 
   // Sidebar rail: icon click toggles panels
@@ -1751,6 +2116,7 @@ function setupToolbar(container) {
     presets: container.querySelector('#panel-presets'),
     view: container.querySelector('#panel-view'),
     settings: container.querySelector('#panel-settings'),
+    inspector: container.querySelector('#panel-inspector'),
   };
   let activePanel = 'dancers';
 
@@ -1788,12 +2154,48 @@ function setupToolbar(container) {
     ic.addEventListener('click', () => openPanel(ic.dataset.panel));
   });
 
+  // Inspector → Presets shortcut
+  container.querySelector('#inspector-preset-btn').addEventListener('click', () => {
+    if (_renderPresetThumbnails) _renderPresetThumbnails();
+    openPanel('presets');
+  });
+
   // View mode toggles
   const toggle3dEl = container.querySelector('#sidebar-3d-toggle');
   const toggleRotateEl = container.querySelector('#sidebar-rotate-toggle');
 
   toggle3dEl.addEventListener('click', () => toggle3D());
   toggleRotateEl.addEventListener('click', () => toggleRotate());
+
+  // Wing area toggle
+  const toggleWingEl = container.querySelector('#sidebar-wing-toggle');
+  toggleWingEl.addEventListener('click', () => {
+    const show = !renderer.showWings;
+    renderer.showWings = show;
+    toggleWingEl.classList.toggle('toggle-switch--on', show);
+    renderer._drawGridCache();
+
+    // When hiding wings, move offstage dancers into the stage
+    if (!show) {
+      let moved = 0;
+      for (const f of noteData.formations) {
+        for (const pos of f.positions) {
+          const margin = 10;
+          if (pos.x < -HALF_W) { pos.x = -HALF_W + margin; moved++; }
+          else if (pos.x > HALF_W) { pos.x = HALF_W - margin; moved++; }
+          if (pos.y < -HALF_H) { pos.y = -HALF_H + margin; moved++; }
+          else if (pos.y > HALF_H) { pos.y = HALF_H - margin; moved++; }
+        }
+      }
+      if (moved > 0) {
+        engine.setFormations(noteData.formations, noteData.dancers);
+        saveSnapshot();
+      }
+    }
+
+    updateStage();
+    showToast(show ? '퇴장 영역 표시' : '퇴장 영역 숨김');
+  });
 
   // Display options (number / name / none)
   const displayOptions = container.querySelector('#sidebar-display-options');
@@ -1864,6 +2266,13 @@ function setupHeader(container, noteId) {
     const title = container.querySelector('#title-input').value;
     await NoteStore.updateNoteTitle(noteId, title);
     await NoteStore.saveNote(noteId, {
+      stageWidth: STAGE_WIDTH,
+      stageHeight: STAGE_HEIGHT,
+      dancerScale: noteData.note.dancerScale || 1,
+      audienceDirection,
+      dancerShape: renderer.dancerShape,
+      gridGap: renderer.gridGap,
+      showWings: renderer.showWings,
       dancers: noteData.dancers.map((d) => ({ name: d.name, color: d.color })),
       formations: noteData.formations.map((f) => ({
         startTime: f.startTime,
@@ -1884,12 +2293,20 @@ function setupHeader(container, noteId) {
   container.querySelector('#save-btn').addEventListener('click', () => saveToDB());
 
   // Auto-save every 30 seconds when there are unsaved changes
-  const autoSaveInterval = setInterval(async () => {
-    if (unsaved) {
+  let autoSaveEnabled = true;
+  let autoSaveInterval = setInterval(async () => {
+    if (autoSaveEnabled && unsaved) {
       await saveToDB(true);
       showToast('자동 저장됨', 1500);
     }
   }, 30000);
+
+  // Auto-save toggle
+  const autoSaveToggle = container.querySelector('#autosave-toggle');
+  autoSaveToggle.addEventListener('click', () => {
+    autoSaveEnabled = !autoSaveEnabled;
+    autoSaveToggle.classList.toggle('toggle-switch--on', autoSaveEnabled);
+  });
 
   // Clean up interval when leaving editor
   const cleanupAutoSave = () => clearInterval(autoSaveInterval);
@@ -1997,6 +2414,7 @@ function setupHeader(container, noteId) {
       is3D,
       isRotated,
       showNames: renderer.showNames,
+      dancerScale: renderer.dancerScale,
       onProgress: (percent) => {
         progressEl.textContent = `${percent}%`;
       },
@@ -2026,66 +2444,144 @@ function setupSettings(container, noteId) {
     container.querySelector('#music-file').click();
   });
 
-  // Stage size options
+  // Stage size options (presets + sliders)
   const stageOptions = container.querySelector('#settings-stage-options');
+  const stageWidthSlider = container.querySelector('#stage-width-slider');
+  const stageHeightSlider = container.querySelector('#stage-height-slider');
+  const stageWidthValue = container.querySelector('#stage-width-value');
+  const stageHeightValue = container.querySelector('#stage-height-value');
+  const STAGE_PRESETS = { '400x260': true, '600x400': true, '800x500': true };
+
+  function syncStagePresetButtons() {
+    const key = `${STAGE_WIDTH}x${STAGE_HEIGHT}`;
+    stageOptions.querySelectorAll('.settings-option').forEach(b => {
+      b.classList.toggle('settings-option--active', b.dataset.stage === key);
+    });
+  }
+
+  function applyStageSize(newW, newH) {
+    if (newW === STAGE_WIDTH && newH === STAGE_HEIGHT) return;
+
+    setStageSize(newW, newH);
+    renderer.resize();
+    fitStage();
+
+    // Clamp positions outside safe area
+    const pad = 20;
+    const maxX = newW / 2 + WING_SIZE - pad;
+    const maxY = newH / 2 + WING_SIZE - pad;
+    for (const f of noteData.formations) {
+      for (const pos of f.positions) {
+        pos.x = clamp(pos.x, -maxX, maxX);
+        pos.y = clamp(pos.y, -maxY, maxY);
+        if (pos.waypoints) {
+          for (const wp of pos.waypoints) {
+            wp.x = clamp(wp.x, -maxX, maxX);
+            wp.y = clamp(wp.y, -maxY, maxY);
+          }
+        }
+      }
+    }
+
+    engine.setFormations(noteData.formations, noteData.dancers);
+    renderer._drawGridCache();
+    updateStage();
+
+    // Sync UI
+    stageWidthSlider.value = newW;
+    stageHeightSlider.value = newH;
+    stageWidthValue.textContent = newW;
+    stageHeightValue.textContent = newH;
+    syncStagePresetButtons();
+  }
+
+  // Preset buttons
   stageOptions.querySelectorAll('[data-stage]').forEach(btn => {
     btn.addEventListener('click', () => {
       const [newW, newH] = btn.dataset.stage.split('x').map(Number);
-      const oldW = STAGE_WIDTH;
-      const oldH = STAGE_HEIGHT;
-      if (newW === oldW && newH === oldH) return;
-
-      // Ask user about dancer positions
-      const scale = confirm('댄서 위치를 새 무대 크기에 맞게 조정할까요?\n\n확인: 비율에 맞게 조정\n취소: 현재 좌표 유지');
-
-      setStageSize(newW, newH);
-      renderer.resize();
-      fitStage();
-
-      if (scale) {
-        const scaleX = newW / oldW;
-        const scaleY = newH / oldH;
-        for (const f of noteData.formations) {
-          for (const pos of f.positions) {
-            pos.x = Math.round(pos.x * scaleX);
-            pos.y = Math.round(pos.y * scaleY);
-            if (pos.waypoints) {
-              for (const wp of pos.waypoints) {
-                wp.x = Math.round(wp.x * scaleX);
-                wp.y = Math.round(wp.y * scaleY);
-              }
-            }
-          }
-        }
-      }
-
-      // Clamp all positions to canvas bounds with padding for dancer shape
-      const pad = 20;
-      const maxX = newW / 2 + WING_SIZE - pad;
-      const maxY = newH / 2 + WING_SIZE - pad;
-      for (const f of noteData.formations) {
-        for (const pos of f.positions) {
-          pos.x = clamp(pos.x, -maxX, maxX);
-          pos.y = clamp(pos.y, -maxY, maxY);
-          if (pos.waypoints) {
-            for (const wp of pos.waypoints) {
-              wp.x = clamp(wp.x, -maxX, maxX);
-              wp.y = clamp(wp.y, -maxY, maxY);
-            }
-          }
-        }
-      }
-
-      engine.setFormations(noteData.formations, noteData.dancers);
-      renderer._drawGridCache();
-      updateStage();
+      if (newW === STAGE_WIDTH && newH === STAGE_HEIGHT) return;
+      applyStageSize(newW, newH);
       saveSnapshot();
-
-      stageOptions.querySelectorAll('.settings-option').forEach(b => b.classList.remove('settings-option--active'));
-      btn.classList.add('settings-option--active');
       showToast(`무대 크기: ${newW} × ${newH}`);
     });
   });
+
+  // Slider: live preview on input, snapshot on change (mouseup)
+  let _sliderStartW = STAGE_WIDTH;
+  let _sliderStartH = STAGE_HEIGHT;
+  let _sliderDragging = false;
+
+  function onSliderInput() {
+    if (!_sliderDragging) {
+      _sliderStartW = STAGE_WIDTH;
+      _sliderStartH = STAGE_HEIGHT;
+      _sliderDragging = true;
+    }
+    const newW = Number(stageWidthSlider.value);
+    const newH = Number(stageHeightSlider.value);
+    stageWidthValue.textContent = newW;
+    stageHeightValue.textContent = newH;
+    setStageSize(newW, newH);
+    renderer.resize();
+    fitStage();
+    renderer._drawGridCache();
+    updateStage();
+    syncStagePresetButtons();
+  }
+
+  function onSliderChange() {
+    if (!_sliderDragging) return;
+    _sliderDragging = false;
+    const newW = Number(stageWidthSlider.value);
+    const newH = Number(stageHeightSlider.value);
+    if (newW === _sliderStartW && newH === _sliderStartH) return;
+
+    // Clamp positions that may now be outside bounds
+    const pad = 20;
+    const maxX = newW / 2 + WING_SIZE - pad;
+    const maxY = newH / 2 + WING_SIZE - pad;
+    for (const f of noteData.formations) {
+      for (const pos of f.positions) {
+        pos.x = clamp(pos.x, -maxX, maxX);
+        pos.y = clamp(pos.y, -maxY, maxY);
+        if (pos.waypoints) {
+          for (const wp of pos.waypoints) {
+            wp.x = clamp(wp.x, -maxX, maxX);
+            wp.y = clamp(wp.y, -maxY, maxY);
+          }
+        }
+      }
+    }
+    engine.setFormations(noteData.formations, noteData.dancers);
+    updateStage();
+    saveSnapshot();
+    showToast(`무대 크기: ${newW} × ${newH}`);
+  }
+
+  stageWidthSlider.addEventListener('input', onSliderInput);
+  stageHeightSlider.addEventListener('input', onSliderInput);
+  stageWidthSlider.addEventListener('change', onSliderChange);
+  stageHeightSlider.addEventListener('change', onSliderChange);
+
+  // Dancer scale slider
+  const dancerScaleSlider = container.querySelector('#dancer-scale-slider');
+  const dancerScaleValue = container.querySelector('#dancer-scale-value');
+
+  dancerScaleSlider.addEventListener('input', () => {
+    const pct = Number(dancerScaleSlider.value);
+    renderer.dancerScale = pct / 100;
+    dancerScaleValue.textContent = pct + '%';
+    updateStage();
+  });
+  dancerScaleSlider.addEventListener('change', () => {
+    noteData.note.dancerScale = renderer.dancerScale;
+    unsaved = true;
+  });
+
+  // Restore saved dancer scale
+  if (noteData.note.dancerScale) {
+    renderer.dancerScale = noteData.note.dancerScale;
+  }
 
   // Grid and shape moved to view panel
 
@@ -2176,8 +2672,10 @@ function setupSettings(container, noteId) {
       audienceOptions.querySelectorAll('.settings-option').forEach(b => b.classList.remove('settings-option--active'));
       btn.classList.add('settings-option--active');
 
-      // Rotate all positions and angles 180° (like flipping the stage)
-      if (prevDirection !== audienceDirection) {
+      // Rotate all positions and angles 180° when flipping between top/bottom
+      const wasFlipped = prevDirection === 'bottom';
+      const isFlipped = audienceDirection === 'bottom';
+      if (wasFlipped !== isFlipped) {
         for (const f of noteData.formations) {
           for (const pos of f.positions) {
             pos.x = -pos.x;
@@ -2195,7 +2693,8 @@ function setupSettings(container, noteId) {
         saveSnapshot();
       }
       updateStage();
-      showToast(`객석: ${audienceDirection === 'top' ? '위쪽' : '아래쪽'}`);
+      const labels = { top: '위쪽', bottom: '아래쪽', none: '없음' };
+      showToast(`객석: ${labels[audienceDirection]}`);
     });
   });
 
@@ -2388,6 +2887,9 @@ function updateStage() {
   }
 
   renderer.drawFrame(noteData.dancers, positions);
+
+  // Keep inspector in sync when visible
+  if (renderer._selectedDancers.size > 0) updateInspector();
 }
 
 function updateTimelineMarker() {
@@ -2488,12 +2990,17 @@ function takeSnapshot() {
     selectedFormation,
     currentMs,
     duration: noteData.note.duration,
+    stageWidth: STAGE_WIDTH,
+    stageHeight: STAGE_HEIGHT,
   };
 }
 
 function saveSnapshot() {
   pushState(takeSnapshot());
   unsaved = true;
+  if (_rotationInProgress) {
+    _snapshotDuringRotation = true;
+  }
 }
 
 function restoreSnapshot(snapshot) {
@@ -2502,6 +3009,25 @@ function restoreSnapshot(snapshot) {
   noteData.formations = snapshot.formations;
   selectedFormation = snapshot.selectedFormation;
   currentMs = snapshot.currentMs;
+
+  // Restore stage size if changed
+  if (snapshot.stageWidth && snapshot.stageHeight &&
+      (snapshot.stageWidth !== STAGE_WIDTH || snapshot.stageHeight !== STAGE_HEIGHT)) {
+    setStageSize(snapshot.stageWidth, snapshot.stageHeight);
+    renderer.resize();
+    fitStage();
+    renderer._drawGridCache();
+    // Sync sliders
+    const wSlider = document.querySelector('#stage-width-slider');
+    const hSlider = document.querySelector('#stage-height-slider');
+    if (wSlider) { wSlider.value = snapshot.stageWidth; document.querySelector('#stage-width-value').textContent = snapshot.stageWidth; }
+    if (hSlider) { hSlider.value = snapshot.stageHeight; document.querySelector('#stage-height-value').textContent = snapshot.stageHeight; }
+    const stageOpts = document.querySelector('#settings-stage-options');
+    if (stageOpts) {
+      const key = `${snapshot.stageWidth}x${snapshot.stageHeight}`;
+      stageOpts.querySelectorAll('.settings-option').forEach(b => b.classList.toggle('settings-option--active', b.dataset.stage === key));
+    }
+  }
 
   // Restore duration if changed
   if (snapshot.duration && snapshot.duration !== noteData.note.duration) {
@@ -2588,6 +3114,10 @@ function toggleShortcutHelp(container) {
         <div class="shortcut-row"><kbd>Delete</kbd><span>선택된 대열 삭제</span></div>
         <div class="shortcut-row"><kbd>Ctrl+Z</kbd><span>실행 취소</span></div>
         <div class="shortcut-row"><kbd>Ctrl+Shift+Z</kbd><span>다시 실행</span></div>
+        <div class="shortcut-row"><kbd>Ctrl+A</kbd><span>댄서 전체 선택</span></div>
+        <div class="shortcut-row"><kbd>3</kbd><span>3D 뷰 토글</span></div>
+        <div class="shortcut-row"><kbd>R</kbd><span>회전 뷰 토글</span></div>
+        <div class="shortcut-row"><kbd>Esc</kbd><span>미리보기 해제 / 선택 해제</span></div>
         <div class="shortcut-row"><kbd>Ctrl+C</kbd><span>대열 복사</span></div>
         <div class="shortcut-row"><kbd>Ctrl+V</kbd><span>대열 붙여넣기</span></div>
         <div class="shortcut-row"><kbd>Shift+클릭</kbd><span>대열 다중 선택</span></div>

@@ -4,7 +4,7 @@
     <script>
       // Redirect to index with hash routing
       var path = window.location.pathname;
-      var base = '/ChoreoNote/';
+      var base = '/';
       if (path.startsWith(base)) path = path.slice(base.length);
       window.location.replace(base + '#/' + path);
     </script>

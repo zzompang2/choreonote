@@ -1,6 +1,6 @@
 import { NoteStore } from '../store/NoteStore.js';
 import { navigate } from '../utils/router.js';
-import { formatTime } from '../utils/constants.js';
+import { formatTime, DANCER_RADIUS } from '../utils/constants.js';
 
 export async function renderDashboard(container) {
   container.innerHTML = '';
@@ -78,6 +78,9 @@ function renderNoteCards(grid, notes) {
   grid.innerHTML = notes.map((note) => `
     <div class="note-card" data-id="${note.id}">
       <button class="note-card__delete" data-delete="${note.id}" title="삭제">✕</button>
+      <div class="note-card__thumbnail">
+        <canvas data-thumb="${note.id}" width="200" height="134"></canvas>
+      </div>
       <div class="note-card__title">${escapeHtml(note.title)}</div>
       <div class="note-card__meta">
         ${formatDate(note.editedAt)} · ${formatTime(note.duration)}
@@ -85,6 +88,11 @@ function renderNoteCards(grid, notes) {
       </div>
     </div>
   `).join('');
+
+  // Render thumbnails asynchronously
+  for (const note of notes) {
+    renderThumbnail(grid.querySelector(`canvas[data-thumb="${note.id}"]`), note.id);
+  }
 
   grid.querySelectorAll('.note-card').forEach((card) => {
     card.addEventListener('click', (e) => {
@@ -102,6 +110,112 @@ function renderNoteCards(grid, notes) {
       renderNoteCards(grid, updated);
     });
   });
+}
+
+async function renderThumbnail(canvas, noteId) {
+  if (!canvas) return;
+  const data = await NoteStore.getThumbnailData(noteId);
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width;
+  const h = canvas.height;
+
+  // Background
+  const styles = getComputedStyle(document.documentElement);
+  const stageBg = styles.getPropertyValue('--stage-bg').trim() || '#1a1a2e';
+  const wingBg = styles.getPropertyValue('--stage-wing').trim() || '#0a0a15';
+
+  const cardBg = styles.getPropertyValue('--bg-card').trim() || '#16213e';
+
+  if (!data || data.positions.length === 0) {
+    ctx.fillStyle = wingBg;
+    ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = stageBg;
+    const pad = 6;
+    ctx.fillRect(pad, pad, w - pad * 2, h - pad * 2);
+    return;
+  }
+
+  const { dancers, positions, stageWidth, stageHeight, dancerShape, dancerScale, showWings } = data;
+  const halfW = stageWidth / 2;
+  const halfH = stageHeight / 2;
+
+  // Scale to fit canvas with wing margin
+  const wingRatio = showWings ? 0.08 : 0;
+  const stageX = w * wingRatio;
+  const stageY = h * wingRatio;
+  const stageW = w * (1 - wingRatio * 2);
+  const stageH = h * (1 - wingRatio * 2);
+  const scaleX = stageW / stageWidth;
+  const scaleY = stageH / stageHeight;
+  const scale = Math.min(scaleX, scaleY);
+
+  // Wing background
+  ctx.fillStyle = showWings ? wingBg : cardBg;
+  ctx.fillRect(0, 0, w, h);
+
+  // Stage background
+  ctx.fillStyle = stageBg;
+  ctx.fillRect(stageX, stageY, stageW, stageH);
+
+  // Stage border
+  ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+  ctx.lineWidth = 0.5;
+  ctx.setLineDash([3, 2]);
+  ctx.strokeRect(stageX, stageY, stageW, stageH);
+  ctx.setLineDash([]);
+
+  // Draw dancers
+  const r = DANCER_RADIUS * dancerScale * scale;
+  for (const pos of positions) {
+    const dancer = dancers.find(d => d.id === pos.dancerId);
+    if (!dancer) continue;
+
+    const cx = stageX + stageW / 2 + pos.x * scale;
+    const cy = stageY + stageH / 2 + pos.y * scale;
+    const isOffstage = Math.abs(pos.x) > halfW || Math.abs(pos.y) > halfH;
+    ctx.globalAlpha = isOffstage ? 0.4 : 1.0;
+
+    const angle = (pos.angle || 0) * Math.PI / 180;
+
+    // Shape
+    ctx.beginPath();
+    drawThumbnailShape(ctx, cx, cy, r, angle, dancerShape);
+    ctx.fillStyle = dancer.color;
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1.0;
+}
+
+function drawThumbnailShape(ctx, cx, cy, r, rotation, shape) {
+  if (shape === 'circle') {
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    return;
+  }
+  if (shape === 'heart') {
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(rotation + Math.PI);
+    const hw = r * 1.2, hh = r * 1.05;
+    ctx.moveTo(0, hh);
+    ctx.bezierCurveTo(hw * 0.3, hh * 0.6, hw, hh * 0.1, hw, -hh * 0.35);
+    ctx.bezierCurveTo(hw, -hh * 0.85, hw * 0.5, -hh, 0, -hh * 0.5);
+    ctx.bezierCurveTo(-hw * 0.5, -hh, -hw, -hh * 0.85, -hw, -hh * 0.35);
+    ctx.bezierCurveTo(-hw, hh * 0.1, -hw * 0.3, hh * 0.6, 0, hh);
+    ctx.closePath();
+    ctx.restore();
+    return;
+  }
+  // Default: pentagon
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(rotation);
+  ctx.moveTo(0, -r);
+  ctx.lineTo(r * 0.95, -r * 0.2);
+  ctx.lineTo(r * 0.95, r * 0.8);
+  ctx.lineTo(-r * 0.95, r * 0.8);
+  ctx.lineTo(-r * 0.95, -r * 0.2);
+  ctx.closePath();
+  ctx.restore();
 }
 
 function formatDate(date) {

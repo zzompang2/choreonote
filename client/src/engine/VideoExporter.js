@@ -14,7 +14,7 @@ export class VideoExporter {
     this.onError = null;    // (error) => void
   }
 
-  async export({ dancers, formations, audioBlob, duration, is3D, isRotated, showNames, onProgress, onComplete, onError }) {
+  async export({ dancers, formations, audioBlob, duration, is3D, isRotated, showNames, dancerScale, onProgress, onComplete, onError }) {
     if (this.isExporting) return;
     this.isExporting = true;
     this._cancelRequested = false;
@@ -30,6 +30,7 @@ export class VideoExporter {
       canvas.height = Math.round(1280 * (STAGE_HEIGHT / STAGE_WIDTH));
       const renderer = new StageRenderer(canvas);
       renderer.showNames = showNames;
+      if (dancerScale) renderer.dancerScale = dancerScale;
 
       // Scale rendering to 720p
       const scaleX = canvas.width / STAGE_WIDTH;
@@ -187,7 +188,7 @@ export class VideoExporter {
           renderer.is3D = true;
           renderer._projectionMode = 'render';
         }
-        renderer.isRotated = false; // don't use CSS rotation in video
+        renderer.isRotated = false;
 
         renderer.drawFrame(dancers, positions);
         ctx.restore();
