@@ -1241,7 +1241,7 @@ body {
 
 .landing__hero {
   text-align: center;
-  padding: 100px 24px 80px;
+  padding: 120px 24px 60px;
   max-width: 640px;
   margin: 0 auto;
 }
@@ -1280,7 +1280,7 @@ body {
   gap: 20px;
   max-width: 840px;
   margin: 0 auto;
-  padding: 40px 24px 80px;
+  padding: 20px 24px 40px;
 }
 
 .feature-card {
@@ -1314,14 +1314,14 @@ body {
 .landing__how {
   max-width: 600px;
   margin: 0 auto;
-  padding: 40px 24px 80px;
+  padding: 60px 24px 80px;
 }
 
 .landing__section-title {
   font-size: 28px;
   font-weight: 700;
   color: var(--text-primary);
-  text-align: center;
+  text-align: left;
   margin-bottom: 40px;
 }
 
