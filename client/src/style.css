@@ -800,6 +800,7 @@ body {
   font-size: 10px;
   white-space: nowrap;
   transform: translateX(-50%);
+  font-variant-numeric: tabular-nums;
 }
 
 .timeline__tick-line {
