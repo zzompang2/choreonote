@@ -1275,40 +1275,103 @@ body {
   color: var(--text-secondary);
 }
 
-.landing__features {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 20px;
-  max-width: 840px;
+/* --- Demo Stage Animation --- */
+.landing__demo {
+  max-width: 520px;
   margin: 0 auto;
-  padding: 20px 24px 40px;
+  padding: 0 24px 60px;
 }
 
-.feature-card {
+.demo-stage {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 3 / 2;
   background: var(--bg-card);
   border-radius: 12px;
-  padding: 28px 24px;
-  text-align: center;
+  border: 1px solid var(--border-strong);
+  overflow: hidden;
 }
 
-.feature-card__icon {
-  margin-bottom: 14px;
-  color: var(--accent);
+.demo-stage__label {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 11px;
+  color: var(--text-secondary);
+  opacity: 0.5;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+.demo-dancer {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--accent);
   display: flex;
   align-items: center;
   justify-content: center;
+  animation: demo-move 4s ease-in-out infinite alternate;
+  left: var(--from-x);
+  top: var(--from-y);
+  transform: translate(-50%, -50%);
 }
 
-.feature-card__title {
-  font-size: 16px;
-  font-weight: 600;
+.demo-dancer span {
+  font-size: 11px;
+  font-weight: 700;
+  color: #000;
+}
+
+@keyframes demo-move {
+  0%, 20% { left: var(--from-x); top: var(--from-y); }
+  80%, 100% { left: var(--to-x); top: var(--to-y); }
+}
+
+/* --- Features (row layout) --- */
+.landing__features {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 0 24px 60px;
+}
+
+.feature-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.feature-row:last-child {
+  border-bottom: none;
+}
+
+.feature-row__icon {
+  color: var(--accent);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.feature-row__text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.feature-row__text strong {
+  font-size: 15px;
   color: var(--text-primary);
-  margin-bottom: 8px;
 }
 
-.feature-card__desc {
+.feature-row__text span {
   font-size: 14px;
-  line-height: 1.6;
+  line-height: 1.5;
   color: var(--text-secondary);
 }
 
@@ -1406,9 +1469,11 @@ body {
   .landing__subtitle {
     font-size: 15px;
   }
+  .landing__demo {
+    padding: 0 16px 40px;
+  }
   .landing__features {
-    grid-template-columns: 1fr;
-    padding: 20px 16px 50px;
+    padding: 0 16px 40px;
   }
   .landing__how {
     padding: 20px 16px 50px;
