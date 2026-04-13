@@ -1291,8 +1291,11 @@ body {
 }
 
 .feature-card__icon {
-  font-size: 32px;
   margin-bottom: 14px;
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .feature-card__title {

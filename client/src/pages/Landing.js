@@ -22,17 +22,23 @@ export function renderLanding(container) {
 
       <section class="landing__features">
         <div class="feature-card">
-          <div class="feature-card__icon">🎵</div>
+          <div class="feature-card__icon">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+          </div>
           <h3 class="feature-card__title">음악 동기화</h3>
           <p class="feature-card__desc">음악을 올리고 대형을 배치하면, 비트에 맞춰 댄서들이 움직입니다.</p>
         </div>
         <div class="feature-card">
-          <div class="feature-card__icon">🎬</div>
+          <div class="feature-card__icon">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m22 8-6 4 6 4V8Z"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg>
+          </div>
           <h3 class="feature-card__title">영상 내보내기</h3>
           <p class="feature-card__desc">완성된 안무를 영상으로 저장해서 카카오톡으로 바로 공유하세요.</p>
         </div>
         <div class="feature-card">
-          <div class="feature-card__icon">💾</div>
+          <div class="feature-card__icon">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/></svg>
+          </div>
           <h3 class="feature-card__title">내 브라우저에 저장</h3>
           <p class="feature-card__desc">서버에 데이터를 보내지 않습니다. 모든 작업은 내 브라우저에만 저장됩니다.</p>
         </div>
