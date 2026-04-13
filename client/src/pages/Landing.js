@@ -21,15 +21,7 @@ export function renderLanding(container) {
       </section>
 
       <section class="landing__demo">
-        <div class="demo-stage">
-          <div class="demo-stage__label">관객</div>
-          <div class="demo-dancer" style="--from-x:35%;--from-y:55%;--to-x:20%;--to-y:30%"><span>A</span></div>
-          <div class="demo-dancer" style="--from-x:50%;--from-y:45%;--to-x:50%;--to-y:25%"><span>B</span></div>
-          <div class="demo-dancer" style="--from-x:65%;--from-y:55%;--to-x:80%;--to-y:30%"><span>C</span></div>
-          <div class="demo-dancer" style="--from-x:30%;--from-y:70%;--to-x:35%;--to-y:60%"><span>D</span></div>
-          <div class="demo-dancer" style="--from-x:50%;--from-y:65%;--to-x:50%;--to-y:50%"><span>E</span></div>
-          <div class="demo-dancer" style="--from-x:70%;--from-y:70%;--to-x:65%;--to-y:60%"><span>F</span></div>
-        </div>
+        <canvas id="demo-canvas" class="demo-canvas"></canvas>
       </section>
 
       <section class="landing__features">
@@ -105,4 +97,151 @@ export function renderLanding(container) {
   container.querySelector('#landing-start-btn').addEventListener('click', goToDashboard);
   container.querySelector('#landing-cta-btn').addEventListener('click', goToDashboard);
   container.querySelector('#landing-bottom-btn').addEventListener('click', goToDashboard);
+
+  // --- Demo canvas animation ---
+  const canvas = container.querySelector('#demo-canvas');
+  const dpr = window.devicePixelRatio || 1;
+  const W = 480, H = 320, WING = 40;
+  canvas.width = (W + WING * 2) * dpr;
+  canvas.height = (H + WING * 2) * dpr;
+  canvas.style.width = '100%';
+  canvas.style.maxWidth = (W + WING * 2) + 'px';
+  canvas.style.height = 'auto';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  const CW = W + WING * 2, CH = H + WING * 2;
+
+  const dancers = [
+    { name: 'A', color: '#4ECDC4' },
+    { name: 'B', color: '#FF6B6B' },
+    { name: 'C', color: '#FFE66D' },
+    { name: 'D', color: '#A8E6CF' },
+    { name: 'E', color: '#DDA0DD' },
+    { name: 'F', color: '#87CEEB' },
+  ];
+
+  // Two formations to alternate between
+  const formationA = [
+    { x: -70, y: 20 }, { x: 0, y: -30 }, { x: 70, y: 20 },
+    { x: -100, y: 80 }, { x: 0, y: 60 }, { x: 100, y: 80 },
+  ];
+  const formationB = [
+    { x: -120, y: -60 }, { x: 0, y: -80 }, { x: 120, y: -60 },
+    { x: -60, y: 30 }, { x: 0, y: 10 }, { x: 60, y: 30 },
+  ];
+
+  function drawPentagon(ctx, cx, cy, r) {
+    ctx.moveTo(cx, cy - r);
+    ctx.lineTo(cx + r * 0.95, cy - r * 0.2);
+    ctx.lineTo(cx + r * 0.95, cy + r * 0.8);
+    ctx.lineTo(cx - r * 0.95, cy + r * 0.8);
+    ctx.lineTo(cx - r * 0.95, cy - r * 0.2);
+    ctx.closePath();
+  }
+
+  function isLight(hex) {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    return (r * 299 + g * 587 + b * 114) / 1000 > 160;
+  }
+
+  function drawFrame(t) {
+    // Ease in-out
+    const raw = (Math.sin(t * Math.PI * 2 / 6000) + 1) / 2;
+    const ease = raw < 0.5 ? 2 * raw * raw : 1 - 2 * (1 - raw) * (1 - raw);
+
+    ctx.clearRect(0, 0, CW, CH);
+
+    // Wing areas
+    ctx.fillStyle = '#0a0a15';
+    ctx.fillRect(0, 0, CW, CH);
+
+    // Stage background
+    ctx.fillStyle = '#1a1a2e';
+    ctx.fillRect(WING, WING, W, H);
+
+    // Stage dashed border
+    ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([6, 4]);
+    ctx.strokeRect(WING, WING, W, H);
+    ctx.setLineDash([]);
+
+    // Grid
+    const gap = 30;
+    const hw = W / 2, hh = H / 2;
+    for (let x = hw % gap; x < W; x += gap) {
+      const major = Math.round(Math.abs(x - hw) / gap) % 4 === 0;
+      ctx.strokeStyle = major ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.07)';
+      ctx.lineWidth = major ? 0.8 : 0.4;
+      ctx.beginPath();
+      ctx.moveTo(WING + x, WING);
+      ctx.lineTo(WING + x, WING + H);
+      ctx.stroke();
+    }
+    for (let y = hh % gap; y < H; y += gap) {
+      const major = Math.round(Math.abs(y - hh) / gap) % 4 === 0;
+      ctx.strokeStyle = major ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.07)';
+      ctx.lineWidth = major ? 0.8 : 0.4;
+      ctx.beginPath();
+      ctx.moveTo(WING, WING + y);
+      ctx.lineTo(WING + W, WING + y);
+      ctx.stroke();
+    }
+
+    // Center cross
+    ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.moveTo(WING + hw, WING);
+    ctx.lineTo(WING + hw, WING + H);
+    ctx.moveTo(WING, WING + hh);
+    ctx.lineTo(WING + W, WING + hh);
+    ctx.stroke();
+
+    // Audience seats (top)
+    const seatW = 20, seatH = 14, seatGap = 5;
+    const cols = Math.floor((W - seatGap) / (seatW + seatGap));
+    const totalSeatW = cols * seatW + (cols - 1) * seatGap;
+    const startX = WING + (W - totalSeatW) / 2;
+    for (let r = 0; r < 2; r++) {
+      const rowY = WING - 20 - seatH - r * (seatH + 4);
+      ctx.fillStyle = r === 0 ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.1)';
+      for (let c = 0; c < cols; c++) {
+        ctx.fillRect(startX + c * (seatW + seatGap), rowY, seatW, seatH);
+      }
+    }
+
+    // Dancers
+    const ox = WING + hw, oy = WING + hh;
+    const R = 12;
+    for (let i = 0; i < dancers.length; i++) {
+      const a = formationA[i], b = formationB[i];
+      const x = ox + a.x + (b.x - a.x) * ease;
+      const y = oy + a.y + (b.y - a.y) * ease;
+
+      // Shadow
+      ctx.beginPath();
+      drawPentagon(ctx, x, y + 2, R);
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
+      ctx.fill();
+
+      // Shape
+      ctx.beginPath();
+      drawPentagon(ctx, x, y, R);
+      ctx.fillStyle = dancers[i].color;
+      ctx.fill();
+
+      // Name
+      ctx.fillStyle = isLight(dancers[i].color) ? '#1a1a2e' : '#ffffff';
+      ctx.font = 'bold 9px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(dancers[i].name, x, y + 2);
+    }
+
+    requestAnimationFrame(() => drawFrame(performance.now()));
+  }
+  requestAnimationFrame(() => drawFrame(performance.now()));
 }
