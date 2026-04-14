@@ -1548,6 +1548,8 @@ function updateInspector() {
     if (emptyEl) emptyEl.style.display = '';
     if (contentEl) contentEl.classList.add('sidebar__scroll--hidden');
     if (titleEl) titleEl.textContent = t('inspectorTitle');
+    const actionsEl = document.querySelector('#inspector-actions');
+    if (actionsEl) actionsEl.classList.add('sidebar__actions--hidden');
     return;
   }
 
@@ -3101,6 +3103,7 @@ function takeSnapshot() {
       positions: f.positions.map(p => ({ ...p, waypoints: p.waypoints ? p.waypoints.map(w => ({ ...w })) : undefined })),
     })),
     selectedFormation,
+    selectedTransition: selectedTransition ? { ...selectedTransition } : null,
     currentMs,
     duration: noteData.note.duration,
     stageWidth: STAGE_WIDTH,
@@ -3118,10 +3121,33 @@ function saveSnapshot() {
 
 function restoreSnapshot(snapshot) {
   if (!snapshot) return;
+
+  // Capture previous formations for dancer diff
+  const prevFormations = noteData.formations;
+
   noteData.dancers = snapshot.dancers;
   noteData.formations = snapshot.formations;
-  selectedFormation = snapshot.selectedFormation;
-  currentMs = snapshot.currentMs;
+
+  // Determine selection: undo uses the affected area, redo uses snapshot's own state
+  const affected = snapshot._affected;
+  if (affected) {
+    if (affected.selectedTransition) {
+      selectedTransition = affected.selectedTransition;
+      selectedFormation = -1;
+    } else if (affected.selectedFormation >= 0 && affected.selectedFormation < noteData.formations.length) {
+      selectedFormation = affected.selectedFormation;
+      selectedTransition = null;
+    } else {
+      selectedFormation = snapshot.selectedFormation;
+      selectedTransition = snapshot.selectedTransition || null;
+    }
+  } else {
+    selectedFormation = snapshot.selectedFormation;
+    selectedTransition = snapshot.selectedTransition || null;
+  }
+  selectedFormations.clear();
+  if (selectedFormation >= 0) selectedFormations.add(selectedFormation);
+  currentMs = affected ? affected.currentMs : snapshot.currentMs;
 
   // Restore stage size if changed
   if (snapshot.stageWidth && snapshot.stageHeight &&
@@ -3160,6 +3186,24 @@ function restoreSnapshot(snapshot) {
   engine.setFormations(noteData.formations, noteData.dancers);
   engine.seek(currentMs);
 
+  // Select dancers that changed in the affected formation/transition
+  renderer._selectedDancers.clear();
+  const diffFIdx = selectedTransition ? selectedTransition.toIdx : selectedFormation;
+  if (diffFIdx >= 0 && prevFormations[diffFIdx] && noteData.formations[diffFIdx]) {
+    const prevPos = prevFormations[diffFIdx].positions;
+    const newPos = noteData.formations[diffFIdx].positions;
+    for (let i = 0; i < noteData.dancers.length; i++) {
+      const d = noteData.dancers[i];
+      const pp = prevPos.find(p => p.dancerId === d.id);
+      const np = newPos.find(p => p.dancerId === d.id);
+      if (!pp && !np) continue;
+      if (!pp || !np || pp.x !== np.x || pp.y !== np.y || (pp.angle || 0) !== (np.angle || 0) ||
+          JSON.stringify(pp.waypoints) !== JSON.stringify(np.waypoints)) {
+        renderer._selectedDancers.add(i);
+      }
+    }
+  }
+
   // Re-render everything
   const formationsEl = document.querySelector('#timeline-formations');
   renderFormationBoxes(formationsEl);
@@ -3168,7 +3212,39 @@ function restoreSnapshot(snapshot) {
   updateStage();
   updateTimelineMarker();
   highlightFormation();
+  highlightTransition();
   document.querySelector('#time-display').textContent = formatTime(currentMs, true);
+
+  // Auto-scroll timeline to show the affected area
+  const timelineScroll = document.querySelector('#timeline-scroll');
+  if (timelineScroll) {
+    let targetPx;
+    if (selectedTransition) {
+      // Transition area: scroll to the gap between formations
+      const fromF = noteData.formations[selectedTransition.fromIdx];
+      const toF = noteData.formations[selectedTransition.toIdx];
+      if (fromF && toF) {
+        const gapStart = TIMELINE_PADDING + (fromF.startTime + fromF.duration) / 1000 * pixelsPerSec;
+        const gapEnd = TIMELINE_PADDING + toF.startTime / 1000 * pixelsPerSec;
+        targetPx = (gapStart + gapEnd) / 2;
+      } else {
+        targetPx = TIMELINE_PADDING + currentMs / 1000 * pixelsPerSec;
+      }
+    } else if (selectedFormation >= 0 && noteData.formations[selectedFormation]) {
+      const f = noteData.formations[selectedFormation];
+      const startPx = TIMELINE_PADDING + f.startTime / 1000 * pixelsPerSec;
+      const endPx = startPx + f.duration / 1000 * pixelsPerSec;
+      targetPx = (startPx + endPx) / 2;
+    } else {
+      targetPx = TIMELINE_PADDING + currentMs / 1000 * pixelsPerSec;
+    }
+    const viewLeft = timelineScroll.scrollLeft;
+    const viewRight = viewLeft + timelineScroll.clientWidth;
+    const margin = 60;
+    if (targetPx < viewLeft + margin || targetPx > viewRight - margin) {
+      timelineScroll.scrollLeft = targetPx - timelineScroll.clientWidth / 2;
+    }
+  }
 }
 
 function buildRulerTicks(ruler, durationSec) {

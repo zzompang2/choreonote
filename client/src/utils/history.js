@@ -23,7 +23,15 @@ export function undo() {
   redoStack.push(current);
   // Return the previous state (now top of undo stack)
   if (undoStack.length === 0) return null;
-  return JSON.parse(undoStack[undoStack.length - 1]);
+  const restored = JSON.parse(undoStack[undoStack.length - 1]);
+  // Attach where the undone change occurred (from the popped state)
+  const popped = JSON.parse(current);
+  restored._affected = {
+    selectedFormation: popped.selectedFormation,
+    selectedTransition: popped.selectedTransition,
+    currentMs: popped.currentMs,
+  };
+  return restored;
 }
 
 export function redo() {
