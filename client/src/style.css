@@ -286,6 +286,7 @@ html:has(.editor) {
   overflow-y: hidden;
   flex-wrap: nowrap;
   white-space: nowrap;
+  user-select: none;
 }
 
 .player-bar__time {
@@ -973,6 +974,7 @@ html:has(.editor) {
   padding: 4px 8px 30px;
   flex-shrink: 0;
   border-top: 1px solid var(--border);
+  user-select: none;
 }
 
 .timeline__bottom-bar .timeline__scrollbar {

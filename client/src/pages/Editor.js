@@ -12,6 +12,7 @@ import {
   formatTime, floorTime, clamp, roundToGrid, GRID_GAP, HALF_W, HALF_H,
   STAGE_WIDTH, STAGE_HEIGHT, CANVAS_WIDTH, CANVAS_HEIGHT, setStageSize,
 } from '../utils/constants.js';
+import { t, getLang, setLang, getAvailableLangs } from '../utils/i18n.js';
 
 let engine = null;
 let renderer = null;
@@ -36,7 +37,7 @@ export async function renderEditor(container, noteId) {
   noteId = Number(noteId);
   noteData = await NoteStore.loadNote(noteId);
   if (!noteData) {
-    showToast('노트를 찾을 수 없습니다');
+    showToast(t('noteNotFound'));
     navigate('/dashboard');
     return;
   }
@@ -137,9 +138,9 @@ function buildEditorHTML(data) {
         <button class="editor__back" id="back-btn">← </button>
         <input class="editor__title-input" id="title-input" value="${escapeAttr(data.note.title)}" />
         <div class="editor__actions">
-          <button class="btn btn--ghost" id="music-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:5px"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>음악 넣기</button>
-          <button class="btn btn--ghost" id="export-video-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:5px"><path d="m22 8-6 4 6 4V8Z" fill="none"/><rect x="2" y="6" width="14" height="12" rx="2" fill="none"/></svg>영상 저장</button>
-          <button class="btn btn--primary" id="save-btn">저장</button>
+          <button class="btn btn--ghost" id="music-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:5px"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>${t('addMusic')}</button>
+          <button class="btn btn--ghost" id="export-video-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:5px"><path d="m22 8-6 4 6 4V8Z" fill="none"/><rect x="2" y="6" width="14" height="12" rx="2" fill="none"/></svg>${t('exportVideo')}</button>
+          <button class="btn btn--primary" id="save-btn">${t('save')}</button>
         </div>
       </div>
 
@@ -148,8 +149,8 @@ function buildEditorHTML(data) {
           <div class="stage-wrap">
             <canvas id="stage-canvas" class="stage-canvas"></canvas>
           </div>
-          <div class="stage-3d-banner" id="stage-3d-banner">미리보기 모드 — 클릭하면 편집 모드로</div>
-          <div class="stage-swap-banner" id="stage-swap-banner">교환 모드 — 두 댄서를 차례로 클릭</div>
+          <div class="stage-3d-banner" id="stage-3d-banner">${t('previewBanner')}</div>
+          <div class="stage-swap-banner" id="stage-swap-banner">${t('swapBanner')}</div>
         </div>
       </div>
 
@@ -157,16 +158,16 @@ function buildEditorHTML(data) {
 
         <div class="sidebar__panel sidebar__panel--hidden" id="panel-inspector">
           <div class="sidebar__panel-title">
-            <span id="inspector-title">댄서 정보</span>
+            <span id="inspector-title">${t('inspectorTitle')}</span>
           </div>
           <div class="inspector-empty" id="inspector-empty">
             <div class="inspector-empty__icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.4"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
-            <div class="inspector-empty__text">스테이지에서 댄서를 선택하세요</div>
+            <div class="inspector-empty__text">${t('inspectorEmpty')}</div>
           </div>
           <div class="sidebar__scroll sidebar__scroll--hidden" id="inspector-content" style="padding:12px 16px">
             <div class="inspector-header" id="inspector-header"></div>
             <div class="settings-section">
-              <div class="settings-label">좌표</div>
+              <div class="settings-label">${t('inspectorCoord')}</div>
               <div class="inspector-row">
                 <label class="inspector-field">
                   <span class="inspector-field__label">X</span>
@@ -179,7 +180,7 @@ function buildEditorHTML(data) {
               </div>
             </div>
             <div class="settings-section">
-              <div class="settings-label">방향</div>
+              <div class="settings-label">${t('inspectorDir')}</div>
               <div class="inspector-direction" id="inspector-direction">
                 <button class="inspector-dir-btn" data-angle="315" title="↖">↖</button>
                 <button class="inspector-dir-btn" data-angle="0" title="↑">↑</button>
@@ -193,31 +194,31 @@ function buildEditorHTML(data) {
               </div>
             </div>
             <div class="settings-section">
-              <div class="settings-label">색상</div>
+              <div class="settings-label">${t('inspectorColor')}</div>
               <div class="inspector-palette" id="inspector-palette"></div>
               <input type="color" id="inspector-color" style="display:none" />
             </div>
           </div>
           <div class="sidebar__actions sidebar__actions--hidden" id="inspector-actions">
-            <button class="btn btn--ghost" id="inspector-preset-btn" style="width:100%;font-size:12px">선택 댄서로 대열 만들기</button>
+            <button class="btn btn--ghost" id="inspector-preset-btn" style="width:100%;font-size:12px">${t('inspectorPresetBtn')}</button>
           </div>
         </div>
 
         <div class="sidebar__panel" id="panel-dancers">
-          <div class="sidebar__panel-title">댄서</div>
+          <div class="sidebar__panel-title">${t('dancersTitle')}</div>
           <div class="sidebar__scroll">
             <div class="dancer-list" id="dancer-list"></div>
           </div>
           <div class="sidebar__actions">
-            <button class="btn btn--ghost" id="add-dancer-btn" style="width:100%;font-size:12px">+ 댄서 추가</button>
+            <button class="btn btn--ghost" id="add-dancer-btn" style="width:100%;font-size:12px">${t('addDancer')}</button>
           </div>
         </div>
         <div class="sidebar__panel sidebar__panel--hidden" id="panel-presets">
-          <div class="sidebar__panel-title">추천 대열</div>
+          <div class="sidebar__panel-title">${t('presetsTitle')}</div>
           <div class="sidebar__scroll">
             <div class="preset-selection-info" id="preset-selection-info"></div>
             <div class="preset-spacing">
-              <span class="settings-label">간격</span>
+              <span class="settings-label">${t('presetSpacing')}</span>
               <button class="btn btn--ghost preset-btn-box" id="preset-spacing-down">−</button>
               <span id="preset-spacing-value">50</span>
               <button class="btn btn--ghost preset-btn-box" id="preset-spacing-up">+</button>
@@ -226,165 +227,173 @@ function buildEditorHTML(data) {
           </div>
         </div>
         <div class="sidebar__panel sidebar__panel--hidden" id="panel-view">
-          <div class="sidebar__panel-title">뷰 모드</div>
+          <div class="sidebar__panel-title">${t('viewTitle')}</div>
           <div class="sidebar__scroll" style="padding:12px 16px">
             <div class="settings-section">
-              <div class="settings-label">스테이지 뷰</div>
+              <div class="settings-label">${t('viewStage')}</div>
               <label class="toggle-row">
-                <span>3D</span>
+                <span>${t('view3d')}</span>
                 <div class="toggle-switch" id="sidebar-3d-toggle"><div class="toggle-switch__thumb"></div></div>
               </label>
               <label class="toggle-row">
-                <span>회전</span>
+                <span>${t('viewRotate')}</span>
                 <div class="toggle-switch" id="sidebar-rotate-toggle"><div class="toggle-switch__thumb"></div></div>
               </label>
             </div>
             <div class="settings-section">
-              <div class="settings-label">댄서 라벨</div>
+              <div class="settings-label">${t('viewLabel')}</div>
               <div class="settings-options" id="sidebar-display-options">
-                <button class="settings-option settings-option--active" data-display="number">번호</button>
-                <button class="settings-option" data-display="name">이름</button>
-                <button class="settings-option" data-display="none">없음</button>
+                <button class="settings-option settings-option--active" data-display="number">${t('viewNumber')}</button>
+                <button class="settings-option" data-display="name">${t('viewName')}</button>
+                <button class="settings-option" data-display="none">${t('none')}</button>
               </div>
             </div>
             <div class="settings-section">
-              <div class="settings-label">댄서 모양</div>
+              <div class="settings-label">${t('viewShape')}</div>
               <div class="settings-options" id="view-shape-options">
-                <button class="settings-option${(data.note.dancerShape || 'pentagon') === 'pentagon' ? ' settings-option--active' : ''}" data-shape="pentagon">오각형</button>
-                <button class="settings-option${data.note.dancerShape === 'circle' ? ' settings-option--active' : ''}" data-shape="circle">원형</button>
-                <button class="settings-option${data.note.dancerShape === 'heart' ? ' settings-option--active' : ''}" data-shape="heart">하트</button>
+                <button class="settings-option${(data.note.dancerShape || 'pentagon') === 'pentagon' ? ' settings-option--active' : ''}" data-shape="pentagon">${t('shapePentagon')}</button>
+                <button class="settings-option${data.note.dancerShape === 'circle' ? ' settings-option--active' : ''}" data-shape="circle">${t('shapeCircle')}</button>
+                <button class="settings-option${data.note.dancerShape === 'heart' ? ' settings-option--active' : ''}" data-shape="heart">${t('shapeHeart')}</button>
               </div>
             </div>
             <div class="settings-section">
-              <div class="settings-label">격자 간격</div>
+              <div class="settings-label">${t('viewGrid')}</div>
               <div class="settings-options" id="view-grid-options">
-                <button class="settings-option${(data.note.gridGap || 30) === 15 ? ' settings-option--active' : ''}" data-grid="15">촘촘</button>
-                <button class="settings-option${(data.note.gridGap || 30) === 30 ? ' settings-option--active' : ''}" data-grid="30">보통</button>
-                <button class="settings-option${(data.note.gridGap || 30) === 60 ? ' settings-option--active' : ''}" data-grid="60">넓음</button>
+                <button class="settings-option${(data.note.gridGap || 30) === 15 ? ' settings-option--active' : ''}" data-grid="15">${t('gridDense')}</button>
+                <button class="settings-option${(data.note.gridGap || 30) === 30 ? ' settings-option--active' : ''}" data-grid="30">${t('gridNormal')}</button>
+                <button class="settings-option${(data.note.gridGap || 30) === 60 ? ' settings-option--active' : ''}" data-grid="60">${t('gridWide')}</button>
               </div>
             </div>
           </div>
         </div>
         <div class="sidebar__panel sidebar__panel--hidden" id="panel-help">
-          <div class="sidebar__panel-title">도움말</div>
+          <div class="sidebar__panel-title">${t('helpTitle')}</div>
           <div class="sidebar__scroll" style="padding:12px 16px">
             <div class="settings-section">
-              <div class="settings-label">키보드 단축키</div>
+              <div class="settings-label">${t('helpShortcuts')}</div>
               <div class="help-shortcuts">
-                <div class="shortcut-row"><kbd>Space</kbd><span>재생 / 일시정지</span></div>
-                <div class="shortcut-row"><kbd>←</kbd> <kbd>→</kbd><span>250ms 이동</span></div>
-                <div class="shortcut-row"><kbd>↑</kbd> <kbd>↓</kbd><span>이전 / 다음 대열</span></div>
-                <div class="shortcut-row"><kbd>N</kbd><span>대열 추가</span></div>
-                <div class="shortcut-row"><kbd>S</kbd><span>격자 스냅 토글</span></div>
-                <div class="shortcut-row"><kbd>Delete</kbd><span>선택된 대열 삭제</span></div>
-                <div class="shortcut-row"><kbd>Ctrl+Z</kbd><span>실행 취소</span></div>
-                <div class="shortcut-row"><kbd>Ctrl+Shift+Z</kbd><span>다시 실행</span></div>
-                <div class="shortcut-row"><kbd>Ctrl+A</kbd><span>댄서 전체 선택</span></div>
-                <div class="shortcut-row"><kbd>Ctrl+C</kbd><span>대열 복사</span></div>
-                <div class="shortcut-row"><kbd>Ctrl+V</kbd><span>대열 붙여넣기</span></div>
-                <div class="shortcut-row"><kbd>3</kbd><span>3D 뷰 토글</span></div>
-                <div class="shortcut-row"><kbd>R</kbd><span>회전 뷰 토글</span></div>
-                <div class="shortcut-row"><kbd>Esc</kbd><span>미리보기 해제 / 선택 해제</span></div>
-                <div class="shortcut-row"><kbd>Shift+클릭</kbd><span>대열 다중 선택</span></div>
-                <div class="shortcut-row"><kbd>Shift+휠</kbd><span>타임라인 스크롤</span></div>
+                <div class="shortcut-row"><kbd>Space</kbd><span>${t('helpPlayPause')}</span></div>
+                <div class="shortcut-row"><kbd>←</kbd> <kbd>→</kbd><span>${t('helpSeek')}</span></div>
+                <div class="shortcut-row"><kbd>↑</kbd> <kbd>↓</kbd><span>${t('helpPrevNext')}</span></div>
+                <div class="shortcut-row"><kbd>N</kbd><span>${t('helpAddFormation')}</span></div>
+                <div class="shortcut-row"><kbd>S</kbd><span>${t('helpSnap')}</span></div>
+                <div class="shortcut-row"><kbd>Delete</kbd><span>${t('helpDeleteFormation')}</span></div>
+                <div class="shortcut-row"><kbd>Ctrl+Z</kbd><span>${t('helpUndo')}</span></div>
+                <div class="shortcut-row"><kbd>Ctrl+Shift+Z</kbd><span>${t('helpRedo')}</span></div>
+                <div class="shortcut-row"><kbd>Ctrl+A</kbd><span>${t('helpSelectAll')}</span></div>
+                <div class="shortcut-row"><kbd>Ctrl+C</kbd><span>${t('helpCopy')}</span></div>
+                <div class="shortcut-row"><kbd>Ctrl+V</kbd><span>${t('helpPaste')}</span></div>
+                <div class="shortcut-row"><kbd>3</kbd><span>${t('help3d')}</span></div>
+                <div class="shortcut-row"><kbd>R</kbd><span>${t('helpRotate')}</span></div>
+                <div class="shortcut-row"><kbd>Esc</kbd><span>${t('helpEsc')}</span></div>
+                <div class="shortcut-row"><kbd>Shift+클릭</kbd><span>${t('helpMultiSelect')}</span></div>
+                <div class="shortcut-row"><kbd>Shift+휠</kbd><span>${t('helpScroll')}</span></div>
               </div>
             </div>
             <div class="settings-divider"></div>
             <div class="settings-section">
-              <div class="settings-label">스테이지</div>
+              <div class="settings-label">${t('helpStage')}</div>
               <div class="help-tips">
-                <p>댄서를 드래그하여 위치 이동</p>
-                <p>Shift+클릭으로 댄서 다중 선택</p>
-                <p>드래그로 영역 선택</p>
-                <p>마우스 휠로 댄서 방향 회전</p>
-                <p>경유점 더블클릭/더블탭으로 초기화</p>
+                <p>${t('helpStageDrag')}</p>
+                <p>${t('helpStageShift')}</p>
+                <p>${t('helpStageBox')}</p>
+                <p>${t('helpStageWheel')}</p>
+                <p>${t('helpStageWaypoint')}</p>
               </div>
             </div>
             <div class="settings-divider"></div>
             <div class="settings-section">
-              <div class="settings-label">타임라인</div>
+              <div class="settings-label">${t('helpTimeline')}</div>
               <div class="help-tips">
-                <p>대열 박스를 드래그하여 이동/리사이즈</p>
-                <p>대열 사이 빈 공간 클릭으로 이동 구간 선택</p>
-                <p>이동 구간에서 경유점으로 경로 편집</p>
+                <p>${t('helpTimelineDrag')}</p>
+                <p>${t('helpTimelineGap')}</p>
+                <p>${t('helpTimelineWaypoint')}</p>
               </div>
             </div>
           </div>
         </div>
         <div class="sidebar__panel sidebar__panel--hidden" id="panel-settings">
-          <div class="sidebar__panel-title">설정</div>
+          <div class="sidebar__panel-title">${t('settingsTitle')}</div>
           <div class="sidebar__scroll" style="padding:12px 16px">
             <div class="settings-section">
-              <div class="settings-label">음악</div>
+              <div class="settings-label">${t('settingsMusic')}</div>
               <div class="settings-row">
                 <span class="settings-music-name" id="settings-music-name" title="${escapeAttr(data.note.musicName || '')}">${truncateFilename(data.note.musicName, 35)}</span>
-                <button class="btn btn--ghost settings-btn-sm" id="settings-music-btn">변경</button>
+                <button class="btn btn--ghost settings-btn-sm" id="settings-music-btn">${t('change')}</button>
               </div>
             </div>
             <div class="settings-section">
-              <div class="settings-label">노트 길이</div>
+              <div class="settings-label">${t('settingsDuration')}</div>
               <div class="settings-row">
                 <span id="settings-duration">${formatDurationFull(data.note.duration)}</span>
-                <button class="btn btn--ghost settings-btn-sm" id="settings-duration-btn">변경</button>
+                <button class="btn btn--ghost settings-btn-sm" id="settings-duration-btn">${t('change')}</button>
               </div>
             </div>
             <div class="settings-divider"></div>
             <div class="settings-section">
-              <div class="settings-label">무대 크기</div>
+              <div class="settings-label">${t('settingsStageSize')}</div>
               <div class="settings-options" id="settings-stage-options">
-                <button class="settings-option${STAGE_WIDTH === 400 ? ' settings-option--active' : ''}" data-stage="400x260">작게</button>
-                <button class="settings-option${STAGE_WIDTH === 600 ? ' settings-option--active' : ''}" data-stage="600x400">보통</button>
-                <button class="settings-option${STAGE_WIDTH === 800 ? ' settings-option--active' : ''}" data-stage="800x500">넓게</button>
+                <button class="settings-option${STAGE_WIDTH === 400 ? ' settings-option--active' : ''}" data-stage="400x260">${t('stageSizeSmall')}</button>
+                <button class="settings-option${STAGE_WIDTH === 600 ? ' settings-option--active' : ''}" data-stage="600x400">${t('stageSizeNormal')}</button>
+                <button class="settings-option${STAGE_WIDTH === 800 ? ' settings-option--active' : ''}" data-stage="800x500">${t('stageSizeLarge')}</button>
               </div>
               <div class="settings-slider-row">
-                <span class="settings-slider-label">가로</span>
+                <span class="settings-slider-label">${t('stageWidth')}</span>
                 <input type="range" class="settings-slider" id="stage-width-slider" min="200" max="1200" step="5" value="${STAGE_WIDTH}" />
                 <span class="settings-slider-value" id="stage-width-value">${STAGE_WIDTH}</span>
               </div>
               <div class="settings-slider-row">
-                <span class="settings-slider-label">세로</span>
+                <span class="settings-slider-label">${t('stageHeight')}</span>
                 <input type="range" class="settings-slider" id="stage-height-slider" min="150" max="800" step="5" value="${STAGE_HEIGHT}" />
                 <span class="settings-slider-value" id="stage-height-value">${STAGE_HEIGHT}</span>
               </div>
               <div class="settings-slider-row">
-                <span class="settings-slider-label">댄서</span>
+                <span class="settings-slider-label">${t('dancerScale')}</span>
                 <input type="range" class="settings-slider" id="dancer-scale-slider" min="50" max="200" step="5" value="${Math.round((noteData.note.dancerScale || 1) * 100)}" />
                 <span class="settings-slider-value" id="dancer-scale-value">${Math.round((noteData.note.dancerScale || 1) * 100)}%</span>
               </div>
             </div>
             <div class="settings-section">
-              <div class="settings-label">객석 방향</div>
+              <div class="settings-label">${t('audienceDir')}</div>
               <div class="settings-options" id="settings-audience-options">
-                <button class="settings-option${audienceDirection === 'top' ? ' settings-option--active' : ''}" data-audience="top">위쪽</button>
-                <button class="settings-option${audienceDirection === 'bottom' ? ' settings-option--active' : ''}" data-audience="bottom">아래쪽</button>
-                <button class="settings-option${audienceDirection === 'none' ? ' settings-option--active' : ''}" data-audience="none">없음</button>
+                <button class="settings-option${audienceDirection === 'top' ? ' settings-option--active' : ''}" data-audience="top">${t('audienceTop')}</button>
+                <button class="settings-option${audienceDirection === 'bottom' ? ' settings-option--active' : ''}" data-audience="bottom">${t('audienceBottom')}</button>
+                <button class="settings-option${audienceDirection === 'none' ? ' settings-option--active' : ''}" data-audience="none">${t('audienceNone')}</button>
               </div>
               <label class="toggle-row" style="margin-top:8px">
-                <span>퇴장 영역</span>
+                <span>${t('wingArea')}</span>
                 <div class="toggle-switch${data.note.showWings !== false ? ' toggle-switch--on' : ''}" id="sidebar-wing-toggle"><div class="toggle-switch__thumb"></div></div>
               </label>
             </div>
             <div class="settings-divider"></div>
             <div class="settings-section">
-              <div class="settings-label">자동저장</div>
+              <div class="settings-label">${t('autosaveTitle')}</div>
               <label class="toggle-row">
-                <span>30초마다 자동 저장</span>
+                <span>${t('autosaveLabel')}</span>
                 <div class="toggle-switch toggle-switch--on" id="autosave-toggle"><div class="toggle-switch__thumb"></div></div>
               </label>
             </div>
             <div class="settings-section">
-              <div class="settings-label">테마</div>
+              <div class="settings-label">${t('themeTitle')}</div>
               <div class="settings-options" id="settings-theme-options">
-                <button class="settings-option${isLightMode() ? '' : ' settings-option--active'}" data-theme="dark">다크</button>
-                <button class="settings-option${isLightMode() ? ' settings-option--active' : ''}" data-theme="light">라이트</button>
+                <button class="settings-option${isLightMode() ? '' : ' settings-option--active'}" data-theme="dark">${t('themeDark')}</button>
+                <button class="settings-option${isLightMode() ? ' settings-option--active' : ''}" data-theme="light">${t('themeLight')}</button>
               </div>
             </div>
             <div class="settings-divider"></div>
             <div class="settings-section">
-              <div class="settings-label">백업</div>
+              <div class="settings-label">${t('langTitle')}</div>
+              <div class="settings-options" id="settings-lang-options">
+                <button class="settings-option${getLang() === 'ko' ? ' settings-option--active' : ''}" data-lang="ko">한국어</button>
+                <button class="settings-option${getLang() === 'en' ? ' settings-option--active' : ''}" data-lang="en">English</button>
+              </div>
+            </div>
+            <div class="settings-divider"></div>
+            <div class="settings-section">
+              <div class="settings-label">${t('backupTitle')}</div>
               <div class="settings-row" style="flex-direction:column;gap:6px">
-                <button class="btn btn--ghost" id="settings-export-btn" style="width:100%;font-size:12px">JSON 내보내기</button>
-                <button class="btn btn--ghost" id="settings-import-btn" style="width:100%;font-size:12px">JSON 가져오기</button>
+                <button class="btn btn--ghost" id="settings-export-btn" style="width:100%;font-size:12px">${t('backupExport')}</button>
+                <button class="btn btn--ghost" id="settings-import-btn" style="width:100%;font-size:12px">${t('backupImport')}</button>
                 <input type="file" id="settings-import-file" accept=".json" style="display:none" />
               </div>
             </div>
@@ -392,39 +401,39 @@ function buildEditorHTML(data) {
         </div>
       </div>
       <div class="sidebar-rail" id="sidebar-rail">
-        <button class="sidebar-rail__icon sidebar-rail__icon--active" data-panel="dancers" title="댄서"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></button>
-        <button class="sidebar-rail__icon" data-panel="inspector" title="댄서 정보"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
-        <button class="sidebar-rail__icon" data-panel="presets" title="추천 대열"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></button>
-        <button class="sidebar-rail__icon" data-panel="view" title="뷰 모드"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg></button>
+        <button class="sidebar-rail__icon sidebar-rail__icon--active" data-panel="dancers" title="${t('railDancers')}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></button>
+        <button class="sidebar-rail__icon" data-panel="inspector" title="${t('railInspector')}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+        <button class="sidebar-rail__icon" data-panel="presets" title="${t('railPresets')}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></button>
+        <button class="sidebar-rail__icon" data-panel="view" title="${t('railView')}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg></button>
         <div class="sidebar-rail__spacer"></div>
-        <button class="sidebar-rail__icon" data-panel="help" title="도움말"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></button>
-        <button class="sidebar-rail__icon" data-panel="settings" title="설정"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg></button>
+        <button class="sidebar-rail__icon" data-panel="help" title="${t('railHelp')}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></button>
+        <button class="sidebar-rail__icon" data-panel="settings" title="${t('railSettings')}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg></button>
       </div>
 
       <div class="player-bar">
         <div class="player-bar__row">
           <button class="player-bar__btn" id="play-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>
-          <button class="player-bar__btn" id="stop-btn" title="정지 (처음으로)"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12"/></svg></button>
-          <button class="player-bar__btn" id="prev-formation-btn" title="이전 대열"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg></button>
-          <button class="player-bar__btn" id="next-formation-btn" title="다음 대열"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg></button>
+          <button class="player-bar__btn" id="stop-btn" title="${t('stopBtn')}"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12"/></svg></button>
+          <button class="player-bar__btn" id="prev-formation-btn" title="${t('prevFormation')}"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg></button>
+          <button class="player-bar__btn" id="next-formation-btn" title="${t('nextFormation')}"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg></button>
           <span class="player-bar__time" id="time-display">${formatTime(0, true)}</span><span class="player-bar__time player-bar__time--sep">/</span><span class="player-bar__time" id="duration-display">${formatTime(data.note.duration, true)}</span>
-          <span class="player-bar__music-name" id="music-name">${data.note.musicName ? escapeAttr(data.note.musicName) : '음악 없음'}</span>
+          <span class="player-bar__music-name" id="music-name">${data.note.musicName ? escapeAttr(data.note.musicName) : t('noMusic')}</span>
         </div>
 
         <div class="toolbar__separator"></div>
 
         <div class="player-bar__row">
           <div class="toolbar">
-            <button class="toolbar__btn" id="undo-btn" title="실행 취소 (Ctrl+Z)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M3 13a9 9 0 0 1 15.36-6.36"/></svg></button>
-            <button class="toolbar__btn" id="redo-btn" title="다시 실행 (Ctrl+Shift+Z)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7v6h-6"/><path d="M21 13a9 9 0 0 0-15.36-6.36"/></svg></button>
+            <button class="toolbar__btn" id="undo-btn" title="${t('undoBtn')}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M3 13a9 9 0 0 1 15.36-6.36"/></svg></button>
+            <button class="toolbar__btn" id="redo-btn" title="${t('redoBtn')}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7v6h-6"/><path d="M21 13a9 9 0 0 0-15.36-6.36"/></svg></button>
             <div class="toolbar__separator"></div>
-            <button class="toolbar__btn" id="add-formation-btn" title="현재 위치에 대형 추가">+ 대형</button>
-            <button class="toolbar__btn" id="del-formation-btn" title="선택된 대형 삭제">− 대형</button>
-            <button class="toolbar__btn" id="copy-btn" title="대형 복사 (Ctrl+C)">복사</button>
-            <button class="toolbar__btn" id="paste-btn" title="대형 붙여넣기 (Ctrl+V)">붙여넣기</button>
+            <button class="toolbar__btn" id="add-formation-btn" title="${t('addFormation')}">${t('addFormation')}</button>
+            <button class="toolbar__btn" id="del-formation-btn" title="${t('delFormation')}">${t('delFormation')}</button>
+            <button class="toolbar__btn" id="copy-btn" title="${t('copyBtn')}">${t('copyBtn')}</button>
+            <button class="toolbar__btn" id="paste-btn" title="${t('pasteBtn')}">${t('pasteBtn')}</button>
             <div class="toolbar__separator"></div>
-            <button class="toolbar__btn" id="snap-btn" title="격자에 맞추기">스냅</button>
-            <button class="toolbar__btn" id="swap-btn" title="댄서 두 명 위치 교환">교환</button>
+            <button class="toolbar__btn" id="snap-btn" title="${t('snapBtn')}">${t('snapBtn')}</button>
+            <button class="toolbar__btn" id="swap-btn" title="${t('swapBtn')}">${t('swapBtn')}</button>
           </div>
         </div>
       </div>
@@ -574,9 +583,9 @@ function setupPlayback(container) {
           const formationsEl = container.querySelector('#timeline-formations');
           renderFormationBoxes(formationsEl);
           updateStage(); saveSnapshot();
-          showToast(`대형 ${toDelete.length}개 삭제됨`);
+          showToast(t('toastFormationsDeleted', { count: toDelete.length }));
         } else {
-          showToast('최소 1개의 대형이 필요합니다');
+          showToast(t('toastMinFormation'));
         }
       }
     }
@@ -585,7 +594,7 @@ function setupPlayback(container) {
       const snapshot = undo();
       if (snapshot) {
         restoreSnapshot(snapshot);
-        showToast('실행 취소');
+        showToast(t('toastUndo'));
       }
     }
     if ((e.ctrlKey || e.metaKey) && e.code === 'KeyZ' && e.shiftKey) {
@@ -593,7 +602,7 @@ function setupPlayback(container) {
       const snapshot = redo();
       if (snapshot) {
         restoreSnapshot(snapshot);
-        showToast('다시 실행');
+        showToast(t('toastRedo'));
       }
     }
     if (e.code === 'ArrowUp') {
@@ -824,7 +833,7 @@ function setupPlayback(container) {
         t: 0.5,
       }];
       updateStage(); saveSnapshot();
-      showToast(`${d.name} 경로 초기화됨`);
+      showToast(t('toastWaypointReset', { name: d.name }));
     }
   };
 }
@@ -1228,7 +1237,7 @@ function setupFormationDrag(el, fIdx, mode) {
         }
         const formationsEl = document.querySelector('#timeline-formations');
         renderFormationBoxes(formationsEl);
-        showToast('대형이 겹칩니다');
+        showToast(t('toastOverlap'));
         return;
       }
 
@@ -1342,11 +1351,11 @@ function setupSidebar(container) {
 
     const infoEl = container.querySelector('#preset-selection-info');
     if (infoEl) {
-      infoEl.textContent = hasSelection ? `${count}명 선택됨 — 선택된 댄서에만 적용` : '';
+      infoEl.textContent = hasSelection ? t('presetSelectionInfo', { count }) : '';
     }
 
     function applyWithRotation(name, positions) {
-      if (selectedFormation < 0) { showToast('대열을 먼저 선택하세요'); return; }
+      if (selectedFormation < 0) { showToast(t('presetSelectFirst')); return; }
       // Rotate dancer order on repeated click
       if (_lastPresetName === name) {
         _presetRotation = (_presetRotation + 1) % count;
@@ -1371,8 +1380,7 @@ function setupSidebar(container) {
       }
       recalcWaypoints(movedIds, selectedFormation, oldPositions);
       updateStage(); saveSnapshot();
-      const rotLabel = _presetRotation > 0 ? ` (순서 ${_presetRotation + 1})` : '';
-      showToast(`${name} 대열 적용됨${rotLabel}`);
+      showToast(_presetRotation > 0 ? t('presetAppliedRotated', { name, n: _presetRotation + 1 }) : t('presetApplied', { name }));
     }
 
     // Built-in presets
@@ -1401,7 +1409,7 @@ function setupSidebar(container) {
       card.appendChild(_drawPresetThumb(positions, targetIndices));
       const label = document.createElement('div');
       label.className = 'preset-card__name';
-      label.innerHTML = `${name} <span class="preset-card__count">${presetCount}명</span>`;
+      label.innerHTML = `${name} <span class="preset-card__count">${t('presetMismatch', { count: presetCount })}</span>`;
       card.appendChild(label);
       // Delete button
       const delBtn = document.createElement('button');
@@ -1411,7 +1419,7 @@ function setupSidebar(container) {
         e.stopPropagation();
         deleteCustomPreset(name);
         renderPresetThumbnails();
-        showToast(`"${name}" 프리셋 삭제됨`);
+        showToast(t('presetDeleted'));
       });
       card.appendChild(delBtn);
       card.addEventListener('click', () => applyWithRotation(name, positions));
@@ -1421,10 +1429,10 @@ function setupSidebar(container) {
     // "Save current" button
     const addCard = document.createElement('div');
     addCard.className = 'preset-card preset-card--add';
-    addCard.innerHTML = '<div class="preset-card__add-icon">+</div><div class="preset-card__name">현재 배치 저장</div>';
+    addCard.innerHTML = `<div class="preset-card__add-icon">+</div><div class="preset-card__name">${t('presetSave')}</div>`;
     addCard.addEventListener('click', () => {
-      if (selectedFormation < 0) { showToast('대열을 먼저 선택하세요'); return; }
-      let name = prompt('프리셋 이름 (최대 16자)');
+      if (selectedFormation < 0) { showToast(t('presetSelectFirst')); return; }
+      let name = prompt(t('presetNamePrompt'));
       if (!name || !name.trim()) return;
       name = name.trim().slice(0, 16);
       const f = noteData.formations[selectedFormation];
@@ -1437,7 +1445,7 @@ function setupSidebar(container) {
       }
       saveCustomPreset(name.trim(), positions);
       renderPresetThumbnails();
-      showToast(`"${name.trim()}" 프리셋 저장됨`);
+      showToast(t('presetSaved'));
     });
     presetGrid.appendChild(addCard);
   }
@@ -1472,7 +1480,7 @@ function setupSidebar(container) {
     const newDancer = {
       id: Date.now(),
       noteId: noteData.note.id,
-      name: `댄서${idx + 1}`,
+      name: t('dancerDefault', { n: idx + 1 }),
       color: colors[idx % colors.length],
       order: idx,
     };
@@ -1539,7 +1547,7 @@ function updateInspector() {
   if (selected.length === 0) {
     if (emptyEl) emptyEl.style.display = '';
     if (contentEl) contentEl.classList.add('sidebar__scroll--hidden');
-    if (titleEl) titleEl.textContent = '댄서 정보';
+    if (titleEl) titleEl.textContent = t('inspectorTitle');
     return;
   }
 
@@ -1557,7 +1565,7 @@ function updateInspector() {
       headerEl.innerHTML = d ? `<div class="inspector-field" style="flex:1"><span class="inspector-field__label">${selected[0] + 1}</span><input class="inspector-header__name" id="inspector-name" value="${escapeAttr(d.name)}" /></div>` : '';
     }
   } else {
-    if (headerEl) headerEl.innerHTML = `<span class="inspector-header__multi">${selected.length}명 선택됨</span>`;
+    if (headerEl) headerEl.innerHTML = `<span class="inspector-header__multi">${t('inspectorMulti', { count: selected.length })}</span>`;
   }
 
   // Determine if read-only (transition or playing)
@@ -1627,7 +1635,7 @@ function updateInspector() {
     const customBg = isCustom ? colors[0] : '';
     paletteEl.innerHTML = PALETTE.map(c =>
       `<div class="inspector-palette__swatch${allSameColor && c === colors[0] ? ' inspector-palette__swatch--active' : ''}" data-swatch="${c}" style="background:${c}"></div>`
-    ).join('') + `<div class="inspector-palette__swatch inspector-palette__custom${isCustom ? ' inspector-palette__swatch--active' : ''}" data-custom="true" title="커스텀"${customBg ? ` style="background:${customBg}"` : ''}>+</div>`;
+    ).join('') + `<div class="inspector-palette__swatch inspector-palette__custom${isCustom ? ' inspector-palette__swatch--active' : ''}" data-custom="true" title="${t('custom')}"${customBg ? ` style="background:${customBg}"` : ''}>+</div>`;
 
     paletteEl.querySelectorAll('[data-swatch]').forEach(swatch => {
       swatch.addEventListener('click', () => {
@@ -1735,7 +1743,7 @@ function renderDancerList(list) {
       popup.className = 'color-palette-popup';
       popup.innerHTML = PALETTE.map(c =>
         `<div class="color-palette__swatch${c === noteData.dancers[idx].color ? ' color-palette__swatch--active' : ''}" data-swatch="${c}" style="background:${c}"></div>`
-      ).join('') + `<label class="color-palette__custom"><input type="color" value="${noteData.dancers[idx].color}" />커스텀</label>`;
+      ).join('') + `<label class="color-palette__custom"><input type="color" value="${noteData.dancers[idx].color}" />${t('custom')}</label>`;
 
       popup.querySelectorAll('[data-swatch]').forEach((swatch) => {
         swatch.addEventListener('click', (ev) => {
@@ -1781,7 +1789,7 @@ function renderDancerList(list) {
   list.querySelectorAll('[data-remove]').forEach((btn) => {
     btn.addEventListener('click', (e) => {
       if (noteData.dancers.length <= 1) {
-        showToast('최소 1명의 댄서가 필요합니다');
+        showToast(t('minDancerError'));
         return;
       }
       const idx = Number(e.target.dataset.remove);
@@ -1810,7 +1818,7 @@ function setupToolbar(container) {
 
   function guardPlaying() {
     if (engine.isPlaying) {
-      showToast('재생을 멈추고 사용하세요');
+      showToast(t('toastStopFirst'));
       return true;
     }
     return false;
@@ -1821,7 +1829,7 @@ function setupToolbar(container) {
     const snapshot = undo();
     if (snapshot) {
       restoreSnapshot(snapshot);
-      showToast('실행 취소');
+      showToast(t('toastUndo'));
     }
   });
 
@@ -1830,7 +1838,7 @@ function setupToolbar(container) {
     const snapshot = redo();
     if (snapshot) {
       restoreSnapshot(snapshot);
-      showToast('다시 실행');
+      showToast(t('toastRedo'));
     }
   });
   let copiedPositions = null;
@@ -1843,7 +1851,7 @@ function setupToolbar(container) {
       newStart < f.startTime + f.duration && newStart + TIME_UNIT * 5 > f.startTime
     );
     if (overlaps) {
-      showToast('다른 대형과 겹칩니다');
+      showToast(t('toastOverlap'));
       return;
     }
 
@@ -1871,16 +1879,16 @@ function setupToolbar(container) {
     const formationsEl = container.querySelector('#timeline-formations');
     renderFormationBoxes(formationsEl);
     updateStage(); saveSnapshot();
-    showToast('대형 추가됨');
+    showToast(t('toastFormationAdded'));
   });
 
   delBtn.addEventListener('click', () => {
     if (guardPlaying()) return;
     if (noteData.formations.length <= 1) {
-      showToast('최소 1개의 대형이 필요합니다');
+      showToast(t('toastMinFormation'));
       return;
     }
-    if (!confirm('이 대형을 삭제할까요?')) return;
+    if (!confirm(t('confirmDeleteFormation'))) return;
     noteData.formations.splice(selectedFormation, 1);
     selectedFormation = Math.min(selectedFormation, noteData.formations.length - 1);
     engine.setFormations(noteData.formations, noteData.dancers);
@@ -1888,24 +1896,24 @@ function setupToolbar(container) {
     const formationsEl = container.querySelector('#timeline-formations');
     renderFormationBoxes(formationsEl);
     updateStage(); saveSnapshot();
-    showToast('대형 삭제됨');
+    showToast(t('toastFormationDeleted'));
   });
 
   copyBtn.addEventListener('click', () => {
     if (guardPlaying()) return;
     if (selectedFormation < 0) {
-      showToast('복사할 대형을 선택하세요');
+      showToast(t('toastCopySelect'));
       return;
     }
     const f = noteData.formations[selectedFormation];
     copiedPositions = f.positions.map((p) => ({ dancerId: p.dancerId, x: p.x, y: p.y }));
-    showToast('대형 복사됨');
+    showToast(t('toastCopied'));
   });
 
   pasteBtn.addEventListener('click', () => {
     if (guardPlaying()) return;
     if (!copiedPositions) {
-      showToast('복사된 대형이 없습니다');
+      showToast(t('toastNoCopy'));
       return;
     }
 
@@ -1920,7 +1928,7 @@ function setupToolbar(container) {
         }
       }
       updateStage(); saveSnapshot();
-      showToast('대형 붙여넣기 완료');
+      showToast(t('toastPasted'));
     } else {
       // Empty space: create new formation with copied positions
       const newStart = floorTime(currentMs);
@@ -1928,7 +1936,7 @@ function setupToolbar(container) {
         newStart < f.startTime + f.duration && newStart + TIME_UNIT * 5 > f.startTime
       );
       if (overlaps) {
-        showToast('다른 대형과 겹칩니다');
+        showToast(t('toastOverlap'));
         return;
       }
 
@@ -1949,7 +1957,7 @@ function setupToolbar(container) {
       const formationsEl = container.querySelector('#timeline-formations');
       renderFormationBoxes(formationsEl);
       updateStage(); saveSnapshot();
-      showToast('새 대형으로 붙여넣기 완료');
+      showToast(t('toastPastedNew'));
     }
   });
 
@@ -1978,7 +1986,7 @@ function setupToolbar(container) {
     stageContainer.classList.toggle('stage-container--swap', on);
     renderer._swapHighlight.clear();
     if (on) {
-      swapBanner.textContent = '교환 모드 — 두 댄서를 차례로 클릭';
+      swapBanner.textContent = t('swapBanner');
       renderer._selectedDancers.clear();
       renderer.onDancerSelect?.(-1);
     }
@@ -1991,11 +1999,11 @@ function setupToolbar(container) {
 
   swapBtn.addEventListener('click', () => {
     if (!swapMode && engine.isPlaying) {
-      showToast('재생을 멈추고 사용하세요');
+      showToast(t('toastStopFirst'));
       return;
     }
     if (!swapMode && selectedTransition) {
-      showToast('대열을 먼저 선택하세요');
+      showToast(t('toastSelectFormation'));
       return;
     }
     setSwapMode(!swapMode);
@@ -2033,12 +2041,12 @@ function setupToolbar(container) {
         swapFirst = -1;
         renderer._swapHighlight.clear();
         updateStage();
-        updateSwapBanner('교환 모드 — 두 댄서를 차례로 클릭');
+        updateSwapBanner(t('swapBanner'));
       }
       return;
     }
     if (selectedFormation < 0) {
-      showToast('대열을 먼저 선택하세요');
+      showToast(t('toastSelectFormation'));
       return;
     }
 
@@ -2047,13 +2055,13 @@ function setupToolbar(container) {
       renderer._swapHighlight.clear();
       renderer._swapHighlight.add(dancerIndex);
       updateStage();
-      updateSwapBanner(`${noteData.dancers[dancerIndex].name} 선택됨 — 교환할 댄서를 클릭`);
+      updateSwapBanner(t('swapFirst', { name: noteData.dancers[dancerIndex].name }));
     } else {
       if (swapFirst === dancerIndex) {
         swapFirst = -1;
         renderer._swapHighlight.clear();
         updateStage();
-        updateSwapBanner('교환 모드 — 두 댄서를 차례로 클릭');
+        updateSwapBanner(t('swapBanner'));
         return;
       }
       // Swap with animation
@@ -2090,7 +2098,7 @@ function setupToolbar(container) {
             recalcWaypoints([d1.id, d2.id], selectedFormation, oldPositions);
             renderer._swapHighlight.clear();
             updateStage(); saveSnapshot();
-            showToast(`${d1.name} ↔ ${d2.name} 교환 완료`);
+            showToast(t('swapDone', { a: d1.name, b: d2.name }));
           }
         };
         requestAnimationFrame(animate);
@@ -2098,7 +2106,7 @@ function setupToolbar(container) {
 
       // Ready for next swap
       swapFirst = -1;
-      updateSwapBanner('교환 모드 — 두 댄서를 차례로 클릭');
+      updateSwapBanner(t('swapBanner'));
     }
   };
 
@@ -2162,10 +2170,9 @@ function setupToolbar(container) {
     const isRotated = renderer.isRotated;
     const visible = is3D || isRotated;
     let text = '';
-    if (is3D && isRotated) text += '3D + 회전';
-    else if (is3D) text += '3D';
-    else if (isRotated) text += '회전';
-    text += ' 미리보기 — 클릭 또는 Esc로 편집 모드로';
+    if (is3D && isRotated) text = t('preview3dRotate') + ' ' + t('previewExit');
+    else if (is3D) text = t('preview3d') + ' ' + t('previewExit');
+    else if (isRotated) text = t('previewRotate') + ' ' + t('previewExit');
     banner3d.textContent = text;
     banner3d.classList.toggle('stage-3d-banner--visible', visible);
     stageContainer.classList.toggle('stage-container--preview', visible);
@@ -2231,6 +2238,7 @@ function setupToolbar(container) {
     if (panels[name]) panels[name].classList.remove('sidebar__panel--hidden');
     railIcons.forEach(ic => ic.classList.toggle('sidebar-rail__icon--active', ic.dataset.panel === name));
     activePanel = name;
+    if (name === 'inspector') updateInspector();
     if (window.innerWidth <= 768) {
       overlay.classList.add('sidebar-overlay--visible');
     } else {
@@ -2283,7 +2291,7 @@ function setupToolbar(container) {
     }
 
     updateStage();
-    showToast(show ? '퇴장 영역 표시' : '퇴장 영역 숨김');
+    showToast(show ? t('toastWingShow') : t('toastWingHide'));
   });
 
   // Display options (number / name / none)
@@ -2376,7 +2384,7 @@ function setupHeader(container, noteId) {
       })),
     });
     unsaved = false;
-    if (!silent) showToast('저장 완료!');
+    if (!silent) showToast(t('toastSaved'));
   }
 
   container.querySelector('#save-btn').addEventListener('click', () => saveToDB());
@@ -2386,7 +2394,7 @@ function setupHeader(container, noteId) {
   let autoSaveInterval = setInterval(async () => {
     if (autoSaveEnabled && unsaved) {
       await saveToDB(true);
-      showToast('자동 저장됨', 1500);
+      showToast(t('toastAutoSaved'), 1500);
     }
   }, 30000);
 
@@ -2412,24 +2420,24 @@ function setupHeader(container, noteId) {
   optionDialog.className = 'export-overlay';
   optionDialog.innerHTML = `
     <div class="export-overlay__box">
-      <div class="export-overlay__text">영상 내보내기</div>
+      <div class="export-overlay__text">${t('exportDialogTitle')}</div>
       <div class="settings-section">
-        <div class="settings-label">뷰</div>
+        <div class="settings-label">${t('exportView')}</div>
         <div class="export-options">
           <button class="btn btn--ghost export-option-btn export-option--active" data-view="2d">2D</button>
           <button class="btn btn--ghost export-option-btn" data-view="3d">3D</button>
         </div>
       </div>
       <div class="settings-section">
-        <div class="settings-label">관객 방향</div>
+        <div class="settings-label">${t('exportAudienceDir')}</div>
         <div class="export-options">
-          <button class="btn btn--ghost export-option-btn" data-dir="normal">↑ 위쪽</button>
-          <button class="btn btn--ghost export-option-btn" data-dir="rotated">↓ 아래쪽</button>
+          <button class="btn btn--ghost export-option-btn" data-dir="normal">${t('exportAudienceTop')}</button>
+          <button class="btn btn--ghost export-option-btn" data-dir="rotated">${t('exportAudienceBottom')}</button>
         </div>
       </div>
       <div style="display:flex;gap:8px;margin-top:12px">
-        <button class="btn btn--primary" id="export-start-btn">내보내기</button>
-        <button class="btn btn--danger" id="export-option-cancel">취소</button>
+        <button class="btn btn--primary" id="export-start-btn">${t('exportStart')}</button>
+        <button class="btn btn--danger" id="export-option-cancel">${t('cancel')}</button>
       </div>
     </div>
   `;
@@ -2439,9 +2447,9 @@ function setupHeader(container, noteId) {
   progressOverlay.className = 'export-overlay';
   progressOverlay.innerHTML = `
     <div class="export-overlay__box">
-      <div class="export-overlay__text">영상 내보내는 중...</div>
+      <div class="export-overlay__text">${t('exportProgress')}</div>
       <div class="export-overlay__progress" id="export-progress">0%</div>
-      <button class="btn btn--danger" id="export-cancel-btn">취소</button>
+      <button class="btn btn--danger" id="export-cancel-btn">${t('cancel')}</button>
     </div>
   `;
 
@@ -2492,7 +2500,7 @@ function setupHeader(container, noteId) {
     progressOverlay.querySelector('#export-cancel-btn').onclick = () => {
       videoExporter.cancel();
       progressOverlay.remove();
-      showToast('영상 내보내기 취소됨');
+      showToast(t('exportCancelled'));
     };
 
     videoExporter.export({
@@ -2516,11 +2524,11 @@ function setupHeader(container, noteId) {
         a.download = `${noteData.note.title || 'choreonote'}.${ext}`;
         a.click();
         URL.revokeObjectURL(url);
-        showToast(`영상 다운로드 완료 (${ext.toUpperCase()})`);
+        showToast(t('exportDone', { ext: ext.toUpperCase() }));
       },
       onError: (err) => {
         progressOverlay.remove();
-        showToast('영상 내보내기 실패: ' + err.message);
+        showToast(t('exportFailed') + ' ' + err.message);
       },
     });
   }
@@ -2591,7 +2599,7 @@ function setupSettings(container, noteId) {
       if (newW === STAGE_WIDTH && newH === STAGE_HEIGHT) return;
       applyStageSize(newW, newH);
       saveSnapshot();
-      showToast(`무대 크기: ${newW} × ${newH}`);
+      showToast(t('toastStageSize', { w: newW, h: newH }));
     });
   });
 
@@ -2644,7 +2652,7 @@ function setupSettings(container, noteId) {
     engine.setFormations(noteData.formations, noteData.dancers);
     updateStage();
     saveSnapshot();
-    showToast(`무대 크기: ${newW} × ${newH}`);
+    showToast(t('toastStageSize', { w: newW, h: newH }));
   }
 
   stageWidthSlider.addEventListener('input', onSliderInput);
@@ -2678,11 +2686,11 @@ function setupSettings(container, noteId) {
   const durationEl = container.querySelector('#settings-duration');
   container.querySelector('#settings-duration-btn').addEventListener('click', () => {
     const currentSec = Math.round(noteData.note.duration / 1000);
-    const input = prompt('노래 길이 (초)', currentSec);
+    const input = prompt(t('durationPrompt'), currentSec);
     if (input === null) return;
     const newSec = parseInt(input, 10);
     if (isNaN(newSec) || newSec < 10 || newSec > 600) {
-      showToast('10초 ~ 600초 사이로 입력해주세요');
+      showToast(t('toastDurationRange'));
       return;
     }
     const newDuration = newSec * 1000;
@@ -2690,7 +2698,7 @@ function setupSettings(container, noteId) {
     // Check for formations that would be outside new duration
     const outsideBoxes = noteData.formations.filter(f => f.startTime >= newDuration);
     if (outsideBoxes.length > 0) {
-      if (!confirm(`대열 ${outsideBoxes.length}개가 범위 밖에 있어 삭제됩니다. 계속할까요?`)) {
+      if (!confirm(t('durationWarnBoxes', { count: outsideBoxes.length }))) {
         return;
       }
       noteData.formations = noteData.formations.filter(f => f.startTime < newDuration);
@@ -2732,7 +2740,7 @@ function setupSettings(container, noteId) {
     highlightFormation();
     if (noteData.musicBlob) drawWaveform(container, noteData.musicBlob, newDuration);
     saveSnapshot();
-    showToast(`노래 길이: ${newSec}초`);
+    showToast(t('toastDuration', { sec: newSec }));
   });
 
   // Dancer shape moved to view panel
@@ -2749,6 +2757,17 @@ function setupSettings(container, noteId) {
       updateStage();
     });
   });
+
+  // Language
+  const langOptions = container.querySelector('#settings-lang-options');
+  if (langOptions) {
+    langOptions.querySelectorAll('[data-lang]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        setLang(btn.dataset.lang);
+        location.reload();
+      });
+    });
+  }
 
   // Audience direction
   const audienceOptions = container.querySelector('#settings-audience-options');
@@ -2782,8 +2801,8 @@ function setupSettings(container, noteId) {
         saveSnapshot();
       }
       updateStage();
-      const labels = { top: '위쪽', bottom: '아래쪽', none: '없음' };
-      showToast(`객석: ${labels[audienceDirection]}`);
+      const labels = { top: t('audienceTop'), bottom: t('audienceBottom'), none: t('audienceNone') };
+      showToast(t('toastAudienceDir', { dir: labels[audienceDirection] }));
     });
   });
 
@@ -2798,7 +2817,7 @@ function setupSettings(container, noteId) {
     a.download = `${noteData.note.title || 'choreonote'}.json`;
     a.click();
     URL.revokeObjectURL(url);
-    showToast('백업 파일 다운로드됨');
+    showToast(t('toastBackupExported'));
   });
 
   // Import JSON
@@ -2812,7 +2831,7 @@ function setupSettings(container, noteId) {
       const newNoteId = await NoteStore.importJSON(text);
       navigate(`/edit/${newNoteId}`);
     } catch (err) {
-      showToast('파일을 불러올 수 없습니다: ' + err.message);
+      showToast(t('toastImportError') + ' ' + err.message);
     }
   });
 }
@@ -2828,11 +2847,11 @@ function setupMusicUpload(container, noteId) {
     const file = e.target.files[0];
     if (!file) return;
     if (file.size > 20 * 1024 * 1024) {
-      showToast('20MB 이하 파일만 가능합니다');
+      showToast(t('toastFileTooLarge'));
       return;
     }
 
-    showToast('음악 로딩 중...');
+    showToast(t('toastMusicLoading'));
 
     const blob = new Blob([await file.arrayBuffer()], { type: file.type });
 
@@ -2846,7 +2865,7 @@ function setupMusicUpload(container, noteId) {
     URL.revokeObjectURL(tempAudio.src);
 
     if (durationMs < 10000 || durationMs > 600000) {
-      showToast('10초 ~ 10분 사이의 음악만 가능합니다');
+      showToast(t('toastMusicDuration'));
       return;
     }
 
@@ -2878,7 +2897,7 @@ function setupMusicUpload(container, noteId) {
       settingsMusicName.textContent = truncateFilename(file.name, 35);
       settingsMusicName.title = file.name;
     }
-    showToast(`음악 로드됨: ${file.name}`);
+    showToast(t('toastMusicLoaded', { name: file.name }));
   });
 }
 
@@ -3198,27 +3217,27 @@ function toggleShortcutHelp(container) {
   modal.className = 'shortcut-modal';
   modal.innerHTML = `
     <div class="shortcut-modal__box">
-      <div class="shortcut-modal__title">키보드 단축키</div>
+      <div class="shortcut-modal__title">${t('shortcutTitle')}</div>
       <div class="shortcut-modal__list">
-        <div class="shortcut-row"><kbd>Space</kbd><span>재생 / 일시정지</span></div>
-        <div class="shortcut-row"><kbd>←</kbd> <kbd>→</kbd><span>250ms 이동</span></div>
-        <div class="shortcut-row"><kbd>↑</kbd> <kbd>↓</kbd><span>이전 / 다음 대열</span></div>
-        <div class="shortcut-row"><kbd>N</kbd><span>대열 추가</span></div>
-        <div class="shortcut-row"><kbd>S</kbd><span>격자 스냅 토글</span></div>
-        <div class="shortcut-row"><kbd>Delete</kbd><span>선택된 대열 삭제</span></div>
-        <div class="shortcut-row"><kbd>Ctrl+Z</kbd><span>실행 취소</span></div>
-        <div class="shortcut-row"><kbd>Ctrl+Shift+Z</kbd><span>다시 실행</span></div>
-        <div class="shortcut-row"><kbd>Ctrl+A</kbd><span>댄서 전체 선택</span></div>
-        <div class="shortcut-row"><kbd>3</kbd><span>3D 뷰 토글</span></div>
-        <div class="shortcut-row"><kbd>R</kbd><span>회전 뷰 토글</span></div>
-        <div class="shortcut-row"><kbd>Esc</kbd><span>미리보기 해제 / 선택 해제</span></div>
-        <div class="shortcut-row"><kbd>Ctrl+C</kbd><span>대열 복사</span></div>
-        <div class="shortcut-row"><kbd>Ctrl+V</kbd><span>대열 붙여넣기</span></div>
-        <div class="shortcut-row"><kbd>Shift+클릭</kbd><span>대열 다중 선택</span></div>
-        <div class="shortcut-row"><kbd>Shift+휠</kbd><span>타임라인 스크롤</span></div>
-        <div class="shortcut-row"><kbd>?</kbd><span>이 도움말 열기/닫기</span></div>
+        <div class="shortcut-row"><kbd>Space</kbd><span>${t('helpPlayPause')}</span></div>
+        <div class="shortcut-row"><kbd>←</kbd> <kbd>→</kbd><span>${t('helpSeek')}</span></div>
+        <div class="shortcut-row"><kbd>↑</kbd> <kbd>↓</kbd><span>${t('helpPrevNext')}</span></div>
+        <div class="shortcut-row"><kbd>N</kbd><span>${t('helpAddFormation')}</span></div>
+        <div class="shortcut-row"><kbd>S</kbd><span>${t('helpSnap')}</span></div>
+        <div class="shortcut-row"><kbd>Delete</kbd><span>${t('helpDeleteFormation')}</span></div>
+        <div class="shortcut-row"><kbd>Ctrl+Z</kbd><span>${t('helpUndo')}</span></div>
+        <div class="shortcut-row"><kbd>Ctrl+Shift+Z</kbd><span>${t('helpRedo')}</span></div>
+        <div class="shortcut-row"><kbd>Ctrl+A</kbd><span>${t('helpSelectAll')}</span></div>
+        <div class="shortcut-row"><kbd>3</kbd><span>${t('help3d')}</span></div>
+        <div class="shortcut-row"><kbd>R</kbd><span>${t('helpRotate')}</span></div>
+        <div class="shortcut-row"><kbd>Esc</kbd><span>${t('helpEsc')}</span></div>
+        <div class="shortcut-row"><kbd>Ctrl+C</kbd><span>${t('helpCopy')}</span></div>
+        <div class="shortcut-row"><kbd>Ctrl+V</kbd><span>${t('helpPaste')}</span></div>
+        <div class="shortcut-row"><kbd>Shift+클릭</kbd><span>${t('helpMultiSelect')}</span></div>
+        <div class="shortcut-row"><kbd>Shift+휠</kbd><span>${t('helpScroll')}</span></div>
+        <div class="shortcut-row"><kbd>?</kbd><span>${t('shortcutHelp')}</span></div>
       </div>
-      <button class="btn btn--ghost shortcut-modal__close" id="shortcut-close">닫기</button>
+      <button class="btn btn--ghost shortcut-modal__close" id="shortcut-close">${t('close')}</button>
     </div>
   `;
   document.body.appendChild(modal);
@@ -3232,11 +3251,11 @@ function formatDurationFull(ms) {
   const totalSec = Math.round(ms / 1000);
   const min = Math.floor(totalSec / 60);
   const sec = totalSec % 60;
-  return `${min}분 ${String(sec).padStart(2, '0')}초 <span class="settings-sub">(총 ${totalSec}초)</span>`;
+  return `${min}:${String(sec).padStart(2, '0')} <span class="settings-sub">${t('durationFull', { sec: totalSec })}</span>`;
 }
 
 function truncateFilename(name, maxLen = 20) {
-  if (!name || name.length <= maxLen) return name || '없음';
+  if (!name || name.length <= maxLen) return name || t('durationNone');
   const ext = name.lastIndexOf('.') >= 0 ? name.slice(name.lastIndexOf('.')) : '';
   const base = name.slice(0, name.length - ext.length);
   const keep = maxLen - ext.length - 3;

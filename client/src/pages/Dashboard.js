@@ -1,6 +1,7 @@
 import { NoteStore } from '../store/NoteStore.js';
 import { navigate } from '../utils/router.js';
 import { formatTime, DANCER_RADIUS } from '../utils/constants.js';
+import { t } from '../utils/i18n.js';
 
 export async function renderDashboard(container) {
   container.innerHTML = '';
@@ -13,18 +14,18 @@ export async function renderDashboard(container) {
     <div class="dashboard__header">
       <div id="dashboard-logo" style="cursor:pointer">
         <div class="dashboard__title">ChoreoNote</div>
-        <div class="dashboard__subtitle">당신의 멋진 무대를 위해</div>
+        <div class="dashboard__subtitle">${t('backToLanding')}</div>
       </div>
       <div style="display:flex;gap:8px;align-items:center;">
         <label class="sort-dropdown">
           <select id="sort-select">
-            <option value="editedAt">최근 수정</option>
-            <option value="createdAt">생성일</option>
-            <option value="title">이름순</option>
+            <option value="editedAt">${t('sortRecent')}</option>
+            <option value="createdAt">${t('sortCreated')}</option>
+            <option value="title">${t('sortName')}</option>
           </select>
         </label>
-        <button class="btn btn--ghost" id="import-btn">가져오기</button>
-        <button class="btn btn--primary" id="create-btn">+ 새 노트</button>
+        <button class="btn btn--ghost" id="import-btn">${t('importBtn')}</button>
+        <button class="btn btn--primary" id="create-btn">${t('newNote')}</button>
       </div>
     </div>
     <div class="note-grid" id="note-grid"></div>
@@ -58,7 +59,7 @@ export async function renderDashboard(container) {
       const noteId = await NoteStore.importJSON(text);
       navigate(`/edit/${noteId}`);
     } catch (err) {
-      alert('파일을 불러올 수 없습니다: ' + err.message);
+      alert(t('importError') + ' ' + err.message);
     }
   });
 }
@@ -68,8 +69,8 @@ function renderNoteCards(grid, notes) {
     grid.innerHTML = `
       <div class="empty-state" style="grid-column:1/-1">
         <div class="empty-state__icon">🎵</div>
-        <p>아직 노트가 없습니다</p>
-        <p style="margin-top:8px;font-size:14px">+ 새 노트를 눌러 시작하세요</p>
+        <p>${t('emptyTitle')}</p>
+        <p style="margin-top:8px;font-size:14px">${t('emptyDesc')}</p>
       </div>
     `;
     return;
@@ -77,7 +78,7 @@ function renderNoteCards(grid, notes) {
 
   grid.innerHTML = notes.map((note) => `
     <div class="note-card" data-id="${note.id}">
-      <button class="note-card__delete" data-delete="${note.id}" title="삭제">✕</button>
+      <button class="note-card__delete" data-delete="${note.id}" title="${t('delete')}">✕</button>
       <div class="note-card__thumbnail">
         <canvas data-thumb="${note.id}" width="200" height="134"></canvas>
       </div>
@@ -104,7 +105,7 @@ function renderNoteCards(grid, notes) {
   grid.querySelectorAll('.note-card__delete').forEach((btn) => {
     btn.addEventListener('click', async (e) => {
       e.stopPropagation();
-      if (!confirm('이 노트를 삭제할까요?')) return;
+      if (!confirm(t('confirmDeleteNote'))) return;
       await NoteStore.deleteNote(Number(btn.dataset.delete));
       const updated = await NoteStore.getAllNotes();
       renderNoteCards(grid, updated);
