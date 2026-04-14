@@ -24,6 +24,9 @@ let unsaved = false;
 let _rotationInProgress = false;
 let _snapshotDuringRotation = false;
 let swapMode = false;
+let setSwapMode = () => {};
+let openPanel = () => {};
+let activePanel = null;
 let audienceDirection = 'top';
 let pixelsPerSec = PIXEL_PER_SEC;
 let _renderPresetThumbnails = null; // set by setupSidebar // mutable, for timeline zoom
@@ -235,10 +238,6 @@ function buildEditorHTML(data) {
                 <span>회전</span>
                 <div class="toggle-switch" id="sidebar-rotate-toggle"><div class="toggle-switch__thumb"></div></div>
               </label>
-              <label class="toggle-row">
-                <span>퇴장 영역</span>
-                <div class="toggle-switch${data.note.showWings !== false ? ' toggle-switch--on' : ''}" id="sidebar-wing-toggle"><div class="toggle-switch__thumb"></div></div>
-              </label>
             </div>
             <div class="settings-section">
               <div class="settings-label">댄서 라벨</div>
@@ -262,6 +261,52 @@ function buildEditorHTML(data) {
                 <button class="settings-option${(data.note.gridGap || 30) === 15 ? ' settings-option--active' : ''}" data-grid="15">촘촘</button>
                 <button class="settings-option${(data.note.gridGap || 30) === 30 ? ' settings-option--active' : ''}" data-grid="30">보통</button>
                 <button class="settings-option${(data.note.gridGap || 30) === 60 ? ' settings-option--active' : ''}" data-grid="60">넓음</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="sidebar__panel sidebar__panel--hidden" id="panel-help">
+          <div class="sidebar__panel-title">도움말</div>
+          <div class="sidebar__scroll" style="padding:12px 16px">
+            <div class="settings-section">
+              <div class="settings-label">키보드 단축키</div>
+              <div class="help-shortcuts">
+                <div class="shortcut-row"><kbd>Space</kbd><span>재생 / 일시정지</span></div>
+                <div class="shortcut-row"><kbd>←</kbd> <kbd>→</kbd><span>250ms 이동</span></div>
+                <div class="shortcut-row"><kbd>↑</kbd> <kbd>↓</kbd><span>이전 / 다음 대열</span></div>
+                <div class="shortcut-row"><kbd>N</kbd><span>대열 추가</span></div>
+                <div class="shortcut-row"><kbd>S</kbd><span>격자 스냅 토글</span></div>
+                <div class="shortcut-row"><kbd>Delete</kbd><span>선택된 대열 삭제</span></div>
+                <div class="shortcut-row"><kbd>Ctrl+Z</kbd><span>실행 취소</span></div>
+                <div class="shortcut-row"><kbd>Ctrl+Shift+Z</kbd><span>다시 실행</span></div>
+                <div class="shortcut-row"><kbd>Ctrl+A</kbd><span>댄서 전체 선택</span></div>
+                <div class="shortcut-row"><kbd>Ctrl+C</kbd><span>대열 복사</span></div>
+                <div class="shortcut-row"><kbd>Ctrl+V</kbd><span>대열 붙여넣기</span></div>
+                <div class="shortcut-row"><kbd>3</kbd><span>3D 뷰 토글</span></div>
+                <div class="shortcut-row"><kbd>R</kbd><span>회전 뷰 토글</span></div>
+                <div class="shortcut-row"><kbd>Esc</kbd><span>미리보기 해제 / 선택 해제</span></div>
+                <div class="shortcut-row"><kbd>Shift+클릭</kbd><span>대열 다중 선택</span></div>
+                <div class="shortcut-row"><kbd>Shift+휠</kbd><span>타임라인 스크롤</span></div>
+              </div>
+            </div>
+            <div class="settings-divider"></div>
+            <div class="settings-section">
+              <div class="settings-label">스테이지</div>
+              <div class="help-tips">
+                <p>댄서를 드래그하여 위치 이동</p>
+                <p>Shift+클릭으로 댄서 다중 선택</p>
+                <p>드래그로 영역 선택</p>
+                <p>마우스 휠로 댄서 방향 회전</p>
+                <p>경유점 더블클릭/더블탭으로 초기화</p>
+              </div>
+            </div>
+            <div class="settings-divider"></div>
+            <div class="settings-section">
+              <div class="settings-label">타임라인</div>
+              <div class="help-tips">
+                <p>대열 박스를 드래그하여 이동/리사이즈</p>
+                <p>대열 사이 빈 공간 클릭으로 이동 구간 선택</p>
+                <p>이동 구간에서 경유점으로 경로 편집</p>
               </div>
             </div>
           </div>
@@ -314,6 +359,10 @@ function buildEditorHTML(data) {
                 <button class="settings-option${audienceDirection === 'bottom' ? ' settings-option--active' : ''}" data-audience="bottom">아래쪽</button>
                 <button class="settings-option${audienceDirection === 'none' ? ' settings-option--active' : ''}" data-audience="none">없음</button>
               </div>
+              <label class="toggle-row" style="margin-top:8px">
+                <span>퇴장 영역</span>
+                <div class="toggle-switch${data.note.showWings !== false ? ' toggle-switch--on' : ''}" id="sidebar-wing-toggle"><div class="toggle-switch__thumb"></div></div>
+              </label>
             </div>
             <div class="settings-divider"></div>
             <div class="settings-section">
@@ -347,30 +396,36 @@ function buildEditorHTML(data) {
         <button class="sidebar-rail__icon" data-panel="inspector" title="댄서 정보"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
         <button class="sidebar-rail__icon" data-panel="presets" title="추천 대열"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></button>
         <button class="sidebar-rail__icon" data-panel="view" title="뷰 모드"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg></button>
+        <div class="sidebar-rail__spacer"></div>
+        <button class="sidebar-rail__icon" data-panel="help" title="도움말"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></button>
         <button class="sidebar-rail__icon" data-panel="settings" title="설정"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg></button>
       </div>
 
       <div class="player-bar">
-        <button class="player-bar__btn" id="play-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>
-        <button class="player-bar__btn" id="stop-btn" title="정지 (처음으로)"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12"/></svg></button>
-        <button class="player-bar__btn" id="prev-formation-btn" title="이전 대열"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg></button>
-        <button class="player-bar__btn" id="next-formation-btn" title="다음 대열"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg></button>
-        <span class="player-bar__time" id="time-display">${formatTime(0, true)}</span><span class="player-bar__time player-bar__time--sep">/</span><span class="player-bar__time" id="duration-display">${formatTime(data.note.duration, true)}</span>
-        <span class="player-bar__music-name" id="music-name">${data.note.musicName ? escapeAttr(data.note.musicName) : '음악 없음'}</span>
+        <div class="player-bar__row">
+          <button class="player-bar__btn" id="play-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>
+          <button class="player-bar__btn" id="stop-btn" title="정지 (처음으로)"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12"/></svg></button>
+          <button class="player-bar__btn" id="prev-formation-btn" title="이전 대열"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg></button>
+          <button class="player-bar__btn" id="next-formation-btn" title="다음 대열"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg></button>
+          <span class="player-bar__time" id="time-display">${formatTime(0, true)}</span><span class="player-bar__time player-bar__time--sep">/</span><span class="player-bar__time" id="duration-display">${formatTime(data.note.duration, true)}</span>
+          <span class="player-bar__music-name" id="music-name">${data.note.musicName ? escapeAttr(data.note.musicName) : '음악 없음'}</span>
+        </div>
 
         <div class="toolbar__separator"></div>
 
-        <div class="toolbar">
-          <button class="toolbar__btn" id="undo-btn" title="실행 취소 (Ctrl+Z)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M3 13a9 9 0 0 1 15.36-6.36"/></svg></button>
-          <button class="toolbar__btn" id="redo-btn" title="다시 실행 (Ctrl+Shift+Z)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7v6h-6"/><path d="M21 13a9 9 0 0 0-15.36-6.36"/></svg></button>
-          <div class="toolbar__separator"></div>
-          <button class="toolbar__btn" id="add-formation-btn" title="현재 위치에 대형 추가">+ 대형</button>
-          <button class="toolbar__btn" id="del-formation-btn" title="선택된 대형 삭제">− 대형</button>
-          <button class="toolbar__btn" id="swap-btn" title="댄서 두 명 위치 교환">교환</button>
-          <button class="toolbar__btn" id="copy-btn" title="대형 복사 (Ctrl+C)">복사</button>
-          <button class="toolbar__btn" id="paste-btn" title="대형 붙여넣기 (Ctrl+V)">붙여넣기</button>
-          <div class="toolbar__separator"></div>
-          <button class="toolbar__btn" id="snap-btn" title="격자에 맞추기">스냅</button>
+        <div class="player-bar__row">
+          <div class="toolbar">
+            <button class="toolbar__btn" id="undo-btn" title="실행 취소 (Ctrl+Z)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M3 13a9 9 0 0 1 15.36-6.36"/></svg></button>
+            <button class="toolbar__btn" id="redo-btn" title="다시 실행 (Ctrl+Shift+Z)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7v6h-6"/><path d="M21 13a9 9 0 0 0-15.36-6.36"/></svg></button>
+            <div class="toolbar__separator"></div>
+            <button class="toolbar__btn" id="add-formation-btn" title="현재 위치에 대형 추가">+ 대형</button>
+            <button class="toolbar__btn" id="del-formation-btn" title="선택된 대형 삭제">− 대형</button>
+            <button class="toolbar__btn" id="copy-btn" title="대형 복사 (Ctrl+C)">복사</button>
+            <button class="toolbar__btn" id="paste-btn" title="대형 붙여넣기 (Ctrl+V)">붙여넣기</button>
+            <div class="toolbar__separator"></div>
+            <button class="toolbar__btn" id="snap-btn" title="격자에 맞추기">스냅</button>
+            <button class="toolbar__btn" id="swap-btn" title="댄서 두 명 위치 교환">교환</button>
+          </div>
         </div>
       </div>
 
@@ -413,6 +468,7 @@ function setupPlayback(container) {
     currentMs = ms;
     timeDisplay.textContent = formatTime(ms, true);
     updateTimelineMarker();
+    if (renderer._selectedDancers.size > 0) updateInspector();
   };
 
   engine.onPositionsUpdate = (positions) => {
@@ -437,6 +493,7 @@ function setupPlayback(container) {
       playBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
       seekTo(currentMs);
     } else {
+      if (swapMode) setSwapMode(false);
       selectedFormation = -1;
       selectedFormations.clear();
       selectedTransition = null;
@@ -585,7 +642,7 @@ function setupPlayback(container) {
     }
     if (e.key === '?' || (e.shiftKey && e.code === 'Slash')) {
       e.preventDefault();
-      toggleShortcutHelp(container);
+      openPanel('help');
     }
   };
   document.addEventListener('keydown', window._choreoKeyHandler);
@@ -1117,7 +1174,12 @@ function setupFormationDrag(el, fIdx, mode) {
       document.removeEventListener('mouseup', onUp);
 
       if (!didDrag) {
-        // Click without drag: select and seek
+        // Click without drag: seek first (handles swap mode exit), then select
+        const scrollEl = document.querySelector('#timeline-scroll');
+        const clickX = startX - scrollEl.getBoundingClientRect().left + scrollEl.scrollLeft;
+        const clickMs = floorTime(clamp((clickX - TIMELINE_PADDING) / pixelsPerSec * 1000, 0, noteData.note.duration));
+        seekTo(clickMs);
+
         if (shiftKey) {
           // Shift+click: toggle in multi-selection
           if (selectedFormations.has(fIdx)) {
@@ -1137,11 +1199,6 @@ function setupFormationDrag(el, fIdx, mode) {
           selectedFormations.clear();
           selectedFormations.add(fIdx);
         }
-        // Seek to clicked position within the box
-        const scrollEl = document.querySelector('#timeline-scroll');
-        const clickX = startX - scrollEl.getBoundingClientRect().left + scrollEl.scrollLeft;
-        const clickMs = floorTime(clamp((clickX - TIMELINE_PADDING) / pixelsPerSec * 1000, 0, noteData.note.duration));
-        seekTo(clickMs);
         highlightFormation();
         return;
       }
@@ -1298,14 +1355,21 @@ function setupSidebar(container) {
         _presetRotation = 0;
       }
       const f = noteData.formations[selectedFormation];
+      const oldPositions = new Map();
+      const movedIds = [];
       for (let i = 0; i < count && i < positions.length; i++) {
         const rotatedIdx = (i + _presetRotation) % count;
         const dancerIdx = targetIndices[rotatedIdx];
         const d = noteData.dancers[dancerIdx];
         if (!d) continue;
         const pos = f.positions.find(p => p.dancerId === d.id);
-        if (pos) { pos.x = positions[i].x; pos.y = positions[i].y; }
+        if (pos) {
+          oldPositions.set(d.id, { x: pos.x, y: pos.y });
+          pos.x = positions[i].x; pos.y = positions[i].y;
+          movedIds.push(d.id);
+        }
       }
+      recalcWaypoints(movedIds, selectedFormation, oldPositions);
       updateStage(); saveSnapshot();
       const rotLabel = _presetRotation > 0 ? ` (순서 ${_presetRotation + 1})` : '';
       showToast(`${name} 대열 적용됨${rotLabel}`);
@@ -1496,17 +1560,18 @@ function updateInspector() {
     if (headerEl) headerEl.innerHTML = `<span class="inspector-header__multi">${selected.length}명 선택됨</span>`;
   }
 
-  // Determine if in transition (read-only for position/direction)
+  // Determine if read-only (transition or playing)
   const isTransition = !!selectedTransition;
-  const f = isTransition ? null : noteData.formations[selectedFormation];
-  const interpolated = isTransition ? engine.calcPositionsAt(currentMs) : null;
+  const isReadonly = isTransition || engine.isPlaying;
+  const f = isReadonly ? null : noteData.formations[selectedFormation];
+  const interpolated = isReadonly ? engine.calcPositionsAt(currentMs) : null;
 
   // Gather properties from selected dancers
   let xs = [], ys = [], angles = [], colors = [];
   for (const idx of selected) {
     const d = noteData.dancers[idx];
     if (!d) continue;
-    if (isTransition && interpolated && interpolated[idx]) {
+    if (isReadonly && interpolated && interpolated[idx]) {
       const p = interpolated[idx];
       xs.push(Math.round(p.x / INSPECTOR_UNIT * 10) / 10);
       ys.push(Math.round(p.y / INSPECTOR_UNIT * 10) / 10);
@@ -1529,13 +1594,13 @@ function updateInspector() {
     const allSame = xs.every(v => v === xs[0]);
     xInput.value = allSame && xs.length > 0 ? xs[0] : '';
     xInput.placeholder = allSame ? '' : '—';
-    xInput.disabled = isTransition;
+    xInput.disabled = isReadonly;
   }
   if (yInput) {
     const allSame = ys.every(v => v === ys[0]);
     yInput.value = allSame && ys.length > 0 ? ys[0] : '';
     yInput.placeholder = allSame ? '' : '—';
-    yInput.disabled = isTransition;
+    yInput.disabled = isReadonly;
   }
 
   // Direction buttons + angle display
@@ -1545,13 +1610,13 @@ function updateInspector() {
     const allSameAngle = angles.length > 0 && angles.every(a => a === angles[0]);
     dirContainer.querySelectorAll('.inspector-dir-btn').forEach(btn => {
       const btnAngle = Number(btn.dataset.angle);
-      btn.classList.toggle('inspector-dir-btn--active', !isTransition && allSameAngle && btnAngle === angles[0]);
-      btn.disabled = isTransition;
+      btn.classList.toggle('inspector-dir-btn--active', !isReadonly && allSameAngle && btnAngle === angles[0]);
+      btn.disabled = isReadonly;
     });
     if (angleDisplay) {
       angleDisplay.textContent = allSameAngle && angles.length > 0 ? `${angles[0]}°` : '—';
     }
-    dirContainer.classList.toggle('inspector-direction--disabled', isTransition);
+    dirContainer.classList.toggle('inspector-direction--disabled', isReadonly);
   }
 
   // Color palette swatches + custom button
@@ -1743,7 +1808,16 @@ function setupToolbar(container) {
   const copyBtn = container.querySelector('#copy-btn');
   const pasteBtn = container.querySelector('#paste-btn');
 
+  function guardPlaying() {
+    if (engine.isPlaying) {
+      showToast('재생을 멈추고 사용하세요');
+      return true;
+    }
+    return false;
+  }
+
   undoBtn.addEventListener('click', () => {
+    if (guardPlaying()) return;
     const snapshot = undo();
     if (snapshot) {
       restoreSnapshot(snapshot);
@@ -1752,6 +1826,7 @@ function setupToolbar(container) {
   });
 
   redoBtn.addEventListener('click', () => {
+    if (guardPlaying()) return;
     const snapshot = redo();
     if (snapshot) {
       restoreSnapshot(snapshot);
@@ -1761,6 +1836,7 @@ function setupToolbar(container) {
   let copiedPositions = null;
 
   addBtn.addEventListener('click', () => {
+    if (guardPlaying()) return;
     const newStart = floorTime(currentMs);
     // Check overlap
     const overlaps = noteData.formations.some((f) =>
@@ -1799,6 +1875,7 @@ function setupToolbar(container) {
   });
 
   delBtn.addEventListener('click', () => {
+    if (guardPlaying()) return;
     if (noteData.formations.length <= 1) {
       showToast('최소 1개의 대형이 필요합니다');
       return;
@@ -1815,6 +1892,7 @@ function setupToolbar(container) {
   });
 
   copyBtn.addEventListener('click', () => {
+    if (guardPlaying()) return;
     if (selectedFormation < 0) {
       showToast('복사할 대형을 선택하세요');
       return;
@@ -1825,6 +1903,7 @@ function setupToolbar(container) {
   });
 
   pasteBtn.addEventListener('click', () => {
+    if (guardPlaying()) return;
     if (!copiedPositions) {
       showToast('복사된 대형이 없습니다');
       return;
@@ -1891,7 +1970,7 @@ function setupToolbar(container) {
   let swapFirst = -1;
   const swapBanner = container.querySelector('#stage-swap-banner');
 
-  function setSwapMode(on) {
+  setSwapMode = (on) => {
     swapMode = on;
     swapFirst = -1;
     swapBtn.classList.toggle('toolbar__btn--active', on);
@@ -1904,13 +1983,23 @@ function setupToolbar(container) {
       renderer.onDancerSelect?.(-1);
     }
     updateStage();
-  }
+  };
 
   function updateSwapBanner(text) {
     swapBanner.textContent = text;
   }
 
-  swapBtn.addEventListener('click', () => setSwapMode(!swapMode));
+  swapBtn.addEventListener('click', () => {
+    if (!swapMode && engine.isPlaying) {
+      showToast('재생을 멈추고 사용하세요');
+      return;
+    }
+    if (!swapMode && selectedTransition) {
+      showToast('대열을 먼저 선택하세요');
+      return;
+    }
+    setSwapMode(!swapMode);
+  });
 
   swapBanner.addEventListener('click', () => setSwapMode(false));
 
@@ -1927,13 +2016,8 @@ function setupToolbar(container) {
       });
     }
 
-    // Inspector: show when dancers selected, update empty state when deselected
-    if (renderer._selectedDancers.size > 0) {
-      if (activePanel !== 'inspector') {
-        openPanel('inspector');
-      }
-      updateInspector();
-    } else if (activePanel === 'inspector') {
+    // Inspector: update content when dancers selected/deselected (don't auto-open panel)
+    if (renderer._selectedDancers.size > 0 || activePanel === 'inspector') {
       updateInspector();
     }
 
@@ -1943,6 +2027,7 @@ function setupToolbar(container) {
     if (!swapMode) return;
     // Prevent real selection in swap mode
     renderer._selectedDancers.clear();
+    updateInspector();
     if (dancerIndex < 0) {
       if (swapFirst >= 0) {
         swapFirst = -1;
@@ -2001,6 +2086,8 @@ function setupToolbar(container) {
             // Finalize
             pos1.x = Math.round(from2.x); pos1.y = Math.round(from2.y);
             pos2.x = Math.round(from1.x); pos2.y = Math.round(from1.y);
+            const oldPositions = new Map([[d1.id, from1], [d2.id, from2]]);
+            recalcWaypoints([d1.id, d2.id], selectedFormation, oldPositions);
             renderer._swapHighlight.clear();
             updateStage(); saveSnapshot();
             showToast(`${d1.name} ↔ ${d2.name} 교환 완료`);
@@ -2011,6 +2098,7 @@ function setupToolbar(container) {
 
       // Ready for next swap
       swapFirst = -1;
+      updateSwapBanner('교환 모드 — 두 댄서를 차례로 클릭');
     }
   };
 
@@ -2115,10 +2203,11 @@ function setupToolbar(container) {
     dancers: container.querySelector('#panel-dancers'),
     presets: container.querySelector('#panel-presets'),
     view: container.querySelector('#panel-view'),
+    help: container.querySelector('#panel-help'),
     settings: container.querySelector('#panel-settings'),
     inspector: container.querySelector('#panel-inspector'),
   };
-  let activePanel = 'dancers';
+  activePanel = 'dancers';
 
   const editorGrid = container.querySelector('.editor');
 
@@ -2131,7 +2220,7 @@ function setupToolbar(container) {
     setTimeout(fitStage, 260);
   }
 
-  function openPanel(name) {
+  openPanel = (name) => {
     if (activePanel === name && !sidebar.classList.contains('editor__sidebar--hidden')) {
       closePanel();
       return;
@@ -2148,7 +2237,7 @@ function setupToolbar(container) {
       if (editorGrid) editorGrid.classList.add('editor--sidebar-open');
       setTimeout(fitStage, 260);
     }
-  }
+  };
 
   railIcons.forEach(ic => {
     ic.addEventListener('click', () => openPanel(ic.dataset.panel));
@@ -2803,6 +2892,7 @@ function seekTo(ms) {
   updateTimelineMarker();
 
   // Auto-select formation or transition gap
+  const prevFormation = selectedFormation;
   const fIdx = noteData.formations.findIndex((f) => ms >= f.startTime && ms < f.startTime + f.duration);
   if (fIdx >= 0) {
     selectedFormation = fIdx;
@@ -2824,6 +2914,10 @@ function seekTo(ms) {
         break;
       }
     }
+  }
+  // 교환 모드: 이동 영역 선택 또는 다른 대열 선택 시 해제
+  if (swapMode && (selectedTransition || selectedFormation !== prevFormation)) {
+    setSwapMode(false);
   }
   highlightFormation();
   highlightTransition();

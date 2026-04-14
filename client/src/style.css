@@ -336,6 +336,10 @@ html:has(.editor) {
   opacity: 0.7;
 }
 
+.player-bar__row {
+  display: contents;
+}
+
 .toolbar {
   display: flex;
   gap: 6px;
@@ -522,6 +526,57 @@ html:has(.editor) {
 .sidebar-rail__icon--active {
   background: rgba(78, 205, 196, 0.2);
   color: var(--accent);
+}
+
+.sidebar-rail__spacer {
+  flex: 1;
+}
+
+.help-shortcuts {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.help-shortcuts .shortcut-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.help-shortcuts .shortcut-row kbd {
+  background: var(--border);
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 11px;
+  font-family: inherit;
+  color: var(--text-primary);
+  min-width: 24px;
+  text-align: center;
+}
+
+.help-tips {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.help-tips p {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  padding-left: 8px;
+  position: relative;
+}
+
+.help-tips p::before {
+  content: '·';
+  position: absolute;
+  left: 0;
 }
 
 .sidebar__tabs {
@@ -1983,13 +2038,46 @@ html:has(.editor) {
   /* Editor */
   .editor {
     grid-template-columns: 1fr;
-    grid-template-rows: auto 1fr auto auto;
+    grid-template-rows: auto 36px 1fr auto auto;
     height: 100vh;
     height: 100dvh;
   }
-  .sidebar-rail {
-    display: none;
+  .editor--sidebar-open {
+    grid-template-columns: 1fr;
   }
+
+  /* [P2] 세로 레일 → 헤더 아래 가로 레일 */
+  .sidebar-rail {
+    grid-row: 2;
+    grid-column: 1;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    width: 100%;
+    height: 36px;
+    padding: 0 12px;
+    gap: 4px;
+    border-left: none;
+    border-top: none;
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+    justify-content: center;
+  }
+  .sidebar-rail__icon {
+    width: 32px;
+    height: 28px;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+  .sidebar-rail__spacer {
+    flex: 0;
+    width: 1px;
+    height: 20px;
+    background: var(--border-strong);
+    margin: 0 4px;
+    flex-shrink: 0;
+  }
+
   .editor__sidebar {
     grid-row: auto;
     grid-column: auto;
@@ -2029,19 +2117,54 @@ html:has(.editor) {
   }
   .editor__main {
     padding: 10px;
-    order: 2;
+    grid-row: 3;
+    grid-column: 1;
   }
+
+  /* [P2] 플레이어바 두 줄 분리 */
   .player-bar {
-    order: 3;
+    grid-row: 4;
+    grid-column: 1;
+    flex-wrap: wrap;
+    height: auto;
+    gap: 0;
+    padding: 4px 10px;
   }
+  .player-bar__row {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    gap: 6px;
+    height: 32px;
+  }
+  .player-bar__row:first-child {
+    justify-content: center;
+  }
+  .player-bar .toolbar__separator {
+    display: none;
+  }
+  .player-bar .toolbar {
+    width: 100%;
+    justify-content: center;
+  }
+  .player-bar__time {
+    font-size: 11px;
+  }
+  .player-bar__music-name {
+    display: none;
+  }
+
   .editor__timeline-wrap {
-    order: 4;
+    grid-row: 5;
+    grid-column: 1;
   }
   .stage-canvas {
     width: 100% !important;
     height: auto !important;
   }
   .editor__header {
+    grid-row: 1;
+    grid-column: 1;
     flex-wrap: wrap;
     gap: 8px;
     padding: 8px 12px;
@@ -2057,14 +2180,6 @@ html:has(.editor) {
     padding: 6px 10px;
     font-size: 12px;
   }
-  .player-bar {
-    gap: 6px;
-    padding: 0 10px;
-    height: 36px;
-  }
-  .player-bar__time {
-    font-size: 11px;
-  }
   .toolbar {
     gap: 4px;
     overflow-x: auto;
@@ -2075,8 +2190,17 @@ html:has(.editor) {
     font-size: 11px;
     white-space: nowrap;
   }
+
+  /* [P2] 타임라인: 대열 박스가 스크롤바에 가려지지 않도록 */
   .editor__timeline {
-    height: 80px;
+    min-height: 90px;
+  }
+  .timeline__bottom-bar {
+    padding: 2px 8px;
+    padding-bottom: env(safe-area-inset-bottom, 4px);
+  }
+  .timeline__zoom {
+    display: none;
   }
 
   /* Sidebar as bottom sheet */
