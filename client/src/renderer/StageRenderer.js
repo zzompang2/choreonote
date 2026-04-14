@@ -31,6 +31,15 @@ export class StageRenderer {
     this._selectedDancers = new Set();
     this._swapHighlight = new Set(); // separate highlight for swap mode (no handle, amber)
 
+    // Markers
+    this.markers = []; // [{ id, x, y, type, label }]
+    this.showMarkers = true;
+    this.markerEditMode = false;
+    this._draggingMarker = null; // { markerIndex, offsetX, offsetY }
+    this._resizingMarker = null; // { markerIndex, startX, startY, origW, origH }
+    this._selectedMarker = -1;
+    this.onMarkerChange = null; // callback when markers are modified
+
     this._setupEvents();
   }
 
@@ -139,6 +148,11 @@ export class StageRenderer {
     // Grid from cache
     ctx.drawImage(this.gridCanvas, 0, 0);
 
+    // Draw markers (below waypoints and dancers)
+    if (this.showMarkers && this.markers.length > 0) {
+      this._drawMarkers(ctx);
+    }
+
     // Draw waypoint path curves (below dancers)
     if (this._waypointPaths) {
       ctx.save();
@@ -218,7 +232,7 @@ export class StageRenderer {
       }
 
       const isSelected = this._selectedDancers.has(i);
-      ctx.globalAlpha = isOffstage ? 0.4 : 1.0;
+      ctx.globalAlpha = this.markerEditMode ? 0.25 : (isOffstage ? 0.4 : 1.0);
 
       // Compensate CSS transforms so dancers appear upright
       const needsCompensation = !this._force2DRender && (this.isRotated || this.is3D);
@@ -670,6 +684,42 @@ export class StageRenderer {
     if (this.is3D || this.isRotated) return;
     const { x, y } = this._getCanvasPos(e);
 
+    // Marker edit mode: handle marker interactions
+    if (this.markerEditMode) {
+      // Check resize handle first (for selected prop marker)
+      if (this.hitTestMarkerResize(x, y)) {
+        const m = this.markers[this._selectedMarker];
+        this._resizingMarker = {
+          markerIndex: this._selectedMarker,
+          startX: x,
+          startY: y,
+          origW: m.width || StageRenderer.MARKER_DEFAULTS[m.type]?.w || 30,
+          origH: m.height || StageRenderer.MARKER_DEFAULTS[m.type]?.h || 30,
+        };
+        return;
+      }
+      const mHit = this.hitTestMarker(x, y);
+      if (mHit >= 0) {
+        this._selectedMarker = mHit;
+        const m = this.markers[mHit];
+        this._draggingMarker = {
+          markerIndex: mHit,
+          offsetX: x - (WING_SIZE + HALF_W + m.x),
+          offsetY: y - (WING_SIZE + HALF_H + m.y),
+          started: false,
+          originX: x,
+          originY: y,
+        };
+      } else {
+        this._selectedMarker = -1;
+      }
+      if (this._dancers && this._positions) {
+        this.drawFrame(this._dancers, this._positions);
+      }
+      this.onMarkerChange?.();
+      return;
+    }
+
     // Check rotation handle hit first
     const rotHit = this.hitTestRotateHandle(x, y);
     if (rotHit >= 0) {
@@ -747,6 +797,43 @@ export class StageRenderer {
   _onMouseMove(e) {
     const { x, y } = this._getCanvasPos(e);
 
+    // Marker resize
+    if (this._resizingMarker) {
+      const rm = this._resizingMarker;
+      const m = this.markers[rm.markerIndex];
+      const dx = x - rm.startX, dy = y - rm.startY;
+      m.width = clamp(rm.origW + dx * 2, 10, 300);
+      m.height = clamp(rm.origH + dy * 2, 10, 300);
+      if (this._dancers && this._positions) {
+        this.drawFrame(this._dancers, this._positions);
+      }
+      return;
+    }
+
+    // Marker drag
+    if (this._draggingMarker) {
+      const dm = this._draggingMarker;
+      const dx = x - dm.originX;
+      const dy = y - dm.originY;
+      if (!dm.started && dx * dx + dy * dy > 25) dm.started = true;
+      if (dm.started) {
+        const m = this.markers[dm.markerIndex];
+        let newX = x - dm.offsetX - WING_SIZE - HALF_W;
+        let newY = y - dm.offsetY - WING_SIZE - HALF_H;
+        if (this.isSnap) {
+          const gap = 15;
+          newX = Math.round(newX / gap) * gap;
+          newY = Math.round(newY / gap) * gap;
+        }
+        m.x = clamp(newX, -HALF_W, HALF_W);
+        m.y = clamp(newY, -HALF_H, HALF_H);
+        if (this._dancers && this._positions) {
+          this.drawFrame(this._dancers, this._positions);
+        }
+      }
+      return;
+    }
+
     if (this._draggingRotate) {
       const dx = x - this._draggingRotate.centerX;
       const dy = y - this._draggingRotate.centerY;
@@ -800,6 +887,20 @@ export class StageRenderer {
   }
 
   _onMouseUp(e) {
+    if (this._resizingMarker) {
+      this._resizingMarker = null;
+      this.onMarkerChange?.();
+      return;
+    }
+
+    if (this._draggingMarker) {
+      if (this._draggingMarker.started) {
+        this.onMarkerChange?.();
+      }
+      this._draggingMarker = null;
+      return;
+    }
+
     if (this._draggingRotate) {
       this.onDancerRotateEnd?.(this._draggingRotate.dancerIndex);
       this._draggingRotate = null;
@@ -874,6 +975,190 @@ export class StageRenderer {
   onWaypointReset = null;
   onDancerRotate = null;
   onDancerRotateEnd = null;
+
+  // --- Markers ---
+  // Point markers (x, dot, flag): no size, icon only
+  // Prop markers (amp, desk, chair, plug): have width/height, rendered as rect
+  static MARKER_DEFAULTS = {
+    x:      { w: 0, h: 0 },
+    rect:   { w: 40, h: 30 },
+    circle: { w: 30, h: 30 },
+  };
+
+  _isPointMarker(type) {
+    return !type || type === 'x';
+  }
+
+  _drawMarkers(ctx) {
+    for (let i = 0; i < this.markers.length; i++) {
+      const m = this.markers[i];
+      const cx = WING_SIZE + HALF_W + m.x;
+      const cy = WING_SIZE + HALF_H + m.y;
+      const isSelected = this.markerEditMode && this._selectedMarker === i;
+      const isPoint = this._isPointMarker(m.type);
+
+      ctx.save();
+      ctx.globalAlpha = this.markerEditMode ? 0.9 : 0.5;
+
+      if (isPoint) {
+        // Point marker: small icon
+        const MARKER_R = 8;
+        if (isSelected) {
+          ctx.beginPath();
+          ctx.arc(cx, cy, MARKER_R + 4, 0, Math.PI * 2);
+          ctx.strokeStyle = '#F59E0B';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+        }
+        ctx.beginPath();
+        ctx.arc(cx, cy, MARKER_R, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255,255,255,0.15)';
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        ctx.fillStyle = '#ffffff';
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1.5;
+        this._drawMarkerIcon(ctx, cx, cy, MARKER_R * 0.6, m.type);
+      } else {
+        // Sized marker: rect or circle
+        const w = m.width || StageRenderer.MARKER_DEFAULTS[m.type]?.w || 30;
+        const h = m.height || StageRenderer.MARKER_DEFAULTS[m.type]?.h || 30;
+        const rx = cx - w / 2, ry = cy - h / 2;
+        const isCircle = m.type === 'circle';
+
+        // Selection outline
+        if (isSelected) {
+          ctx.strokeStyle = '#F59E0B';
+          ctx.lineWidth = 2;
+          if (isCircle) {
+            ctx.beginPath();
+            ctx.ellipse(cx, cy, w / 2 + 3, h / 2 + 3, 0, 0, Math.PI * 2);
+            ctx.stroke();
+          } else {
+            ctx.strokeRect(rx - 3, ry - 3, w + 6, h + 6);
+          }
+        }
+
+        // Fill
+        ctx.fillStyle = 'rgba(255,255,255,0.08)';
+        if (isCircle) {
+          ctx.beginPath();
+          ctx.ellipse(cx, cy, w / 2, h / 2, 0, 0, Math.PI * 2);
+          ctx.fill();
+        } else {
+          ctx.fillRect(rx, ry, w, h);
+        }
+
+        // Hatch lines
+        ctx.save();
+        ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+        ctx.lineWidth = 0.5;
+        if (isCircle) {
+          ctx.beginPath();
+          ctx.ellipse(cx, cy, w / 2, h / 2, 0, 0, Math.PI * 2);
+          ctx.clip();
+        }
+        ctx.beginPath();
+        for (let d = -w - h; d < w + h; d += 8) {
+          ctx.moveTo(rx + Math.max(0, d), ry + Math.max(0, -d));
+          ctx.lineTo(rx + Math.min(w, d + h), ry + Math.min(h, h - d));
+        }
+        ctx.stroke();
+        ctx.restore();
+
+        // Border
+        ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 3]);
+        if (isCircle) {
+          ctx.beginPath();
+          ctx.ellipse(cx, cy, w / 2, h / 2, 0, 0, Math.PI * 2);
+          ctx.stroke();
+        } else {
+          ctx.strokeRect(rx, ry, w, h);
+        }
+        ctx.setLineDash([]);
+
+        // Resize handle (edit mode + selected)
+        if (isSelected) {
+          const hs = 4;
+          ctx.fillStyle = '#F59E0B';
+          ctx.fillRect(rx + w - hs, ry + h - hs, hs * 2, hs * 2);
+        }
+      }
+
+      ctx.restore();
+
+      // Label
+      if (m.label) {
+        ctx.save();
+        ctx.globalAlpha = this.markerEditMode ? 0.9 : 0.5;
+        if (isPoint) {
+          ctx.font = '9px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'top';
+          ctx.fillStyle = 'rgba(255,255,255,0.8)';
+          ctx.fillText(m.label, cx, cy + 11);
+        } else {
+          ctx.font = 'bold 11px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillStyle = 'rgba(255,255,255,0.7)';
+          ctx.fillText(m.label, cx, cy);
+        }
+        ctx.restore();
+      }
+    }
+  }
+
+  _drawMarkerIcon(ctx, cx, cy, r, type) {
+    if (type === 'x') {
+      ctx.beginPath();
+      ctx.moveTo(cx - r, cy - r); ctx.lineTo(cx + r, cy + r);
+      ctx.moveTo(cx + r, cy - r); ctx.lineTo(cx - r, cy + r);
+      ctx.stroke();
+    }
+    // rect and circle have no icon — shape is the visual
+  }
+
+  hitTestMarker(canvasX, canvasY) {
+    if (!this.showMarkers) return -1;
+    for (let i = this.markers.length - 1; i >= 0; i--) {
+      const m = this.markers[i];
+      const mcx = WING_SIZE + HALF_W + m.x;
+      const mcy = WING_SIZE + HALF_H + m.y;
+      if (this._isPointMarker(m.type)) {
+        const dx = mcx - canvasX, dy = mcy - canvasY;
+        if (dx * dx + dy * dy <= 144) return i; // r=12
+      } else {
+        const w = m.width || StageRenderer.MARKER_DEFAULTS[m.type]?.w || 30;
+        const h = m.height || StageRenderer.MARKER_DEFAULTS[m.type]?.h || 30;
+        if (m.type === 'circle') {
+          const dx = (mcx - canvasX) / (w / 2), dy = (mcy - canvasY) / (h / 2);
+          if (dx * dx + dy * dy <= 1) return i;
+        } else {
+          if (canvasX >= mcx - w / 2 && canvasX <= mcx + w / 2 &&
+              canvasY >= mcy - h / 2 && canvasY <= mcy + h / 2) return i;
+        }
+      }
+    }
+    return -1;
+  }
+
+  hitTestMarkerResize(canvasX, canvasY) {
+    if (!this.showMarkers || this._selectedMarker < 0) return false;
+    const m = this.markers[this._selectedMarker];
+    if (this._isPointMarker(m.type)) return false;
+    const w = m.width || StageRenderer.MARKER_DEFAULTS[m.type]?.w || 30;
+    const h = m.height || StageRenderer.MARKER_DEFAULTS[m.type]?.h || 30;
+    const cx = WING_SIZE + HALF_W + m.x;
+    const cy = WING_SIZE + HALF_H + m.y;
+    const hx = cx + w / 2, hy = cy + h / 2;
+    const dx = canvasX - hx, dy = canvasY - hy;
+    return dx * dx + dy * dy <= 64; // 8px radius
+  }
 }
 
 function parseColor(hex) {

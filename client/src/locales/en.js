@@ -81,6 +81,7 @@ export const en = {
   railInspector: 'Inspector',
   railPresets: 'Presets',
   railView: 'View',
+  railMarkers: 'Markers',
   railHelp: 'Help',
   railSettings: 'Settings',
 
@@ -242,6 +243,22 @@ export const en = {
   durationNone: 'None',
 
   // Shortcut modal (legacy)
+  // Editor — Markers panel
+  markersTitle: 'Markers',
+  markerEditMode: 'Edit Markers',
+  markerEditBanner: 'Marker edit mode — drag, add, or delete markers',
+  markerEditBannerExit: 'Marker edit mode — click to exit',
+  addMarker: '+ Add Marker',
+  deleteMarker: 'Delete',
+  markerTypeX: 'X Mark',
+  markerTypeRect: 'Rectangle',
+  markerTypeCircle: 'Circle',
+  markerShowToggle: 'Show Markers',
+  toastMarkerAdded: 'Marker added',
+  toastMarkerDeleted: 'Marker deleted',
+  markerLabel: 'Label',
+  markerEmpty: 'No markers',
+
   shortcutTitle: 'Keyboard Shortcuts',
   shortcutHelp: 'Toggle this help',
 };

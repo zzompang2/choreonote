@@ -94,6 +94,13 @@ export async function renderEditor(container, noteId) {
     }
     canvas.style.width = Math.floor(w) + 'px';
     canvas.style.height = Math.floor(h) + 'px';
+
+    // Set CSS var for mobile bottom sheet max-height (below rail)
+    const rail = container.querySelector('.sidebar-rail');
+    if (rail && window.innerWidth <= 768) {
+      const railBottom = rail.getBoundingClientRect().bottom;
+      container.querySelector('.editor__sidebar')?.style.setProperty('--mobile-rail-top', `${railBottom}px`);
+    }
   };
 
   // Wire callbacks
@@ -105,6 +112,7 @@ export async function renderEditor(container, noteId) {
   setupHeader(container, noteId);
   setupSettings(container, noteId);
   setupMusicUpload(container, noteId);
+  setupMarkers(container, noteId);
 
   // Initial render (defer to ensure DOM is fully ready)
   setTimeout(() => {
@@ -151,6 +159,7 @@ function buildEditorHTML(data) {
           </div>
           <div class="stage-3d-banner" id="stage-3d-banner">${t('previewBanner')}</div>
           <div class="stage-swap-banner" id="stage-swap-banner">${t('swapBanner')}</div>
+          <div class="stage-marker-banner" id="stage-marker-banner">${t('markerEditBannerExit')}</div>
         </div>
       </div>
 
@@ -264,6 +273,26 @@ function buildEditorHTML(data) {
                 <button class="settings-option${(data.note.gridGap || 30) === 60 ? ' settings-option--active' : ''}" data-grid="60">${t('gridWide')}</button>
               </div>
             </div>
+          </div>
+        </div>
+        <div class="sidebar__panel sidebar__panel--hidden" id="panel-markers">
+          <div class="sidebar__panel-title">${t('markersTitle')}</div>
+          <div class="sidebar__scroll" style="padding:12px 16px">
+            <div class="settings-section">
+              <label class="toggle-row">
+                <span>${t('markerShowToggle')}</span>
+                <div class="toggle-switch toggle-switch--on" id="marker-show-toggle"><div class="toggle-switch__thumb"></div></div>
+              </label>
+              <label class="toggle-row">
+                <span>${t('markerEditMode')}</span>
+                <div class="toggle-switch" id="marker-edit-toggle"><div class="toggle-switch__thumb"></div></div>
+              </label>
+            </div>
+            <div class="settings-divider"></div>
+            <div id="marker-list"></div>
+          </div>
+          <div class="sidebar__actions">
+            <button class="btn btn--ghost" id="add-marker-btn" style="width:100%">${t('addMarker')}</button>
           </div>
         </div>
         <div class="sidebar__panel sidebar__panel--hidden" id="panel-help">
@@ -405,6 +434,7 @@ function buildEditorHTML(data) {
         <button class="sidebar-rail__icon" data-panel="inspector" title="${t('railInspector')}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
         <button class="sidebar-rail__icon" data-panel="presets" title="${t('railPresets')}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></button>
         <button class="sidebar-rail__icon" data-panel="view" title="${t('railView')}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg></button>
+        <button class="sidebar-rail__icon" data-panel="markers" title="${t('railMarkers')}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></button>
         <div class="sidebar-rail__spacer"></div>
         <button class="sidebar-rail__icon" data-panel="help" title="${t('railHelp')}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></button>
         <button class="sidebar-rail__icon" data-panel="settings" title="${t('railSettings')}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg></button>
@@ -503,6 +533,7 @@ function setupPlayback(container) {
       seekTo(currentMs);
     } else {
       if (swapMode) setSwapMode(false);
+      if (renderer.markerEditMode) { renderer.markerEditMode = false; renderer._selectedMarker = -1; const mb = container.querySelector('#stage-marker-banner'); if (mb) mb.classList.remove('stage-marker-banner--visible'); const mt = container.querySelector('#marker-edit-toggle'); if (mt) mt.classList.remove('toggle-switch--on'); }
       selectedFormation = -1;
       selectedFormations.clear();
       selectedTransition = null;
@@ -2215,6 +2246,7 @@ function setupToolbar(container) {
     help: container.querySelector('#panel-help'),
     settings: container.querySelector('#panel-settings'),
     inspector: container.querySelector('#panel-inspector'),
+    markers: container.querySelector('#panel-markers'),
   };
   activePanel = 'dancers';
 
@@ -2357,6 +2389,173 @@ function setupToolbar(container) {
   });
 }
 
+// --- Markers ---
+function setupMarkers(container, noteId) {
+  // Load markers from noteData
+  renderer.markers = noteData.note.markers || [];
+  renderer.showMarkers = true;
+
+  const markerBanner = container.querySelector('#stage-marker-banner');
+  const editToggle = container.querySelector('#marker-edit-toggle');
+  const showToggle = container.querySelector('#marker-show-toggle');
+  const addBtn = container.querySelector('#add-marker-btn');
+  const listEl = container.querySelector('#marker-list');
+
+  function setMarkerEditMode(on) {
+    renderer.markerEditMode = on;
+    renderer._selectedMarker = -1;
+    editToggle.classList.toggle('toggle-switch--on', on);
+    markerBanner.classList.toggle('stage-marker-banner--visible', on);
+    updateStage();
+  }
+
+  function renderMarkerList() {
+    if (renderer.markers.length === 0) {
+      listEl.innerHTML = `<div class="settings-sub" style="text-align:center;padding:12px 0">${t('markerEmpty')}</div>`;
+      return;
+    }
+    listEl.innerHTML = renderer.markers.map((m, i) => `
+      <div class="marker-item${renderer._selectedMarker === i ? ' marker-item--selected' : ''}" data-idx="${i}">
+        <canvas class="marker-item__icon" data-marker-idx="${i}" width="24" height="24"></canvas>
+        <input class="marker-item__label" value="${m.label || ''}" placeholder="${t('markerLabel')}" data-label-idx="${i}" />
+        <select class="marker-item__type" data-type-idx="${i}">
+          <option value="x"${m.type === 'x' ? ' selected' : ''}>${t('markerTypeX')}</option>
+          <option value="rect"${m.type === 'rect' ? ' selected' : ''}>${t('markerTypeRect')}</option>
+          <option value="circle"${m.type === 'circle' ? ' selected' : ''}>${t('markerTypeCircle')}</option>
+        </select>
+        <button class="marker-item__delete" data-del-idx="${i}" title="${t('deleteMarker')}">✕</button>
+      </div>
+    `).join('');
+
+    // Draw mini icons on canvases
+    listEl.querySelectorAll('canvas[data-marker-idx]').forEach(c => {
+      const idx = Number(c.dataset.markerIdx);
+      const m = renderer.markers[idx];
+      const ctx = c.getContext('2d');
+      ctx.clearRect(0, 0, 24, 24);
+      ctx.strokeStyle = '#ffffff';
+      ctx.fillStyle = '#ffffff';
+      ctx.lineWidth = 1.5;
+      if (m.type === 'x') {
+        renderer._drawMarkerIcon(ctx, 12, 12, 6, 'x');
+      } else if (m.type === 'circle') {
+        ctx.beginPath();
+        ctx.arc(12, 12, 7, 0, Math.PI * 2);
+        ctx.stroke();
+      } else {
+        ctx.strokeRect(5, 6, 14, 12);
+      }
+    });
+
+    // Label input
+    listEl.querySelectorAll('[data-label-idx]').forEach(input => {
+      input.addEventListener('change', () => {
+        const idx = Number(input.dataset.labelIdx);
+        renderer.markers[idx].label = input.value;
+        saveMarkers();
+        updateStage();
+      });
+    });
+
+    // Type select
+    listEl.querySelectorAll('[data-type-idx]').forEach(sel => {
+      sel.addEventListener('change', () => {
+        const idx = Number(sel.dataset.typeIdx);
+        const m = renderer.markers[idx];
+        const oldIsPoint = renderer._isPointMarker(m.type);
+        m.type = sel.value;
+        const newIsPoint = renderer._isPointMarker(m.type);
+        // Apply default size when switching to/from prop type
+        if (!newIsPoint) {
+          const defaults = renderer.constructor.MARKER_DEFAULTS[m.type];
+          if (defaults) { m.width = defaults.w; m.height = defaults.h; }
+        } else {
+          delete m.width; delete m.height;
+        }
+        saveMarkers();
+        updateStage();
+        renderMarkerList();
+      });
+    });
+
+    // Delete
+    listEl.querySelectorAll('[data-del-idx]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const idx = Number(btn.dataset.delIdx);
+        renderer.markers.splice(idx, 1);
+        if (renderer._selectedMarker >= renderer.markers.length) renderer._selectedMarker = -1;
+        saveMarkers();
+        renderMarkerList();
+        updateStage();
+        showToast(t('toastMarkerDeleted'));
+      });
+    });
+
+    // Click to select (only in edit mode)
+    listEl.querySelectorAll('.marker-item').forEach(el => {
+      el.addEventListener('click', (e) => {
+        if (e.target.closest('.marker-item__delete') || e.target.closest('input') || e.target.closest('select')) return;
+        const idx = Number(el.dataset.idx);
+        renderer._selectedMarker = renderer._selectedMarker === idx ? -1 : idx;
+        renderMarkerList();
+        updateStage();
+      });
+    });
+  }
+
+  function saveMarkers() {
+    noteData.note.markers = renderer.markers;
+    unsaved = true;
+  }
+
+  // Show toggle
+  showToggle.addEventListener('click', () => {
+    renderer.showMarkers = !renderer.showMarkers;
+    showToggle.classList.toggle('toggle-switch--on', renderer.showMarkers);
+    if (!renderer.showMarkers && renderer.markerEditMode) setMarkerEditMode(false);
+    updateStage();
+  });
+
+  // Edit toggle
+  editToggle.addEventListener('click', () => {
+    if (!renderer.showMarkers) {
+      renderer.showMarkers = true;
+      showToggle.classList.toggle('toggle-switch--on', true);
+    }
+    setMarkerEditMode(!renderer.markerEditMode);
+  });
+
+  // Banner click exits edit mode
+  markerBanner.addEventListener('click', () => setMarkerEditMode(false));
+
+  // Add marker
+  addBtn.addEventListener('click', () => {
+    const newMarker = {
+      id: Date.now(),
+      x: 0,
+      y: 0,
+      type: 'x',
+      label: '',
+    };
+    renderer.markers.push(newMarker);
+    renderer._selectedMarker = renderer.markers.length - 1;
+    if (!renderer.markerEditMode) setMarkerEditMode(true);
+    saveMarkers();
+    renderMarkerList();
+    updateStage();
+    showToast(t('toastMarkerAdded'));
+  });
+
+  // Renderer callback: when marker is moved/selected
+  renderer.onMarkerChange = () => {
+    saveMarkers();
+    renderMarkerList();
+  };
+
+  // Initial render
+  renderMarkerList();
+}
+
 // --- Header ---
 function setupHeader(container, noteId) {
   container.querySelector('#back-btn').addEventListener('click', () => navigate('/dashboard'));
@@ -2372,6 +2571,7 @@ function setupHeader(container, noteId) {
       dancerShape: renderer.dancerShape,
       gridGap: renderer.gridGap,
       showWings: renderer.showWings,
+      markers: renderer.markers,
       dancers: noteData.dancers.map((d) => ({ name: d.name, color: d.color })),
       formations: noteData.formations.map((f) => ({
         startTime: f.startTime,

@@ -81,6 +81,7 @@ export const ko = {
   railInspector: '댄서 정보',
   railPresets: '추천 대열',
   railView: '뷰 모드',
+  railMarkers: '마커',
   railHelp: '도움말',
   railSettings: '설정',
 
@@ -242,6 +243,22 @@ export const ko = {
   durationNone: '없음',
 
   // Shortcut modal (legacy, kept for toggleShortcutHelp)
+  // Editor — Markers panel
+  markersTitle: '마커',
+  markerEditMode: '마커 편집',
+  markerEditBanner: '마커 편집 모드 — 마커를 드래그하거나 추가/삭제',
+  markerEditBannerExit: '마커 편집 모드 — 클릭하면 종료',
+  addMarker: '+ 마커 추가',
+  deleteMarker: '삭제',
+  markerTypeX: 'X 표시',
+  markerTypeRect: '사각형',
+  markerTypeCircle: '원형',
+  markerShowToggle: '마커 표시',
+  toastMarkerAdded: '마커 추가됨',
+  toastMarkerDeleted: '마커 삭제됨',
+  markerLabel: '라벨',
+  markerEmpty: '마커가 없습니다',
+
   shortcutTitle: '키보드 단축키',
   shortcutHelp: '이 도움말 열기/닫기',
 };

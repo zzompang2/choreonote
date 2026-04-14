@@ -94,7 +94,7 @@ export const NoteStore = {
     };
   },
 
-  async saveNote(noteId, { dancers, formations, stageWidth, stageHeight, dancerScale, audienceDirection, dancerShape, gridGap, showWings }) {
+  async saveNote(noteId, { dancers, formations, stageWidth, stageHeight, dancerScale, audienceDirection, dancerShape, gridGap, showWings, markers }) {
     return db.transaction(
       'rw',
       db.notes, db.dancers, db.formations, db.positions,
@@ -107,6 +107,7 @@ export const NoteStore = {
         if (dancerShape != null) noteUpdate.dancerShape = dancerShape;
         if (gridGap != null) noteUpdate.gridGap = gridGap;
         if (showWings != null) noteUpdate.showWings = showWings;
+        if (markers != null) noteUpdate.markers = markers;
         await db.notes.update(noteId, noteUpdate);
 
         // Clear and rewrite dancers
@@ -207,6 +208,7 @@ export const NoteStore = {
         dancerScale: data.note.dancerScale, audienceDirection: data.note.audienceDirection,
         dancerShape: data.note.dancerShape, gridGap: data.note.gridGap,
         showWings: data.note.showWings,
+        markers: data.note.markers || [],
       },
       dancers: data.dancers.map((d) => ({ name: d.name, color: d.color })),
       formations: data.formations.map((f) => ({
@@ -247,6 +249,7 @@ export const NoteStore = {
         dancerShape: data.note.dancerShape || undefined,
         gridGap: data.note.gridGap || undefined,
         showWings: data.note.showWings != null ? data.note.showWings : undefined,
+        markers: data.note.markers || undefined,
         createdAt: now,
         editedAt: now,
       });
