@@ -23,7 +23,7 @@ export class StageRenderer {
     this.audienceDirection = 'top'; // 'top' or 'bottom'
     this.dancerScale = 1.0; // 0.5 ~ 2.0
     this.touchScale = 1.0; // mobile touch boost (set from Editor.js)
-    this.showWings = true; // show offstage wing areas
+    this.showWings = false; // show offstage wing areas
     this.hideHandles = false; // hide rotation handles when no formation selected
 
     // Drag state
