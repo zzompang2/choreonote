@@ -696,7 +696,7 @@ export class StageRenderer {
     }, { passive: false });
     document.addEventListener('touchmove', (e) => {
       if (_longPressTimer) { clearTimeout(_longPressTimer); _longPressTimer = null; }
-      if (this._dragging || this._draggingWaypoint || this._draggingRotate || this._boxSelect) {
+      if (this._dragging || this._draggingWaypoint || this._draggingRotate || this._boxSelect || this._draggingMarker || this._resizingMarker) {
         e.preventDefault();
         this._onMouseMove(this._touchToMouse(e));
       }

@@ -114,6 +114,7 @@ export const en = {
   presetSelectionInfo: 'Apply to {count} selected',
   presetAllInfo: 'Apply to all {count}',
   presetSelectFirst: 'Select a formation first',
+  presetEmpty: 'Select a formation on the timeline',
   presetApplied: '{name} preset applied',
   presetAppliedRotated: '{name} preset applied (order {n})',
   presetMismatch: '{count}',
@@ -267,7 +268,7 @@ export const en = {
   toastMarkerAdded: 'Marking added',
   toastMarkerDeleted: 'Marking deleted',
   markerLabel: 'Label',
-  markerEmpty: 'No markings yet. Press + Add Marking below, then turn on Edit Markings to position them.',
+  markerEmpty: 'Press + Add Marking to create a marking',
 
   shortcutTitle: 'Keyboard Shortcuts',
   shortcutHelp: 'Toggle this help',
@@ -276,7 +277,7 @@ export const en = {
 
   // Feature unlock
   unlockHint: 'Tap to add new features',
-  unlockBtn: '✦ {current}/{total}',
+  unlockBtn: 'Click to unlock new features',
   unlockToastView: '🔓 Stage Setup unlocked!',
   unlockToastInspector: '🔓 Edit Dancer unlocked!',
   unlockToastPresets: '🔓 Formations unlocked!',
@@ -294,13 +295,12 @@ export const en = {
 
   // Onboarding tour
   tourTimelineTitle: 'Add Formation',
-  tourTimelineDesc: 'Click an empty space on the timeline, then press + to add a formation.',
+  tourTimelineDesc: 'Press the + button to add a formation.',
   tourStageTitle: 'Place Dancers',
-  tourStageDesc: 'Drag dancers to change their positions.',
+  tourStageDesc: 'Drag a dancer to change its position.',
   tourPlayTitle: 'Play',
-  tourPlayDesc: 'Press play to see the result.',
-  tourNext: 'Next',
-  tourDone: 'Get Started',
+  tourPlayDesc: 'Press the play button to see the result.',
+  tourComplete: 'Done!',
   tourSkip: 'Skip',
   tourStep: '{current} / {total}',
 };

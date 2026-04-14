@@ -114,6 +114,7 @@ export const ko = {
   presetSelectionInfo: '선택 {count}명에게 적용',
   presetAllInfo: '전체 {count}명에게 적용',
   presetSelectFirst: '대열을 먼저 선택하세요',
+  presetEmpty: '타임라인에서 대열을 선택하세요',
   presetApplied: '{name} 대열 적용됨',
   presetAppliedRotated: '{name} 대열 적용됨 (순서 {n})',
   presetMismatch: '{count}명',
@@ -267,7 +268,7 @@ export const ko = {
   toastMarkerAdded: '마킹 추가됨',
   toastMarkerDeleted: '마킹 삭제됨',
   markerLabel: '라벨',
-  markerEmpty: '마킹이 없습니다. 아래 + 마킹 추가를 눌러 마킹을 만들고, 마킹 편집을 켜서 위치를 조정하세요.',
+  markerEmpty: '+ 마킹 추가를 눌러 마킹을 만드세요',
 
   shortcutTitle: '키보드 단축키',
   shortcutHelp: '이 도움말 열기/닫기',
@@ -276,7 +277,7 @@ export const ko = {
 
   // Feature unlock
   unlockHint: '눌러서 새 기능을 추가하세요',
-  unlockBtn: '✦ {current}/{total}',
+  unlockBtn: '클릭하여 새로운 기능 해금',
   unlockToastView: '🔓 무대 설정 해금!',
   unlockToastInspector: '🔓 댄서 편집 해금!',
   unlockToastPresets: '🔓 대열 모음 해금!',
@@ -294,13 +295,12 @@ export const ko = {
 
   // Onboarding tour
   tourTimelineTitle: '대열 추가',
-  tourTimelineDesc: '타임라인 빈 공간을 클릭하고, + 버튼으로 대열을 추가해보세요.',
+  tourTimelineDesc: '+ 버튼을 눌러 대열을 추가해보세요.',
   tourStageTitle: '댄서 배치',
   tourStageDesc: '댄서를 드래그해서 위치를 바꿔보세요.',
   tourPlayTitle: '재생',
   tourPlayDesc: '재생 버튼을 눌러 결과를 확인하세요.',
-  tourNext: '다음',
-  tourDone: '시작하기',
+  tourComplete: '완료!',
   tourSkip: '건너뛰기',
   tourStep: '{current} / {total}',
 };

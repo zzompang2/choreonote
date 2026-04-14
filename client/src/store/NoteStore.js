@@ -16,7 +16,7 @@ const DEFAULT_POSITIONS = [
 ];
 
 const DEFAULT_FORMATIONS = [
-  { startTime: 0, duration: 2000, order: 0 },
+  { startTime: 0, duration: 1000, order: 0 },
 ];
 
 export const NoteStore = {

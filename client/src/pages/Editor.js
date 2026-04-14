@@ -35,6 +35,7 @@ let _updateToolbarState = () => {};
 let fitStage = () => {};
 
 // Onboarding & Feature unlock system
+let _onboardingActive = false;
 const ONBOARDING_KEY = 'choreonote-onboarding-done';
 const UNLOCK_KEY = 'choreonote-unlocked-features';
 const UNLOCK_ORDER = ['inspector', 'view', 'presets', 'markers'];
@@ -255,7 +256,11 @@ function buildEditorHTML(data) {
         </div>
         <div class="sidebar__panel sidebar__panel--hidden" id="panel-presets">
           <div class="sidebar__panel-title">${t('presetsTitle')}</div>
-          <div class="sidebar__scroll">
+          <div class="inspector-empty" id="preset-empty">
+            <div class="inspector-empty__icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.4"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></div>
+            <div class="inspector-empty__text">${t('presetEmpty')}</div>
+          </div>
+          <div class="sidebar__scroll" id="preset-content">
             <div class="preset-selection-info" id="preset-selection-info"></div>
             <div class="preset-spacing">
               <span class="settings-label">${t('presetSpacing')}</span>
@@ -462,17 +467,16 @@ function buildEditorHTML(data) {
       </div>
       <div class="sidebar-rail" id="sidebar-rail">
         <button class="sidebar-rail__icon sidebar-rail__icon--active" data-panel="dancers" title="${t('railDancers')}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></button>
-        <button class="sidebar-rail__icon" data-panel="inspector" data-unlock="inspector" title="${t('railInspector')}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
-        <button class="sidebar-rail__icon" data-panel="view" data-unlock="view" title="${t('railView')}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg></button>
-        <button class="sidebar-rail__icon" data-panel="presets" data-unlock="presets" title="${t('railPresets')}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></button>
-        <button class="sidebar-rail__icon" data-panel="markers" data-unlock="markers" title="${t('railMarkers')}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></button>
+        <div class="sidebar-rail__lockable-zone" id="lockable-zone">
+          <button class="sidebar-rail__icon" data-panel="inspector" data-unlock="inspector" title="${t('railInspector')}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+          <button class="sidebar-rail__icon" data-panel="view" data-unlock="view" title="${t('railView')}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg></button>
+          <button class="sidebar-rail__icon" data-panel="presets" data-unlock="presets" title="${t('railPresets')}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></button>
+          <button class="sidebar-rail__icon" data-panel="markers" data-unlock="markers" title="${t('railMarkers')}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></button>
+          <button class="sidebar-rail__unlock" id="unlock-btn" title="${t('unlockBtn')}">
+            <svg class="unlock-icon" width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="12" width="14" height="10" rx="2"/><path d="M8 12V8a4 4 0 0 1 8 0v4" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><circle cx="12" cy="17" r="1.5" fill="var(--bg-secondary)"/></svg>
+          </button>
+        </div>
         <div class="sidebar-rail__spacer"></div>
-        <button class="sidebar-rail__unlock" id="unlock-btn" title="${t('unlockBtn', { current: getUnlockedFeatures().length, total: UNLOCK_ORDER.length })}">
-          <span class="unlock-icon">✦</span>
-          <div class="unlock-progress">
-            ${UNLOCK_ORDER.map((_, i) => `<div class="unlock-progress__dot${i < getUnlockedFeatures().length ? ' unlock-progress__dot--filled' : ''}"></div>`).join('')}
-          </div>
-        </button>
         <button class="sidebar-rail__icon" data-panel="help" title="${t('railHelp')}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></button>
         <button class="sidebar-rail__icon" data-panel="settings" title="${t('railSettings')}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg></button>
       </div>
@@ -618,6 +622,7 @@ function setupPlayback(container) {
     document.removeEventListener('keydown', window._choreoKeyHandler);
   }
   window._choreoKeyHandler = (e) => {
+    if (_onboardingActive) return;
     const tag = e.target.tagName;
     const isEditable = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
     if (e.code === 'Space' && !isEditable) {
@@ -1428,6 +1433,20 @@ function setupSidebar(container) {
 
   function renderPresetThumbnails() {
     presetGrid.innerHTML = '';
+    const infoEl = container.querySelector('#preset-selection-info');
+    const presetEmpty = container.querySelector('#preset-empty');
+    const presetContent = container.querySelector('#preset-content');
+
+    // Show empty state when no formation is selected
+    if (selectedFormation < 0) {
+      if (presetEmpty) presetEmpty.style.display = '';
+      if (presetContent) presetContent.classList.add('sidebar__scroll--hidden');
+      return;
+    }
+
+    if (presetEmpty) presetEmpty.style.display = 'none';
+    if (presetContent) presetContent.classList.remove('sidebar__scroll--hidden');
+
     const names = getPresetNames();
     const customPresets = getCustomPresets();
     const selected = renderer._selectedDancers;
@@ -1435,7 +1454,6 @@ function setupSidebar(container) {
     const targetIndices = hasSelection ? Array.from(selected).sort((a, b) => a - b) : noteData.dancers.map((_, i) => i);
     const count = targetIndices.length;
 
-    const infoEl = container.querySelector('#preset-selection-info');
     if (infoEl) {
       infoEl.textContent = hasSelection ? t('presetSelectionInfo', { count }) : t('presetAllInfo', { count });
       infoEl.classList.toggle('preset-selection-info--highlight', hasSelection);
@@ -1822,7 +1840,7 @@ function renderDancerList(list) {
     </div>
   `).join('');
   const hintHtml = noteData.dancers.length <= 1
-    ? `<div class="hint-banner">${t('hintAddDancers')}</div>` : '';
+    ? `<div class="inspector-empty"><div class="inspector-empty__icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.4"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div><div class="inspector-empty__text">${t('hintAddDancers')}</div></div>` : '';
   list.innerHTML = dancerHtml + hintHtml;
 
   list.querySelectorAll('[data-name]').forEach((input) => {
@@ -2039,6 +2057,7 @@ function setupToolbar(container) {
 
   // Keyboard shortcuts for copy/paste
   document.addEventListener('keydown', (e) => {
+    if (_onboardingActive) return;
     if (e.target.tagName === 'INPUT') return;
     if ((e.ctrlKey || e.metaKey) && e.code === 'KeyC') {
       copyBtn.click();
@@ -2262,6 +2281,7 @@ function setupToolbar(container) {
 
   // Esc key exits preview/swap mode; 3/R toggle view
   document.addEventListener('keydown', (e) => {
+    if (_onboardingActive) return;
     if (e.target.tagName === 'INPUT') return;
     if (e.key === 'Escape') {
       if (swapMode) { setSwapMode(false); return; }
@@ -2317,6 +2337,7 @@ function setupToolbar(container) {
     railIcons.forEach(ic => ic.classList.toggle('sidebar-rail__icon--active', ic.dataset.panel === name));
     activePanel = name;
     if (name === 'inspector') updateInspector();
+    if (name === 'presets' && _renderPresetThumbnails) _renderPresetThumbnails();
     if (window.innerWidth <= 768) {
       overlay.classList.add('sidebar-overlay--visible');
     } else {
@@ -2456,7 +2477,7 @@ function setupMarkers(container, noteId) {
 
   function renderMarkerList() {
     if (renderer.markers.length === 0) {
-      listEl.innerHTML = `<div class="settings-sub" style="text-align:center;padding:12px 0">${t('markerEmpty')}</div>`;
+      listEl.innerHTML = `<div class="inspector-empty"><div class="inspector-empty__icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.4"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></div><div class="inspector-empty__text">${t('markerEmpty')}</div></div>`;
       return;
     }
     listEl.innerHTML = renderer.markers.map((m, i) => `
@@ -3272,6 +3293,7 @@ function highlightFormation() {
     box.classList.toggle('formation-box--active', i === selectedFormation);
   });
   _updateToolbarState();
+  if (activePanel === 'presets' && _renderPresetThumbnails) _renderPresetThumbnails();
 }
 
 function highlightTransition() {
@@ -3613,19 +3635,24 @@ function setupFeatureUnlock(container) {
   };
 
   function applyVisibility() {
-    // Hide/show rail icons based on unlock state
+    const lockedCount = UNLOCK_ORDER.length - unlocked.length;
+
+    // Mark each icon as unlocked or locked
     rail.querySelectorAll('[data-unlock]').forEach(btn => {
       const feature = btn.dataset.unlock;
-      btn.style.display = unlocked.includes(feature) ? '' : 'none';
+      const isUnlocked = unlocked.includes(feature);
+      btn.classList.toggle('sidebar-rail__icon--locked', !isUnlocked);
     });
 
-    // Hide/show unlock button
+    // Update unlock overlay to cover only locked icons
     if (unlockBtn) {
-      unlockBtn.style.display = unlocked.length >= UNLOCK_ORDER.length ? 'none' : '';
-      // Update progress dots
-      unlockBtn.querySelectorAll('.unlock-progress__dot').forEach((dot, i) => {
-        dot.classList.toggle('unlock-progress__dot--filled', i < unlocked.length);
-      });
+      if (lockedCount <= 0) {
+        unlockBtn.style.display = 'none';
+      } else {
+        unlockBtn.style.display = '';
+        // Set CSS variable so overlay knows how many slots to cover
+        unlockBtn.style.setProperty('--locked-count', lockedCount);
+      }
     }
   }
 
@@ -3691,46 +3718,86 @@ function setupFeatureUnlock(container) {
 
 function startOnboardingTour(container) {
   if (localStorage.getItem(ONBOARDING_KEY)) return;
+  _onboardingActive = true;
 
   const formationCountAtStart = noteData.formations.length;
 
   const steps = [
     {
-      selector: ['.player-bar', '.editor__timeline-wrap'],
+      selector: '#add-formation-btn',
+      spotlightSelector: ['#add-formation-btn', '#timeline-formations'],
+      interactiveSelector: '#add-formation-btn',
       titleKey: 'tourTimelineTitle',
       descKey: 'tourTimelineDesc',
-      // Auto-advance when a formation is added
+      showComplete: true,
+      onEnter: () => { if (typeof seekTo === 'function') seekTo(2000); },
+      // Finger guide: tap on + button
+      guide: (guideEl, container) => {
+        const btn = container.querySelector('#add-formation-btn');
+        if (!btn) return;
+        const r = btn.getBoundingClientRect();
+        guideEl.className = 'onboarding-guide onboarding-guide--tap';
+        guideEl.style.left = (r.left + r.width / 2) + 'px';
+        guideEl.style.top = (r.top + r.height / 2) + 'px';
+      },
       listen: (advance, onCleanup) => {
         let stopped = false;
+        const countAtListen = noteData.formations.length;
         onCleanup(() => { stopped = true; });
         const check = () => {
           if (stopped) return;
-          if (noteData.formations.length > formationCountAtStart) { advance(); return; }
-          requestAnimationFrame(check);
+          if (noteData.formations.length > countAtListen) { advance(); return; }
+          setTimeout(check, 200);
         };
-        requestAnimationFrame(check);
+        setTimeout(check, 200);
       },
     },
     {
       selector: '.stage-container',
+      interactiveSelector: '.stage-container',
       titleKey: 'tourStageTitle',
       descKey: 'tourStageDesc',
-      // Auto-advance on any mouseup/touchend on canvas (drag completed)
-      listen: (advance, onCleanup) => {
+      showComplete: true,
+      // Finger guide: drag 3rd dancer (Luna at x=60, y=0) to bottom-right
+      guide: (guideEl, container) => {
         const canvas = container.querySelector('#stage-canvas');
         if (!canvas) return;
-        const handler = () => { canvas.removeEventListener('mouseup', handler); canvas.removeEventListener('touchend', handler); advance(); };
-        canvas.addEventListener('mouseup', handler);
-        canvas.addEventListener('touchend', handler);
-        onCleanup(() => { canvas.removeEventListener('mouseup', handler); canvas.removeEventListener('touchend', handler); });
+        const r = canvas.getBoundingClientRect();
+        // 3rd dancer canvas ratio: (WING_SIZE + HALF_W + 60) / CANVAS_WIDTH ≈ 0.579
+        // (WING_SIZE + HALF_H) / CANVAS_HEIGHT = 0.5
+        const startX = r.left + r.width * 0.579;
+        const startY = r.top + r.height * 0.5;
+        guideEl.className = 'onboarding-guide onboarding-guide--drag';
+        guideEl.style.left = startX + 'px';
+        guideEl.style.top = startY + 'px';
+      },
+      listen: (advance, onCleanup) => {
+        const origDragEnd = renderer.onDancerDragEnd;
+        renderer.onDancerDragEnd = (...args) => {
+          origDragEnd?.(...args);
+          renderer.onDancerDragEnd = origDragEnd;
+          advance();
+        };
+        onCleanup(() => { renderer.onDancerDragEnd = origDragEnd; });
       },
     },
     {
-      selector: '.player-bar',
+      selector: '#play-btn',
+      spotlightSelector: '.player-bar',
+      interactiveSelector: '#play-btn',
       titleKey: 'tourPlayTitle',
       descKey: 'tourPlayDesc',
+      showComplete: false,
       onEnter: () => { if (typeof seekTo === 'function') seekTo(0); },
-      // Auto-advance when playback starts
+      // Finger guide: tap on play button
+      guide: (guideEl, container) => {
+        const btn = container.querySelector('#play-btn');
+        if (!btn) return;
+        const r = btn.getBoundingClientRect();
+        guideEl.className = 'onboarding-guide onboarding-guide--tap';
+        guideEl.style.left = (r.left + r.width / 2) + 'px';
+        guideEl.style.top = (r.top + r.height / 2) + 'px';
+      },
       listen: (advance, onCleanup) => {
         const playBtn = container.querySelector('#play-btn');
         if (!playBtn) return;
@@ -3756,20 +3823,56 @@ function startOnboardingTour(container) {
   tooltip.className = 'onboarding-tooltip';
   document.body.appendChild(tooltip);
 
+  const guideEl = document.createElement('div');
+  guideEl.className = 'onboarding-guide';
+  document.body.appendChild(guideEl);
+
+  let _elevatedEl = null;
+
   function cleanup() {
     if (cleanupFn) { cleanupFn(); cleanupFn = null; }
+    guideEl.className = 'onboarding-guide';
+    // Reset fixed tooltip size from "완료!" state
+    tooltip.style.width = '';
+    tooltip.style.height = '';
+    tooltip.classList.remove('onboarding-tooltip--complete');
+    // Restore previously elevated element
+    if (_elevatedEl) {
+      _elevatedEl.style.position = '';
+      _elevatedEl.style.zIndex = '';
+      _elevatedEl = null;
+    }
   }
 
   function advance() {
     cleanup();
-    if (current >= steps.length - 1) finish();
-    else { current++; showStep(current); }
+    const step = steps[current];
+    if (step.showComplete) {
+      // Show "완료!" message for 1 second before advancing
+      guideEl.className = 'onboarding-guide';
+      // Fix tooltip size before replacing content
+      const tr = tooltip.getBoundingClientRect();
+      tooltip.style.width = tr.width + 'px';
+      tooltip.style.height = tr.height + 'px';
+      tooltip.innerHTML = `<div class="onboarding-tooltip__desc onboarding-tooltip__desc--complete">${t('tourComplete')}</div>`;
+      tooltip.classList.add('onboarding-tooltip--complete');
+      setTimeout(() => {
+        tooltip.classList.remove('onboarding-tooltip--complete');
+        if (current >= steps.length - 1) finish();
+        else { current++; showStep(current); }
+      }, 1000);
+    } else {
+      if (current >= steps.length - 1) finish();
+      else { current++; showStep(current); }
+    }
   }
 
   function showStep(idx) {
     const step = steps[idx];
-    const selectors = Array.isArray(step.selector) ? step.selector : [step.selector];
-    const els = selectors.map(s => container.querySelector(s)).filter(Boolean);
+    const spotlightSelectors = step.spotlightSelector
+      ? (Array.isArray(step.spotlightSelector) ? step.spotlightSelector : [step.spotlightSelector])
+      : (Array.isArray(step.selector) ? step.selector : [step.selector]);
+    const els = spotlightSelectors.map(s => container.querySelector(s)).filter(Boolean);
     if (els.length === 0) { finish(); return; }
     if (step.onEnter) step.onEnter();
 
@@ -3789,14 +3892,11 @@ function startOnboardingTour(container) {
     spotlight.style.width = (rect.width + pad * 2) + 'px';
     spotlight.style.height = (rect.height + pad * 2) + 'px';
 
-    const isLast = idx === steps.length - 1;
     tooltip.innerHTML = `
       <div class="onboarding-tooltip__step">${t('tourStep', { current: idx + 1, total: steps.length })}</div>
-      <div class="onboarding-tooltip__title">${t(step.titleKey)}</div>
       <div class="onboarding-tooltip__desc">${t(step.descKey)}</div>
       <div class="onboarding-tooltip__actions">
         <button class="onboarding-tooltip__skip">${t('tourSkip')}</button>
-        <button class="onboarding-tooltip__next">${isLast ? t('tourDone') : t('tourNext')}</button>
       </div>
     `;
 
@@ -3816,36 +3916,34 @@ function startOnboardingTour(container) {
     tooltip.style.top = top + 'px';
     tooltip.style.opacity = '1';
 
-    // Manual advance via button
-    tooltip.querySelector('.onboarding-tooltip__next').onclick = () => {
-      if (isLast) finish();
-      else advance();
-    };
     tooltip.querySelector('.onboarding-tooltip__skip').onclick = finish;
 
-    // Auto-advance via action detection
+    // Listen for action completion
     cleanup();
     if (step.listen) step.listen(advance, (fn) => { cleanupFn = fn; });
+
+    // Elevate interactive element above overlay
+    if (step.interactiveSelector) {
+      const el = container.querySelector(step.interactiveSelector);
+      if (el) {
+        el.style.position = 'relative';
+        el.style.zIndex = '9001';
+        _elevatedEl = el;
+      }
+    }
+
+    // Show finger guide (after cleanup so it doesn't get reset)
+    if (step.guide) step.guide(guideEl, container);
   }
 
   function finish() {
     cleanup();
+    _onboardingActive = false;
     localStorage.setItem(ONBOARDING_KEY, '1');
     overlay.remove();
     spotlight.remove();
     tooltip.remove();
-
-    // Show hint tooltip pointing to ✦ button
-    const unlockBtn = container.querySelector('#unlock-btn');
-    if (unlockBtn && !isAllUnlocked()) {
-      const hint = document.createElement('div');
-      hint.className = 'unlock-hint';
-      hint.textContent = t('unlockHint');
-      unlockBtn.style.position = 'relative';
-      unlockBtn.appendChild(hint);
-      setTimeout(() => hint.remove(), 4000);
-      unlockBtn.addEventListener('click', () => hint.remove(), { once: true });
-    }
+    guideEl.remove();
   }
 
   showStep(0);
