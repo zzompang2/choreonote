@@ -275,6 +275,7 @@ export const ko = {
   restartTour: '온보딩 투어 다시 보기',
 
   // Feature unlock
+  unlockHint: '눌러서 새 기능을 추가하세요',
   unlockBtn: '✦ {current}/{total}',
   unlockToastView: '🔓 무대 설정 해금!',
   unlockToastInspector: '🔓 댄서 편집 해금!',

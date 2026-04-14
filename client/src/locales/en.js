@@ -275,6 +275,7 @@ export const en = {
   restartTour: 'Restart onboarding tour',
 
   // Feature unlock
+  unlockHint: 'Tap to add new features',
   unlockBtn: '✦ {current}/{total}',
   unlockToastView: '🔓 Stage Setup unlocked!',
   unlockToastInspector: '🔓 Edit Dancer unlocked!',

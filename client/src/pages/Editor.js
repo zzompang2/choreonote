@@ -1431,13 +1431,14 @@ function setupSidebar(container) {
     const names = getPresetNames();
     const customPresets = getCustomPresets();
     const selected = renderer._selectedDancers;
-    const hasSelection = selected && selected.size > 0;
+    const hasSelection = selected && selected.size > 1;
     const targetIndices = hasSelection ? Array.from(selected).sort((a, b) => a - b) : noteData.dancers.map((_, i) => i);
     const count = targetIndices.length;
 
     const infoEl = container.querySelector('#preset-selection-info');
     if (infoEl) {
       infoEl.textContent = hasSelection ? t('presetSelectionInfo', { count }) : t('presetAllInfo', { count });
+      infoEl.classList.toggle('preset-selection-info--highlight', hasSelection);
     }
 
     function applyWithRotation(name, positions) {
@@ -1815,7 +1816,7 @@ function renderDancerList(list) {
   const dancerHtml = noteData.dancers.map((d, i) => `
     <div class="dancer-item${renderer._selectedDancers.has(i) ? ' dancer-item--selected' : ''}" data-index="${i}">
       <span class="dancer-item__number">${i + 1}</span>
-      <div class="dancer-item__color-btn" data-colorbtn="${i}" style="background:${d.color}"></div>
+      <div class="dancer-item__color" style="background:${d.color}"></div>
       <input class="dancer-item__name" value="${escapeAttr(d.name)}" data-name="${i}" />
       <button class="dancer-item__remove" data-remove="${i}">✕</button>
     </div>
@@ -1823,54 +1824,6 @@ function renderDancerList(list) {
   const hintHtml = noteData.dancers.length <= 1
     ? `<div class="hint-banner">${t('hintAddDancers')}</div>` : '';
   list.innerHTML = dancerHtml + hintHtml;
-
-  // Color palette popup
-  list.querySelectorAll('[data-colorbtn]').forEach((btn) => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const idx = Number(btn.dataset.colorbtn);
-      // Close any existing popup
-      document.querySelectorAll('.color-palette-popup').forEach(p => p.remove());
-
-      const popup = document.createElement('div');
-      popup.className = 'color-palette-popup';
-      popup.innerHTML = PALETTE.map(c =>
-        `<div class="color-palette__swatch${c === noteData.dancers[idx].color ? ' color-palette__swatch--active' : ''}" data-swatch="${c}" style="background:${c}"></div>`
-      ).join('') + `<label class="color-palette__custom"><input type="color" value="${noteData.dancers[idx].color}" />${t('custom')}</label>`;
-
-      popup.querySelectorAll('[data-swatch]').forEach((swatch) => {
-        swatch.addEventListener('click', (ev) => {
-          ev.stopPropagation();
-          noteData.dancers[idx].color = swatch.dataset.swatch;
-          btn.style.background = swatch.dataset.swatch;
-          updateStage(); saveSnapshot();
-          popup.remove();
-        });
-      });
-
-      popup.querySelector('input[type="color"]').addEventListener('input', (ev) => {
-        noteData.dancers[idx].color = ev.target.value;
-        btn.style.background = ev.target.value;
-        updateStage();
-      });
-
-      popup.querySelector('input[type="color"]').addEventListener('change', () => {
-        saveSnapshot();
-        popup.remove();
-      });
-
-      btn.parentElement.appendChild(popup);
-
-      // Close popup on outside click
-      const closePopup = (ev) => {
-        if (!popup.contains(ev.target) && ev.target !== btn) {
-          popup.remove();
-          document.removeEventListener('click', closePopup);
-        }
-      };
-      setTimeout(() => document.addEventListener('click', closePopup), 0);
-    });
-  });
 
   list.querySelectorAll('[data-name]').forEach((input) => {
     input.addEventListener('change', (e) => {
@@ -3881,6 +3834,18 @@ function startOnboardingTour(container) {
     overlay.remove();
     spotlight.remove();
     tooltip.remove();
+
+    // Show hint tooltip pointing to ✦ button
+    const unlockBtn = container.querySelector('#unlock-btn');
+    if (unlockBtn && !isAllUnlocked()) {
+      const hint = document.createElement('div');
+      hint.className = 'unlock-hint';
+      hint.textContent = t('unlockHint');
+      unlockBtn.style.position = 'relative';
+      unlockBtn.appendChild(hint);
+      setTimeout(() => hint.remove(), 4000);
+      unlockBtn.addEventListener('click', () => hint.remove(), { once: true });
+    }
   }
 
   showStep(0);
