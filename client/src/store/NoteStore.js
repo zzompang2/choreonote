@@ -7,30 +7,29 @@ const DEFAULT_DANCERS = [
 ];
 
 // Formation 1: horizontal line  ○ ○ ○
-// Formation 2: triangle           ○
-//                                ○   ○
 const DEFAULT_POSITIONS = [
-  // Formation 0 (horizontal line)
   [
     { dancerIndex: 0, x: -60, y: 0 },
     { dancerIndex: 1, x: 0, y: 0 },
     { dancerIndex: 2, x: 60, y: 0 },
   ],
-  // Formation 1 (triangle)
-  [
-    { dancerIndex: 0, x: 0, y: -50 },
-    { dancerIndex: 1, x: -50, y: 40 },
-    { dancerIndex: 2, x: 50, y: 40 },
-  ],
 ];
 
 const DEFAULT_FORMATIONS = [
-  { startTime: 0, duration: 1250, order: 0 },
-  { startTime: 2500, duration: 1250, order: 1 },
+  { startTime: 0, duration: 2000, order: 0 },
 ];
 
 export const NoteStore = {
   async createNote(title = '새 안무 노트') {
+    // Auto-number if title already exists
+    const allNotes = await db.notes.toArray();
+    const existingTitles = new Set(allNotes.map(n => n.title));
+    if (existingTitles.has(title)) {
+      let n = 2;
+      while (existingTitles.has(`${title} ${n}`)) n++;
+      title = `${title} ${n}`;
+    }
+
     return db.transaction('rw', db.notes, db.dancers, db.formations, db.positions, async () => {
       const now = new Date();
       const noteId = await db.notes.add({

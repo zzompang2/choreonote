@@ -28,6 +28,7 @@ export async function renderDashboard(container) {
         <button class="btn btn--primary" id="create-btn">${t('newNote')}</button>
       </div>
     </div>
+    <div class="storage-warning" id="storage-warning" style="display:none"></div>
     <div class="note-grid" id="note-grid"></div>
     <input type="file" id="import-file" accept=".json" style="display:none" />
   `;
@@ -36,6 +37,9 @@ export async function renderDashboard(container) {
 
   const grid = div.querySelector('#note-grid');
   renderNoteCards(grid, notes);
+
+  // Storage usage warning
+  checkStorageUsage(div.querySelector('#storage-warning'));
 
   div.querySelector('#dashboard-logo').addEventListener('click', () => navigate('/'));
 
@@ -84,8 +88,7 @@ function renderNoteCards(grid, notes) {
       </div>
       <div class="note-card__title">${escapeHtml(note.title)}</div>
       <div class="note-card__meta">
-        ${formatDate(note.editedAt)} · ${formatTime(note.duration)}
-        ${note.musicName ? ' · ' + escapeHtml(note.musicName) : ''}
+        ${t('created')} ${formatDate(note.createdAt)} · ${t('edited')} ${formatDate(note.editedAt)} · ${formatTime(note.duration)}
       </div>
     </div>
   `).join('');
@@ -108,6 +111,10 @@ function renderNoteCards(grid, notes) {
       if (!confirm(t('confirmDeleteNote'))) return;
       await NoteStore.deleteNote(Number(btn.dataset.delete));
       const updated = await NoteStore.getAllNotes();
+      if (updated.length === 0) {
+        localStorage.removeItem('choreonote-onboarding-done');
+        localStorage.removeItem('choreonote-unlocked-features');
+      }
       renderNoteCards(grid, updated);
     });
   });
@@ -222,11 +229,29 @@ function drawThumbnailShape(ctx, cx, cy, r, rotation, shape) {
 function formatDate(date) {
   if (!date) return '';
   const d = new Date(date);
-  return `${d.getMonth() + 1}/${d.getDate()}`;
+  const now = new Date();
+  const y = d.getFullYear();
+  const m = d.getMonth() + 1;
+  const day = d.getDate();
+  if (y === now.getFullYear()) return `${m}/${day}`;
+  return `${y}.${m}.${day}`;
 }
 
 function escapeHtml(str) {
   const div = document.createElement('div');
   div.textContent = str;
   return div.innerHTML;
+}
+
+async function checkStorageUsage(el) {
+  if (!el || !navigator.storage?.estimate) return;
+  try {
+    const { usage, quota } = await navigator.storage.estimate();
+    const pct = usage / quota;
+    if (pct < 0.8) return;
+    const usedMB = (usage / 1024 / 1024).toFixed(1);
+    const totalMB = (quota / 1024 / 1024).toFixed(0);
+    el.style.display = '';
+    el.textContent = t('storageWarning', { used: usedMB, total: totalMB, pct: Math.round(pct * 100) });
+  } catch (_) {}
 }
