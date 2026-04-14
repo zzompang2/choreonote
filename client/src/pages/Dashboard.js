@@ -8,7 +8,11 @@ export async function renderDashboard(container) {
   const div = document.createElement('div');
   div.className = 'dashboard';
 
+  // Purge notes deleted more than 30 days ago
+  await NoteStore.purgeExpiredNotes(30);
+
   const notes = await NoteStore.getAllNotes();
+  const deletedNotes = await NoteStore.getDeletedNotes();
 
   div.innerHTML = `
     <div class="dashboard__header">
@@ -30,6 +34,12 @@ export async function renderDashboard(container) {
     </div>
     <div class="storage-warning" id="storage-warning" style="display:none"></div>
     <div class="note-grid" id="note-grid"></div>
+    ${deletedNotes.length > 0 ? `
+      <details class="trash-section">
+        <summary class="trash-section__toggle">${t('trash')} (${deletedNotes.length})</summary>
+        <div class="note-grid" id="trash-grid"></div>
+      </details>
+    ` : ''}
     <input type="file" id="import-file" accept=".json" style="display:none" />
   `;
 
@@ -37,6 +47,10 @@ export async function renderDashboard(container) {
 
   const grid = div.querySelector('#note-grid');
   renderNoteCards(grid, notes);
+
+  // Render trash grid
+  const trashGrid = div.querySelector('#trash-grid');
+  if (trashGrid) renderTrashCards(trashGrid, deletedNotes, div);
 
   // Storage usage warning
   checkStorageUsage(div.querySelector('#storage-warning'));
@@ -116,6 +130,44 @@ function renderNoteCards(grid, notes) {
         localStorage.removeItem('choreonote-unlocked-features');
       }
       renderNoteCards(grid, updated);
+    });
+  });
+}
+
+function renderTrashCards(grid, notes, dashboardDiv) {
+  if (notes.length === 0) {
+    grid.innerHTML = '';
+    const section = grid.closest('.trash-section');
+    if (section) section.remove();
+    return;
+  }
+
+  grid.innerHTML = notes.map((note) => {
+    const daysLeft = Math.max(0, 30 - Math.round((Date.now() - new Date(note.deletedAt)) / (24 * 60 * 60 * 1000)));
+    return `
+      <div class="note-card note-card--deleted" data-id="${note.id}">
+        <div class="note-card__title">${escapeHtml(note.title)}</div>
+        <div class="note-card__meta">${t('trashDaysLeft', { days: daysLeft })}</div>
+        <div class="note-card__trash-actions">
+          <button class="btn btn--ghost btn--sm" data-restore="${note.id}">${t('trashRestore')}</button>
+          <button class="btn btn--ghost btn--sm btn--danger" data-purge="${note.id}">${t('trashDelete')}</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  grid.querySelectorAll('[data-restore]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      await NoteStore.restoreNote(Number(btn.dataset.restore));
+      renderDashboard(dashboardDiv.parentElement);
+    });
+  });
+
+  grid.querySelectorAll('[data-purge]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (!confirm(t('confirmPermanentDelete'))) return;
+      await NoteStore.permanentlyDeleteNote(Number(btn.dataset.purge));
+      renderDashboard(dashboardDiv.parentElement);
     });
   });
 }

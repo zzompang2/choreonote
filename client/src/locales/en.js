@@ -47,7 +47,12 @@ export const en = {
   emptyTitle: 'No notes yet',
   emptyDesc: 'Press + New Note to get started',
   storageWarning: 'Storage {pct}% used ({used}MB / {total}MB) — consider deleting unused notes',
-  confirmDeleteNote: 'Delete this note?',
+  confirmDeleteNote: 'Delete this note? (permanently deleted after 30 days)',
+  confirmPermanentDelete: 'Permanently delete this note? This cannot be undone.',
+  trash: 'Trash',
+  trashRestore: 'Restore',
+  trashDelete: 'Delete',
+  trashDaysLeft: 'Auto-delete in {days} days',
   importError: 'Failed to load file:',
 
   // Editor — Header
@@ -106,7 +111,8 @@ export const en = {
   // Editor — Presets panel
   presetsTitle: 'Formations',
   presetSpacing: 'Spacing',
-  presetSelectionInfo: '{count} selected — applies to selected dancers only',
+  presetSelectionInfo: 'Apply to {count} selected',
+  presetAllInfo: 'Apply to all {count}',
   presetSelectFirst: 'Select a formation first',
   presetApplied: '{name} preset applied',
   presetAppliedRotated: '{name} preset applied (order {n})',
@@ -274,10 +280,11 @@ export const en = {
   unlockToastInspector: '🔓 Edit Dancer unlocked!',
   unlockToastPresets: '🔓 Formations unlocked!',
   unlockToastMarkers: '🔓 Markings unlocked!',
-  unlockDescView: 'Configure 3D view, grid, stage size, audience direction, and more',
-  unlockDescInspector: 'Edit dancer position, direction, and color',
-  unlockDescPresets: 'Quickly apply formation patterns like circle, V-shape, and more',
-  unlockDescMarkers: 'Place reference marks on stage for rehearsal positioning',
+  unlockDescDancers: 'Add dancers and change their names',
+  unlockDescView: 'Change stage size, audience direction, 3D view, and more',
+  unlockDescInspector: 'Select a dancer to change position, direction, and color',
+  unlockDescPresets: 'Apply formations like circle or V-shape in one click',
+  unlockDescMarkers: 'Mark real stage positions in your note',
 
   // Empty state hints
   hintAddDancers: 'Press + Add Dancer to add more dancers',

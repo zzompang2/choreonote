@@ -94,7 +94,7 @@ export async function renderEditor(container, noteId) {
   if (noteData.note.dancerShape) renderer.dancerShape = noteData.note.dancerShape;
   if (noteData.note.gridGap) renderer.gridGap = noteData.note.gridGap;
   if (noteData.note.dancerScale) renderer.dancerScale = noteData.note.dancerScale;
-  if (noteData.note.showWings === false) renderer.showWings = false;
+  if (noteData.note.showWings === true) renderer.showWings = true;
   renderer.touchScale = window.innerWidth <= 768 ? 1.4 : 1.0;
   renderer._drawGridCache();
 
@@ -204,7 +204,7 @@ function buildEditorHTML(data) {
             <div class="inspector-empty__icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.4"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
             <div class="inspector-empty__text">${t('inspectorEmpty')}</div>
           </div>
-          <div class="sidebar__scroll sidebar__scroll--hidden" id="inspector-content" style="padding:12px 16px">
+          <div class="sidebar__scroll sidebar__scroll--hidden" id="inspector-content">
             <div class="inspector-header" id="inspector-header"></div>
             <div class="settings-section">
               <div class="settings-label">${t('inspectorCoord')}</div>
@@ -268,7 +268,7 @@ function buildEditorHTML(data) {
         </div>
         <div class="sidebar__panel sidebar__panel--hidden" id="panel-view">
           <div class="sidebar__panel-title">${t('viewTitle')}</div>
-          <div class="sidebar__scroll" style="padding:12px 16px">
+          <div class="sidebar__scroll">
             <div class="settings-section">
               <div class="settings-label">${t('viewStage')}</div>
               <label class="toggle-row">
@@ -337,14 +337,14 @@ function buildEditorHTML(data) {
               </div>
               <label class="toggle-row" style="margin-top:8px">
                 <span>${t('wingArea')}</span>
-                <div class="toggle-switch${data.note.showWings !== false ? ' toggle-switch--on' : ''}" id="view-wing-toggle"><div class="toggle-switch__thumb"></div></div>
+                <div class="toggle-switch${data.note.showWings === true ? ' toggle-switch--on' : ''}" id="view-wing-toggle"><div class="toggle-switch__thumb"></div></div>
               </label>
             </div>
           </div>
         </div>
         <div class="sidebar__panel sidebar__panel--hidden" id="panel-markers">
           <div class="sidebar__panel-title">${t('markersTitle')}</div>
-          <div class="sidebar__scroll" style="padding:12px 16px">
+          <div class="sidebar__scroll">
             <div class="settings-section">
               <label class="toggle-row">
                 <span>${t('markerShowToggle')}</span>
@@ -364,7 +364,7 @@ function buildEditorHTML(data) {
         </div>
         <div class="sidebar__panel sidebar__panel--hidden" id="panel-help">
           <div class="sidebar__panel-title">${t('helpTitle')}</div>
-          <div class="sidebar__scroll" style="padding:12px 16px">
+          <div class="sidebar__scroll">
             <div class="settings-section">
               <div class="settings-label">${t('helpShortcuts')}</div>
               <div class="help-shortcuts">
@@ -406,13 +406,11 @@ function buildEditorHTML(data) {
                 <p>${t('helpTimelineWaypoint')}</p>
               </div>
             </div>
-            <div class="settings-divider"></div>
-            <button class="btn btn--ghost" id="restart-tour-btn" style="width:100%;font-size:12px">${t('restartTour')}</button>
           </div>
         </div>
         <div class="sidebar__panel sidebar__panel--hidden" id="panel-settings">
           <div class="sidebar__panel-title">${t('settingsTitle')}</div>
-          <div class="sidebar__scroll" style="padding:12px 16px">
+          <div class="sidebar__scroll">
             <div class="settings-section">
               <div class="settings-label">${t('settingsMusic')}</div>
               <div class="settings-row">
@@ -1065,9 +1063,15 @@ function setupTimeline(container) {
     thumb.style.left = `${thumbLeft}px`;
   }
 
-  timelineScroll.addEventListener('scroll', updateScrollbar);
-  window.addEventListener('resize', updateScrollbar);
-  setTimeout(updateScrollbar, 100);
+  function updateTimelineHint() {
+    const hint = formationsEl.querySelector('.hint-banner--timeline');
+    if (hint) {
+      hint.style.left = `${timelineScroll.scrollLeft + timelineScroll.clientWidth / 2}px`;
+    }
+  }
+  timelineScroll.addEventListener('scroll', () => { updateScrollbar(); updateTimelineHint(); });
+  window.addEventListener('resize', () => { updateScrollbar(); updateTimelineHint(); });
+  setTimeout(() => { updateScrollbar(); updateTimelineHint(); }, 100);
 
   // Thumb drag (mouse + touch)
   let thumbDrag = null;
@@ -1152,6 +1156,11 @@ function renderFormationBoxes(formationsEl) {
     hint.className = 'hint-banner hint-banner--timeline';
     hint.textContent = t('hintAddFormation');
     formationsEl.appendChild(hint);
+    // Position hint at viewport center
+    const scrollEl = document.querySelector('#timeline-scroll');
+    if (scrollEl) {
+      hint.style.left = `${scrollEl.scrollLeft + scrollEl.clientWidth / 2}px`;
+    }
   }
   noteData.formations.forEach((f, i) => {
     const box = document.createElement('div');
@@ -1428,7 +1437,7 @@ function setupSidebar(container) {
 
     const infoEl = container.querySelector('#preset-selection-info');
     if (infoEl) {
-      infoEl.textContent = hasSelection ? t('presetSelectionInfo', { count }) : '';
+      infoEl.textContent = hasSelection ? t('presetSelectionInfo', { count }) : t('presetAllInfo', { count });
     }
 
     function applyWithRotation(name, positions) {
@@ -3126,15 +3135,6 @@ function setupSettings(container, noteId) {
       showToast(t('toastImportError') + ' ' + err.message);
     }
   });
-
-  // Restart onboarding tour
-  const restartTourBtn = container.querySelector('#restart-tour-btn');
-  if (restartTourBtn) {
-    restartTourBtn.addEventListener('click', () => {
-      localStorage.removeItem(ONBOARDING_KEY);
-      startOnboardingTour(container);
-    });
-  }
 }
 
 // --- Music Upload ---
@@ -3713,6 +3713,20 @@ function setupFeatureUnlock(container) {
     localStorage.setItem(UNLOCK_KEY, JSON.stringify(unlocked));
   }
   applyVisibility();
+
+  // Show dancers panel description banner for new users
+  if (!existing) {
+    const dancersPanel = container.querySelector('#panel-dancers');
+    if (dancersPanel && !dancersPanel.querySelector('.unlock-desc-banner')) {
+      const banner = document.createElement('div');
+      banner.className = 'unlock-desc-banner';
+      banner.innerHTML = `${t('unlockDescDancers')}<button class="unlock-desc-banner__close">✕</button>`;
+      banner.querySelector('.unlock-desc-banner__close').addEventListener('click', () => banner.remove());
+      const title = dancersPanel.querySelector('.sidebar__panel-title');
+      if (title) title.after(banner);
+      else dancersPanel.prepend(banner);
+    }
+  }
 
   // Wire unlock button
   if (unlockBtn) {

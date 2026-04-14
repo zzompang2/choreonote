@@ -158,6 +158,11 @@ export const NoteStore = {
   },
 
   async deleteNote(noteId) {
+    // Soft delete: mark with deletedAt timestamp
+    await db.notes.update(noteId, { deletedAt: new Date() });
+  },
+
+  async permanentlyDeleteNote(noteId) {
     return db.transaction(
       'rw',
       db.notes, db.dancers, db.formations, db.positions, db.musicFiles,
@@ -174,6 +179,25 @@ export const NoteStore = {
     );
   },
 
+  async restoreNote(noteId) {
+    await db.notes.update(noteId, { deletedAt: undefined });
+  },
+
+  async getDeletedNotes() {
+    const notes = await db.notes.toArray();
+    return notes.filter(n => n.deletedAt).sort((a, b) => new Date(b.deletedAt) - new Date(a.deletedAt));
+  },
+
+  async purgeExpiredNotes(days = 30) {
+    const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+    const notes = await db.notes.toArray();
+    for (const note of notes) {
+      if (note.deletedAt && new Date(note.deletedAt) < cutoff) {
+        await this.permanentlyDeleteNote(note.id);
+      }
+    }
+  },
+
   async updateNoteTitle(noteId, title) {
     await db.notes.update(noteId, { title, editedAt: new Date() });
   },
@@ -188,11 +212,12 @@ export const NoteStore = {
 
   async getAllNotes(orderBy = 'editedAt') {
     const notes = await db.notes.toArray();
-    notes.sort((a, b) => {
+    const active = notes.filter(n => !n.deletedAt);
+    active.sort((a, b) => {
       if (orderBy === 'title') return a.title.localeCompare(b.title);
       return new Date(b[orderBy]) - new Date(a[orderBy]);
     });
-    return notes;
+    return active;
   },
 
   async exportJSON(noteId) {
@@ -332,7 +357,7 @@ export const NoteStore = {
       stageHeight: note?.stageHeight || 400,
       dancerShape: note?.dancerShape || 'pentagon',
       dancerScale: note?.dancerScale || 1.0,
-      showWings: note?.showWings !== false,
+      showWings: note?.showWings === true,
     };
   },
 

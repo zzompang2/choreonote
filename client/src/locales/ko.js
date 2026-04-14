@@ -47,7 +47,12 @@ export const ko = {
   emptyTitle: '아직 노트가 없습니다',
   emptyDesc: '+ 새 노트를 눌러 시작하세요',
   storageWarning: '저장 공간 {pct}% 사용 중 ({used}MB / {total}MB) — 불필요한 노트를 삭제하세요',
-  confirmDeleteNote: '이 노트를 삭제할까요?',
+  confirmDeleteNote: '이 노트를 삭제할까요? (30일 후 완전 삭제)',
+  confirmPermanentDelete: '이 노트를 완전히 삭제할까요? 복구할 수 없습니다.',
+  trash: '휴지통',
+  trashRestore: '복원',
+  trashDelete: '완전 삭제',
+  trashDaysLeft: '{days}일 후 자동 삭제',
   importError: '파일을 불러올 수 없습니다:',
 
   // Editor — Header
@@ -106,7 +111,8 @@ export const ko = {
   // Editor — Presets panel
   presetsTitle: '대열 모음',
   presetSpacing: '간격',
-  presetSelectionInfo: '{count}명 선택됨 — 선택된 댄서에만 적용',
+  presetSelectionInfo: '선택 {count}명에게 적용',
+  presetAllInfo: '전체 {count}명에게 적용',
   presetSelectFirst: '대열을 먼저 선택하세요',
   presetApplied: '{name} 대열 적용됨',
   presetAppliedRotated: '{name} 대열 적용됨 (순서 {n})',
@@ -274,10 +280,11 @@ export const ko = {
   unlockToastInspector: '🔓 댄서 편집 해금!',
   unlockToastPresets: '🔓 대열 모음 해금!',
   unlockToastMarkers: '🔓 마킹 해금!',
-  unlockDescView: '3D 뷰, 격자, 무대 크기, 객석 방향 등을 설정할 수 있어요',
-  unlockDescInspector: '댄서의 좌표, 방향, 색상을 편집할 수 있어요',
-  unlockDescPresets: '원형, V자 등 대열 패턴을 빠르게 적용할 수 있어요',
-  unlockDescMarkers: '무대 위에 위치 표시를 놓아 연습 기준점으로 활용하세요',
+  unlockDescDancers: '댄서를 추가하고 이름을 변경할 수 있어요',
+  unlockDescView: '무대 크기, 객석 방향, 3D 뷰 등을 바꿀 수 있어요',
+  unlockDescInspector: '댄서를 선택하면 좌표, 방향, 색상을 바꿀 수 있어요',
+  unlockDescPresets: '원형, V자 등 대열을 한 번에 적용할 수 있어요',
+  unlockDescMarkers: '무대 위의 실제 마킹을 노트에도 표시할 수 있어요',
 
   // Empty state hints
   hintAddDancers: '+ 댄서 추가를 눌러 댄서를 더 추가하세요',
