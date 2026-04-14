@@ -22,7 +22,9 @@ export class StageRenderer {
     this.dancerShape = 'pentagon'; // 'pentagon', 'circle', 'heart'
     this.audienceDirection = 'top'; // 'top' or 'bottom'
     this.dancerScale = 1.0; // 0.5 ~ 2.0
+    this.touchScale = 1.0; // mobile touch boost (set from Editor.js)
     this.showWings = true; // show offstage wing areas
+    this.hideHandles = false; // hide rotation handles when no formation selected
 
     // Drag state
     this._dragging = null; // { dancerIndex, startX, startY, offsetX, offsetY }
@@ -65,11 +67,8 @@ export class StageRenderer {
     if (this.showWings) {
       ctx.fillStyle = wingColor;
       ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-    } else {
-      const bgColor = styles.getPropertyValue('--bg-primary').trim() || '#0f0f1a';
-      ctx.fillStyle = bgColor;
-      ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
     }
+    // showWings off: leave wing area transparent so 3D tilt doesn't show a colored border
 
     // Stage background
     ctx.fillStyle = stageColor;
@@ -145,6 +144,7 @@ export class StageRenderer {
   // --- Main Draw ---
   drawFrame(dancers, positions) {
     const ctx = this.ctx;
+    ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
     // Grid from cache
     ctx.drawImage(this.gridCanvas, 0, 0);
 
@@ -206,7 +206,8 @@ export class StageRenderer {
     // Build draw order: in 3D mode, sort by y (back to front)
     const drawOrder = dancers.map((d, i) => i);
     if (this.is3D) {
-      drawOrder.sort((a, b) => (positions[a]?.y || 0) - (positions[b]?.y || 0));
+      const flip = this.isRotated ? -1 : 1;
+      drawOrder.sort((a, b) => flip * ((positions[a]?.y || 0) - (positions[b]?.y || 0)));
     }
 
     // Draw dancers
@@ -217,8 +218,13 @@ export class StageRenderer {
 
       let screenX = WING_SIZE + HALF_W + pos.x;
       let screenY = WING_SIZE + HALF_H + pos.y;
-      const scaledRadius = DANCER_RADIUS * this.dancerScale;
+      const scaledRadius = DANCER_RADIUS * this.dancerScale * this.touchScale;
       let radius = scaledRadius;
+
+      // 3D CSS mode: push dancers down so top silhouettes don't clip canvas edge
+      if (this.is3D && this._projectionMode !== 'render') {
+        screenY += scaledRadius * 3;
+      }
 
       // Check if dancer is offstage
       const isOffstage = Math.abs(pos.x) > HALF_W || Math.abs(pos.y) > HALF_H;
@@ -343,10 +349,10 @@ export class StageRenderer {
           ctx.lineWidth = 2;
           ctx.stroke();
 
-          // Direction handle (line + circle) — only for real selection, not swap
-          if (isSelected && !isSwapHighlighted && !this.is3D && !this.isRotated && !this._waypointPaths) {
-            const handleLen = radius + 14;
-            const handleR = 4;
+          // Direction handle (line + circle) — only for real selection, not swap, not when no formation selected
+          if (isSelected && !isSwapHighlighted && !this.is3D && !this.isRotated && !this._waypointPaths && !this.hideHandles) {
+            const handleLen = radius + 14 * this.touchScale;
+            const handleR = 4 * this.touchScale;
             const hx = screenX + Math.sin(rad) * handleLen;
             const hy = screenY - Math.cos(rad) * handleLen;
             ctx.beginPath();
@@ -416,7 +422,7 @@ export class StageRenderer {
         if (!this._selectedDancers.has(path.dancerIndex)) continue;
         const cp = path.points[1];
         ctx.beginPath();
-        ctx.arc(ox + cp.x, oy + cp.y, 6, 0, Math.PI * 2);
+        ctx.arc(ox + cp.x, oy + cp.y, 6 * this.touchScale, 0, Math.PI * 2);
         ctx.fillStyle = path.color;
         ctx.fill();
         ctx.strokeStyle = '#ffffff';
@@ -499,7 +505,7 @@ export class StageRenderer {
   }
 
   hitTest(canvasX, canvasY, positions) {
-    const r = Math.max(DANCER_RADIUS * this.dancerScale, this._minHitRadius());
+    const r = Math.max(DANCER_RADIUS * this.dancerScale * this.touchScale, this._minHitRadius());
     const r2 = r * r;
     for (let i = positions.length - 1; i >= 0; i--) {
       const pos = positions[i];
@@ -518,8 +524,8 @@ export class StageRenderer {
     if (this.is3D || this.isRotated || this._waypointPaths) return -1;
     if (!this._positions || !this._dancers) return -1;
     const minR = this._minHitRadius();
-    const handleLen = Math.max(DANCER_RADIUS * this.dancerScale, minR) + 14;
-    const hitR = Math.max(8 * this.dancerScale, minR * 0.6);
+    const handleLen = Math.max(DANCER_RADIUS * this.dancerScale * this.touchScale, minR) + 14 * this.touchScale;
+    const hitR = Math.max(8 * this.dancerScale * this.touchScale, minR * 0.6);
     for (const i of this._selectedDancers) {
       const pos = this._positions[i];
       if (!pos) continue;
@@ -612,7 +618,7 @@ export class StageRenderer {
     // Prevent context menu on canvas
     this.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
-    // Double-click on waypoint: reset
+    // Double-click on waypoint: reset (mouse)
     this.canvas.addEventListener('dblclick', (e) => {
       this._draggingWaypoint = null;
       const { x, y } = this._getCanvasPos(e);
@@ -620,6 +626,50 @@ export class StageRenderer {
       if (wpHit) {
         this.onWaypointReset?.(wpHit.dancerIndex);
       }
+    });
+
+    // Pointer-based double-tap + long press (works with Apple Pencil + touch)
+    let _ptrLastTap = 0;
+    let _ptrLastPos = { x: 0, y: 0 };
+    let _ptrLongTimer = null;
+    let _ptrLongFired = false;
+    this.canvas.addEventListener('pointerdown', (e) => {
+      if (e.pointerType === 'mouse') return; // handled by dblclick/mousedown
+      const pos = this._getCanvasPos(e);
+      const now = Date.now();
+
+      // Double-tap detection (300ms, 20px distance)
+      const dx = pos.x - _ptrLastPos.x, dy = pos.y - _ptrLastPos.y;
+      if (now - _ptrLastTap < 300 && dx * dx + dy * dy < 400) {
+        _ptrLastTap = 0;
+        this._draggingWaypoint = null;
+        const wpHit = this.hitTestWaypoint(pos.x, pos.y);
+        if (wpHit) {
+          this.onWaypointReset?.(wpHit.dancerIndex);
+          return;
+        }
+      }
+      _ptrLastTap = now;
+      _ptrLastPos = { x: pos.x, y: pos.y };
+
+      // Long press detection
+      _ptrLongFired = false;
+      _ptrLongTimer = setTimeout(() => {
+        const wpHit = this.hitTestWaypoint(pos.x, pos.y);
+        if (wpHit) {
+          _ptrLongFired = true;
+          this._draggingWaypoint = null;
+          this.onWaypointReset?.(wpHit.dancerIndex);
+        }
+      }, 500);
+    });
+    this.canvas.addEventListener('pointermove', (e) => {
+      if (e.pointerType === 'mouse') return;
+      if (_ptrLongTimer) { clearTimeout(_ptrLongTimer); _ptrLongTimer = null; }
+    });
+    this.canvas.addEventListener('pointerup', (e) => {
+      if (e.pointerType === 'mouse') return;
+      if (_ptrLongTimer) { clearTimeout(_ptrLongTimer); _ptrLongTimer = null; }
     });
 
     // Touch support: two-finger tap = shift key (multi-select) + long press = waypoint reset

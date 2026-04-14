@@ -31,7 +31,28 @@ let activePanel = null;
 let audienceDirection = 'top';
 let pixelsPerSec = PIXEL_PER_SEC;
 let _renderPresetThumbnails = null; // set by setupSidebar // mutable, for timeline zoom
+let _updateToolbarState = () => {};
 let fitStage = () => {};
+
+// Onboarding & Feature unlock system
+const ONBOARDING_KEY = 'choreonote-onboarding-done';
+const UNLOCK_KEY = 'choreonote-unlocked-features';
+const UNLOCK_ORDER = ['inspector', 'view', 'presets', 'markers'];
+const UNLOCK_TOAST_KEYS = { view: 'unlockToastView', inspector: 'unlockToastInspector', presets: 'unlockToastPresets', markers: 'unlockToastMarkers' };
+const UNLOCK_DESC_KEYS = { view: 'unlockDescView', inspector: 'unlockDescInspector', presets: 'unlockDescPresets', markers: 'unlockDescMarkers' };
+
+function getUnlockedFeatures() {
+  try { return JSON.parse(localStorage.getItem(UNLOCK_KEY)) || []; } catch { return []; }
+}
+
+function isAllUnlocked() {
+  return getUnlockedFeatures().length >= UNLOCK_ORDER.length;
+}
+
+function isExistingUser() {
+  // If onboarding was already done or notes exist in DB, treat as existing user
+  return !!localStorage.getItem(ONBOARDING_KEY);
+}
 
 export async function renderEditor(container, noteId) {
   noteId = Number(noteId);
@@ -74,6 +95,7 @@ export async function renderEditor(container, noteId) {
   if (noteData.note.gridGap) renderer.gridGap = noteData.note.gridGap;
   if (noteData.note.dancerScale) renderer.dancerScale = noteData.note.dancerScale;
   if (noteData.note.showWings === false) renderer.showWings = false;
+  renderer.touchScale = window.innerWidth <= 768 ? 1.4 : 1.0;
   renderer._drawGridCache();
 
   // Fit canvas to available space (both width & height)
@@ -95,9 +117,13 @@ export async function renderEditor(container, noteId) {
     canvas.style.width = Math.floor(w) + 'px';
     canvas.style.height = Math.floor(h) + 'px';
 
+    // Mobile adjustments
+    const isMobile = window.innerWidth <= 768;
+    renderer.touchScale = isMobile ? 1.4 : 1.0;
+
     // Set CSS var for mobile bottom sheet max-height (below rail)
     const rail = container.querySelector('.sidebar-rail');
-    if (rail && window.innerWidth <= 768) {
+    if (rail && isMobile) {
       const railBottom = rail.getBoundingClientRect().bottom;
       container.querySelector('.editor__sidebar')?.style.setProperty('--mobile-rail-top', `${railBottom}px`);
     }
@@ -114,6 +140,9 @@ export async function renderEditor(container, noteId) {
   setupMusicUpload(container, noteId);
   setupMarkers(container, noteId);
 
+  // Feature unlock system
+  setupFeatureUnlock(container);
+
   // Initial render (defer to ensure DOM is fully ready)
   setTimeout(() => {
     renderer._drawGridCache(); // rebuild with CSS variables now available
@@ -124,6 +153,8 @@ export async function renderEditor(container, noteId) {
     if (noteData.musicBlob) {
       drawWaveform(container, noteData.musicBlob, noteData.note.duration);
     }
+    // Show onboarding tour for first-time users
+    startOnboardingTour(container);
   }, 50);
 
   window.addEventListener('resize', fitStage);
@@ -273,6 +304,42 @@ function buildEditorHTML(data) {
                 <button class="settings-option${(data.note.gridGap || 30) === 60 ? ' settings-option--active' : ''}" data-grid="60">${t('gridWide')}</button>
               </div>
             </div>
+            <div class="settings-divider"></div>
+            <div class="settings-section">
+              <div class="settings-label">${t('settingsStageSize')}</div>
+              <div class="settings-options" id="view-stage-options">
+                <button class="settings-option${STAGE_WIDTH === 400 ? ' settings-option--active' : ''}" data-stage="400x260">${t('stageSizeSmall')}</button>
+                <button class="settings-option${STAGE_WIDTH === 600 ? ' settings-option--active' : ''}" data-stage="600x400">${t('stageSizeNormal')}</button>
+                <button class="settings-option${STAGE_WIDTH === 800 ? ' settings-option--active' : ''}" data-stage="800x500">${t('stageSizeLarge')}</button>
+              </div>
+              <div class="settings-slider-row">
+                <span class="settings-slider-label">${t('stageWidth')}</span>
+                <input type="range" class="settings-slider" id="view-stage-width-slider" min="200" max="1200" step="5" value="${STAGE_WIDTH}" />
+                <span class="settings-slider-value" id="view-stage-width-value">${STAGE_WIDTH}</span>
+              </div>
+              <div class="settings-slider-row">
+                <span class="settings-slider-label">${t('stageHeight')}</span>
+                <input type="range" class="settings-slider" id="view-stage-height-slider" min="150" max="800" step="5" value="${STAGE_HEIGHT}" />
+                <span class="settings-slider-value" id="view-stage-height-value">${STAGE_HEIGHT}</span>
+              </div>
+              <div class="settings-slider-row">
+                <span class="settings-slider-label">${t('dancerScale')}</span>
+                <input type="range" class="settings-slider" id="view-dancer-scale-slider" min="50" max="200" step="5" value="${Math.round((noteData.note.dancerScale || 1) * 100)}" />
+                <span class="settings-slider-value" id="view-dancer-scale-value">${Math.round((noteData.note.dancerScale || 1) * 100)}%</span>
+              </div>
+            </div>
+            <div class="settings-section">
+              <div class="settings-label">${t('audienceDir')}</div>
+              <div class="settings-options" id="view-audience-options">
+                <button class="settings-option${audienceDirection === 'top' ? ' settings-option--active' : ''}" data-audience="top">${t('audienceTop')}</button>
+                <button class="settings-option${audienceDirection === 'bottom' ? ' settings-option--active' : ''}" data-audience="bottom">${t('audienceBottom')}</button>
+                <button class="settings-option${audienceDirection === 'none' ? ' settings-option--active' : ''}" data-audience="none">${t('audienceNone')}</button>
+              </div>
+              <label class="toggle-row" style="margin-top:8px">
+                <span>${t('wingArea')}</span>
+                <div class="toggle-switch${data.note.showWings !== false ? ' toggle-switch--on' : ''}" id="view-wing-toggle"><div class="toggle-switch__thumb"></div></div>
+              </label>
+            </div>
           </div>
         </div>
         <div class="sidebar__panel sidebar__panel--hidden" id="panel-markers">
@@ -339,6 +406,8 @@ function buildEditorHTML(data) {
                 <p>${t('helpTimelineWaypoint')}</p>
               </div>
             </div>
+            <div class="settings-divider"></div>
+            <button class="btn btn--ghost" id="restart-tour-btn" style="width:100%;font-size:12px">${t('restartTour')}</button>
           </div>
         </div>
         <div class="sidebar__panel sidebar__panel--hidden" id="panel-settings">
@@ -357,42 +426,6 @@ function buildEditorHTML(data) {
                 <span id="settings-duration">${formatDurationFull(data.note.duration)}</span>
                 <button class="btn btn--ghost settings-btn-sm" id="settings-duration-btn">${t('change')}</button>
               </div>
-            </div>
-            <div class="settings-divider"></div>
-            <div class="settings-section">
-              <div class="settings-label">${t('settingsStageSize')}</div>
-              <div class="settings-options" id="settings-stage-options">
-                <button class="settings-option${STAGE_WIDTH === 400 ? ' settings-option--active' : ''}" data-stage="400x260">${t('stageSizeSmall')}</button>
-                <button class="settings-option${STAGE_WIDTH === 600 ? ' settings-option--active' : ''}" data-stage="600x400">${t('stageSizeNormal')}</button>
-                <button class="settings-option${STAGE_WIDTH === 800 ? ' settings-option--active' : ''}" data-stage="800x500">${t('stageSizeLarge')}</button>
-              </div>
-              <div class="settings-slider-row">
-                <span class="settings-slider-label">${t('stageWidth')}</span>
-                <input type="range" class="settings-slider" id="stage-width-slider" min="200" max="1200" step="5" value="${STAGE_WIDTH}" />
-                <span class="settings-slider-value" id="stage-width-value">${STAGE_WIDTH}</span>
-              </div>
-              <div class="settings-slider-row">
-                <span class="settings-slider-label">${t('stageHeight')}</span>
-                <input type="range" class="settings-slider" id="stage-height-slider" min="150" max="800" step="5" value="${STAGE_HEIGHT}" />
-                <span class="settings-slider-value" id="stage-height-value">${STAGE_HEIGHT}</span>
-              </div>
-              <div class="settings-slider-row">
-                <span class="settings-slider-label">${t('dancerScale')}</span>
-                <input type="range" class="settings-slider" id="dancer-scale-slider" min="50" max="200" step="5" value="${Math.round((noteData.note.dancerScale || 1) * 100)}" />
-                <span class="settings-slider-value" id="dancer-scale-value">${Math.round((noteData.note.dancerScale || 1) * 100)}%</span>
-              </div>
-            </div>
-            <div class="settings-section">
-              <div class="settings-label">${t('audienceDir')}</div>
-              <div class="settings-options" id="settings-audience-options">
-                <button class="settings-option${audienceDirection === 'top' ? ' settings-option--active' : ''}" data-audience="top">${t('audienceTop')}</button>
-                <button class="settings-option${audienceDirection === 'bottom' ? ' settings-option--active' : ''}" data-audience="bottom">${t('audienceBottom')}</button>
-                <button class="settings-option${audienceDirection === 'none' ? ' settings-option--active' : ''}" data-audience="none">${t('audienceNone')}</button>
-              </div>
-              <label class="toggle-row" style="margin-top:8px">
-                <span>${t('wingArea')}</span>
-                <div class="toggle-switch${data.note.showWings !== false ? ' toggle-switch--on' : ''}" id="sidebar-wing-toggle"><div class="toggle-switch__thumb"></div></div>
-              </label>
             </div>
             <div class="settings-divider"></div>
             <div class="settings-section">
@@ -431,11 +464,17 @@ function buildEditorHTML(data) {
       </div>
       <div class="sidebar-rail" id="sidebar-rail">
         <button class="sidebar-rail__icon sidebar-rail__icon--active" data-panel="dancers" title="${t('railDancers')}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></button>
-        <button class="sidebar-rail__icon" data-panel="inspector" title="${t('railInspector')}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
-        <button class="sidebar-rail__icon" data-panel="presets" title="${t('railPresets')}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></button>
-        <button class="sidebar-rail__icon" data-panel="view" title="${t('railView')}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg></button>
-        <button class="sidebar-rail__icon" data-panel="markers" title="${t('railMarkers')}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></button>
+        <button class="sidebar-rail__icon" data-panel="inspector" data-unlock="inspector" title="${t('railInspector')}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+        <button class="sidebar-rail__icon" data-panel="view" data-unlock="view" title="${t('railView')}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg></button>
+        <button class="sidebar-rail__icon" data-panel="presets" data-unlock="presets" title="${t('railPresets')}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></button>
+        <button class="sidebar-rail__icon" data-panel="markers" data-unlock="markers" title="${t('railMarkers')}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></button>
         <div class="sidebar-rail__spacer"></div>
+        <button class="sidebar-rail__unlock" id="unlock-btn" title="${t('unlockBtn', { current: getUnlockedFeatures().length, total: UNLOCK_ORDER.length })}">
+          <span class="unlock-icon">✦</span>
+          <div class="unlock-progress">
+            ${UNLOCK_ORDER.map((_, i) => `<div class="unlock-progress__dot${i < getUnlockedFeatures().length ? ' unlock-progress__dot--filled' : ''}"></div>`).join('')}
+          </div>
+        </button>
         <button class="sidebar-rail__icon" data-panel="help" title="${t('railHelp')}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></button>
         <button class="sidebar-rail__icon" data-panel="settings" title="${t('railSettings')}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg></button>
       </div>
@@ -447,7 +486,6 @@ function buildEditorHTML(data) {
           <button class="player-bar__btn" id="prev-formation-btn" title="${t('prevFormation')}"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg></button>
           <button class="player-bar__btn" id="next-formation-btn" title="${t('nextFormation')}"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg></button>
           <span class="player-bar__time" id="time-display">${formatTime(0, true)}</span><span class="player-bar__time player-bar__time--sep">/</span><span class="player-bar__time" id="duration-display">${formatTime(data.note.duration, true)}</span>
-          <span class="player-bar__music-name" id="music-name">${data.note.musicName ? escapeAttr(data.note.musicName) : t('noMusic')}</span>
         </div>
 
         <div class="toolbar__separator"></div>
@@ -457,10 +495,10 @@ function buildEditorHTML(data) {
             <button class="toolbar__btn" id="undo-btn" title="${t('undoBtn')}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M3 13a9 9 0 0 1 15.36-6.36"/></svg></button>
             <button class="toolbar__btn" id="redo-btn" title="${t('redoBtn')}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7v6h-6"/><path d="M21 13a9 9 0 0 0-15.36-6.36"/></svg></button>
             <div class="toolbar__separator"></div>
-            <button class="toolbar__btn" id="add-formation-btn" title="${t('addFormation')}">${t('addFormation')}</button>
-            <button class="toolbar__btn" id="del-formation-btn" title="${t('delFormation')}">${t('delFormation')}</button>
-            <button class="toolbar__btn" id="copy-btn" title="${t('copyBtn')}">${t('copyBtn')}</button>
-            <button class="toolbar__btn" id="paste-btn" title="${t('pasteBtn')}">${t('pasteBtn')}</button>
+            <button class="toolbar__btn" id="add-formation-btn" title="${t('addFormation')}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+            <button class="toolbar__btn" id="del-formation-btn" title="${t('delFormation')}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+            <button class="toolbar__btn" id="copy-btn" title="${t('copyBtn')}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
+            <button class="toolbar__btn" id="paste-btn" title="${t('pasteBtn')}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg></button>
             <div class="toolbar__separator"></div>
             <button class="toolbar__btn" id="snap-btn" title="${t('snapBtn')}">${t('snapBtn')}</button>
             <button class="toolbar__btn" id="swap-btn" title="${t('swapBtn')}">${t('swapBtn')}</button>
@@ -582,12 +620,14 @@ function setupPlayback(container) {
     document.removeEventListener('keydown', window._choreoKeyHandler);
   }
   window._choreoKeyHandler = (e) => {
-    if (e.target.tagName === 'INPUT') return;
-    if (e.code === 'Space') {
+    const tag = e.target.tagName;
+    const isEditable = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+    if (e.code === 'Space' && !isEditable) {
       e.preventDefault();
       const btn = document.querySelector('#play-btn');
       if (btn) btn.click();
     }
+    if (isEditable) return;
     if (e.code === 'ArrowLeft') {
       e.preventDefault();
       seekTo(Math.max(0, currentMs - TIME_UNIT));
@@ -1107,6 +1147,12 @@ function setupTimeline(container) {
 
 function renderFormationBoxes(formationsEl) {
   formationsEl.innerHTML = '';
+  if (noteData.formations.length <= 1) {
+    const hint = document.createElement('div');
+    hint.className = 'hint-banner hint-banner--timeline';
+    hint.textContent = t('hintAddFormation');
+    formationsEl.appendChild(hint);
+  }
   noteData.formations.forEach((f, i) => {
     const box = document.createElement('div');
     box.className = 'formation-box' + (selectedFormations.has(i) ? ' formation-box--selected' : '') + (i === selectedFormation ? ' formation-box--active' : '');
@@ -1386,6 +1432,8 @@ function setupSidebar(container) {
     }
 
     function applyWithRotation(name, positions) {
+      if (engine.isPlaying) { showToast(t('toastStopFirst')); return; }
+      if (swapMode) { showToast(t('toastExitSwap')); return; }
       if (selectedFormation < 0) { showToast(t('presetSelectFirst')); return; }
       // Rotate dancer order on repeated click
       if (_lastPresetName === name) {
@@ -1755,7 +1803,7 @@ function setupInspector(container) {
 }
 
 function renderDancerList(list) {
-  list.innerHTML = noteData.dancers.map((d, i) => `
+  const dancerHtml = noteData.dancers.map((d, i) => `
     <div class="dancer-item${renderer._selectedDancers.has(i) ? ' dancer-item--selected' : ''}" data-index="${i}">
       <span class="dancer-item__number">${i + 1}</span>
       <div class="dancer-item__color-btn" data-colorbtn="${i}" style="background:${d.color}"></div>
@@ -1763,6 +1811,9 @@ function renderDancerList(list) {
       <button class="dancer-item__remove" data-remove="${i}">✕</button>
     </div>
   `).join('');
+  const hintHtml = noteData.dancers.length <= 1
+    ? `<div class="hint-banner">${t('hintAddDancers')}</div>` : '';
+  list.innerHTML = dancerHtml + hintHtml;
 
   // Color palette popup
   list.querySelectorAll('[data-colorbtn]').forEach((btn) => {
@@ -1876,14 +1927,43 @@ function setupToolbar(container) {
   });
   let copiedPositions = null;
 
+  _updateToolbarState = () => {
+    const hasFormation = selectedFormation >= 0;
+    const isPlaying = engine.isPlaying;
+    const isTransition = !!selectedTransition;
+    // Add: disabled when a formation is selected (would overlap) or playing
+    addBtn.classList.toggle('toolbar__btn--disabled', hasFormation || isPlaying);
+    // Delete: need a formation selected and more than 1
+    delBtn.classList.toggle('toolbar__btn--disabled', !hasFormation || noteData.formations.length <= 1 || isPlaying);
+    // Copy: need a formation selected
+    copyBtn.classList.toggle('toolbar__btn--disabled', !hasFormation || isPlaying);
+    // Paste: need copied data
+    pasteBtn.classList.toggle('toolbar__btn--disabled', !copiedPositions || isPlaying);
+    // Undo/Redo
+    undoBtn.classList.toggle('toolbar__btn--disabled', !canUndo() || isPlaying);
+    redoBtn.classList.toggle('toolbar__btn--disabled', !canRedo() || isPlaying);
+  };
+  _updateToolbarState();
+
   addBtn.addEventListener('click', () => {
     if (guardPlaying()) return;
     const newStart = floorTime(currentMs);
-    // Check overlap
-    const overlaps = noteData.formations.some((f) =>
-      newStart < f.startTime + f.duration && newStart + TIME_UNIT * 5 > f.startTime
-    );
-    if (overlaps) {
+    const DEFAULT_DURATION = TIME_UNIT * 4;
+
+    // Find max available space at newStart
+    let maxDuration = noteData.note.duration - newStart;
+    for (const f of noteData.formations) {
+      if (f.startTime > newStart) {
+        maxDuration = Math.min(maxDuration, f.startTime - newStart);
+      }
+      if (newStart >= f.startTime && newStart < f.startTime + f.duration) {
+        maxDuration = 0;
+        break;
+      }
+    }
+
+    const duration = Math.min(DEFAULT_DURATION, floorTime(maxDuration));
+    if (duration < TIME_UNIT) {
       showToast(t('toastOverlap'));
       return;
     }
@@ -1892,7 +1972,7 @@ function setupToolbar(container) {
       id: Date.now(),
       noteId: noteData.note.id,
       startTime: newStart,
-      duration: TIME_UNIT * 5,
+      duration,
       order: noteData.formations.length,
       positions: (() => {
         const currentPositions = engine.calcPositionsAt(currentMs);
@@ -1941,6 +2021,7 @@ function setupToolbar(container) {
     const f = noteData.formations[selectedFormation];
     copiedPositions = f.positions.map((p) => ({ dancerId: p.dancerId, x: p.x, y: p.y }));
     showToast(t('toastCopied'));
+    _updateToolbarState();
   });
 
   pasteBtn.addEventListener('click', () => {
@@ -2022,6 +2103,7 @@ function setupToolbar(container) {
       swapBanner.textContent = t('swapBanner');
       renderer._selectedDancers.clear();
       renderer.onDancerSelect?.(-1);
+      if (_renderPresetThumbnails) _renderPresetThumbnails();
     }
     updateStage();
   };
@@ -2035,7 +2117,7 @@ function setupToolbar(container) {
       showToast(t('toastStopFirst'));
       return;
     }
-    if (!swapMode && selectedTransition) {
+    if (!swapMode && (selectedTransition || selectedFormation < 0)) {
       showToast(t('toastSelectFormation'));
       return;
     }
@@ -2062,8 +2144,8 @@ function setupToolbar(container) {
       updateInspector();
     }
 
-    // Update preset thumbnails to reflect selection
-    if (_renderPresetThumbnails) _renderPresetThumbnails();
+    // Update preset thumbnails to reflect selection (skip in swap mode)
+    if (!swapMode && _renderPresetThumbnails) _renderPresetThumbnails();
 
     if (!swapMode) return;
     // Prevent real selection in swap mode
@@ -2298,9 +2380,10 @@ function setupToolbar(container) {
   toggle3dEl.addEventListener('click', () => toggle3D());
   toggleRotateEl.addEventListener('click', () => toggleRotate());
 
-  // Wing area toggle
-  const toggleWingEl = container.querySelector('#sidebar-wing-toggle');
+  // Wing area toggle — now in view panel
+  const toggleWingEl = container.querySelector('#view-wing-toggle');
   toggleWingEl.addEventListener('click', () => {
+    if (engine.isPlaying) { showToast(t('toastStopFirst')); return; }
     const show = !renderer.showWings;
     renderer.showWings = show;
     toggleWingEl.classList.toggle('toggle-switch--on', show);
@@ -2743,12 +2826,12 @@ function setupSettings(container, noteId) {
     container.querySelector('#music-file').click();
   });
 
-  // Stage size options (presets + sliders)
-  const stageOptions = container.querySelector('#settings-stage-options');
-  const stageWidthSlider = container.querySelector('#stage-width-slider');
-  const stageHeightSlider = container.querySelector('#stage-height-slider');
-  const stageWidthValue = container.querySelector('#stage-width-value');
-  const stageHeightValue = container.querySelector('#stage-height-value');
+  // Stage size options (presets + sliders) — now in view panel
+  const stageOptions = container.querySelector('#view-stage-options');
+  const stageWidthSlider = container.querySelector('#view-stage-width-slider');
+  const stageHeightSlider = container.querySelector('#view-stage-height-slider');
+  const stageWidthValue = container.querySelector('#view-stage-width-value');
+  const stageHeightValue = container.querySelector('#view-stage-height-value');
   const STAGE_PRESETS = { '400x260': true, '600x400': true, '800x500': true };
 
   function syncStagePresetButtons() {
@@ -2797,6 +2880,7 @@ function setupSettings(container, noteId) {
   // Preset buttons
   stageOptions.querySelectorAll('[data-stage]').forEach(btn => {
     btn.addEventListener('click', () => {
+      if (engine.isPlaying) { showToast(t('toastStopFirst')); return; }
       const [newW, newH] = btn.dataset.stage.split('x').map(Number);
       if (newW === STAGE_WIDTH && newH === STAGE_HEIGHT) return;
       applyStageSize(newW, newH);
@@ -2811,6 +2895,11 @@ function setupSettings(container, noteId) {
   let _sliderDragging = false;
 
   function onSliderInput() {
+    if (engine.isPlaying) {
+      stageWidthSlider.value = STAGE_WIDTH;
+      stageHeightSlider.value = STAGE_HEIGHT;
+      return;
+    }
     if (!_sliderDragging) {
       _sliderStartW = STAGE_WIDTH;
       _sliderStartH = STAGE_HEIGHT;
@@ -2863,8 +2952,8 @@ function setupSettings(container, noteId) {
   stageHeightSlider.addEventListener('change', onSliderChange);
 
   // Dancer scale slider
-  const dancerScaleSlider = container.querySelector('#dancer-scale-slider');
-  const dancerScaleValue = container.querySelector('#dancer-scale-value');
+  const dancerScaleSlider = container.querySelector('#view-dancer-scale-slider');
+  const dancerScaleValue = container.querySelector('#view-dancer-scale-value');
 
   dancerScaleSlider.addEventListener('input', () => {
     const pct = Number(dancerScaleSlider.value);
@@ -2971,10 +3060,11 @@ function setupSettings(container, noteId) {
     });
   }
 
-  // Audience direction
-  const audienceOptions = container.querySelector('#settings-audience-options');
+  // Audience direction — now in view panel
+  const audienceOptions = container.querySelector('#view-audience-options');
   audienceOptions.querySelectorAll('[data-audience]').forEach(btn => {
     btn.addEventListener('click', () => {
+      if (engine.isPlaying) { showToast(t('toastStopFirst')); return; }
       const prevDirection = audienceDirection;
       audienceDirection = btn.dataset.audience;
       renderer.audienceDirection = audienceDirection;
@@ -3036,6 +3126,15 @@ function setupSettings(container, noteId) {
       showToast(t('toastImportError') + ' ' + err.message);
     }
   });
+
+  // Restart onboarding tour
+  const restartTourBtn = container.querySelector('#restart-tour-btn');
+  if (restartTourBtn) {
+    restartTourBtn.addEventListener('click', () => {
+      localStorage.removeItem(ONBOARDING_KEY);
+      startOnboardingTour(container);
+    });
+  }
 }
 
 // --- Music Upload ---
@@ -3093,7 +3192,6 @@ function setupMusicUpload(container, noteId) {
     buildRulerTicks(ruler, durationSec);
 
     drawWaveform(container, blob, durationMs);
-    container.querySelector('#music-name').textContent = file.name;
     const settingsMusicName = container.querySelector('#settings-music-name');
     if (settingsMusicName) {
       settingsMusicName.textContent = truncateFilename(file.name, 35);
@@ -3136,10 +3234,11 @@ function seekTo(ms) {
       }
     }
   }
-  // 교환 모드: 이동 영역 선택 또는 다른 대열 선택 시 해제
-  if (swapMode && (selectedTransition || selectedFormation !== prevFormation)) {
+  // 교환 모드: 이동 영역/빈 구간 선택 또는 다른 대열 선택 시 해제
+  if (swapMode && (selectedTransition || selectedFormation < 0 || selectedFormation !== prevFormation)) {
     setSwapMode(false);
   }
+  renderer.hideHandles = selectedFormation < 0;
   highlightFormation();
   highlightTransition();
   updateStage();
@@ -3219,6 +3318,7 @@ function highlightFormation() {
     box.classList.toggle('formation-box--selected', selectedFormations.has(i));
     box.classList.toggle('formation-box--active', i === selectedFormation);
   });
+  _updateToolbarState();
 }
 
 function highlightTransition() {
@@ -3357,11 +3457,11 @@ function restoreSnapshot(snapshot) {
     fitStage();
     renderer._drawGridCache();
     // Sync sliders
-    const wSlider = document.querySelector('#stage-width-slider');
-    const hSlider = document.querySelector('#stage-height-slider');
-    if (wSlider) { wSlider.value = snapshot.stageWidth; document.querySelector('#stage-width-value').textContent = snapshot.stageWidth; }
-    if (hSlider) { hSlider.value = snapshot.stageHeight; document.querySelector('#stage-height-value').textContent = snapshot.stageHeight; }
-    const stageOpts = document.querySelector('#settings-stage-options');
+    const wSlider = document.querySelector('#view-stage-width-slider');
+    const hSlider = document.querySelector('#view-stage-height-slider');
+    if (wSlider) { wSlider.value = snapshot.stageWidth; document.querySelector('#view-stage-width-value').textContent = snapshot.stageWidth; }
+    if (hSlider) { hSlider.value = snapshot.stageHeight; document.querySelector('#view-stage-height-value').textContent = snapshot.stageHeight; }
+    const stageOpts = document.querySelector('#view-stage-options');
     if (stageOpts) {
       const key = `${snapshot.stageWidth}x${snapshot.stageHeight}`;
       stageOpts.querySelectorAll('.settings-option').forEach(b => b.classList.toggle('settings-option--active', b.dataset.stage === key));
@@ -3542,4 +3642,232 @@ function truncateFilename(name, maxLen = 20) {
 
 function escapeAttr(str) {
   return String(str).replace(/"/g, '&quot;').replace(/</g, '&lt;');
+}
+
+// --- Feature Unlock ---
+function setupFeatureUnlock(container) {
+  const existing = isExistingUser();
+  const unlocked = existing ? [...UNLOCK_ORDER] : getUnlockedFeatures();
+  const rail = container.querySelector('#sidebar-rail');
+  const unlockBtn = container.querySelector('#unlock-btn');
+
+  // Map panel name to its panel element
+  const panelMap = {
+    view: 'panel-view',
+    inspector: 'panel-inspector',
+    presets: 'panel-presets',
+    markers: 'panel-markers',
+  };
+
+  function applyVisibility() {
+    // Hide/show rail icons based on unlock state
+    rail.querySelectorAll('[data-unlock]').forEach(btn => {
+      const feature = btn.dataset.unlock;
+      btn.style.display = unlocked.includes(feature) ? '' : 'none';
+    });
+
+    // Hide/show unlock button
+    if (unlockBtn) {
+      unlockBtn.style.display = unlocked.length >= UNLOCK_ORDER.length ? 'none' : '';
+      // Update progress dots
+      unlockBtn.querySelectorAll('.unlock-progress__dot').forEach((dot, i) => {
+        dot.classList.toggle('unlock-progress__dot--filled', i < unlocked.length);
+      });
+    }
+  }
+
+  function unlockNext() {
+    const nextFeature = UNLOCK_ORDER.find(f => !unlocked.includes(f));
+    if (!nextFeature) return;
+
+    unlocked.push(nextFeature);
+    localStorage.setItem(UNLOCK_KEY, JSON.stringify(unlocked));
+
+    applyVisibility();
+
+    // Show toast
+    showToast(t(UNLOCK_TOAST_KEYS[nextFeature]));
+
+    // Open the unlocked panel with description banner
+    const panelId = panelMap[nextFeature];
+    const panel = container.querySelector(`#${panelId}`);
+    if (panel) {
+      // Add description banner if not already present
+      const existingBanner = panel.querySelector('.unlock-desc-banner');
+      if (!existingBanner) {
+        const banner = document.createElement('div');
+        banner.className = 'unlock-desc-banner';
+        banner.innerHTML = `${t(UNLOCK_DESC_KEYS[nextFeature])}<button class="unlock-desc-banner__close">✕</button>`;
+        banner.querySelector('.unlock-desc-banner__close').addEventListener('click', () => banner.remove());
+        const title = panel.querySelector('.sidebar__panel-title');
+        if (title) title.after(banner);
+        else panel.prepend(banner);
+      }
+      // Switch to unlocked panel
+      openPanel(nextFeature === 'view' ? 'view' : nextFeature === 'inspector' ? 'inspector' : nextFeature === 'presets' ? 'presets' : 'markers');
+    }
+  }
+
+  // Apply initial state
+  if (existing) {
+    localStorage.setItem(UNLOCK_KEY, JSON.stringify(unlocked));
+  }
+  applyVisibility();
+
+  // Wire unlock button
+  if (unlockBtn) {
+    unlockBtn.addEventListener('click', unlockNext);
+  }
+}
+
+// --- Onboarding Tour ---
+
+function startOnboardingTour(container) {
+  if (localStorage.getItem(ONBOARDING_KEY)) return;
+
+  const formationCountAtStart = noteData.formations.length;
+
+  const steps = [
+    {
+      selector: ['.player-bar', '.editor__timeline-wrap'],
+      titleKey: 'tourTimelineTitle',
+      descKey: 'tourTimelineDesc',
+      // Auto-advance when a formation is added
+      listen: (advance, onCleanup) => {
+        let stopped = false;
+        onCleanup(() => { stopped = true; });
+        const check = () => {
+          if (stopped) return;
+          if (noteData.formations.length > formationCountAtStart) { advance(); return; }
+          requestAnimationFrame(check);
+        };
+        requestAnimationFrame(check);
+      },
+    },
+    {
+      selector: '.stage-container',
+      titleKey: 'tourStageTitle',
+      descKey: 'tourStageDesc',
+      // Auto-advance on any mouseup/touchend on canvas (drag completed)
+      listen: (advance, onCleanup) => {
+        const canvas = container.querySelector('#stage-canvas');
+        if (!canvas) return;
+        const handler = () => { canvas.removeEventListener('mouseup', handler); canvas.removeEventListener('touchend', handler); advance(); };
+        canvas.addEventListener('mouseup', handler);
+        canvas.addEventListener('touchend', handler);
+        onCleanup(() => { canvas.removeEventListener('mouseup', handler); canvas.removeEventListener('touchend', handler); });
+      },
+    },
+    {
+      selector: '.player-bar',
+      titleKey: 'tourPlayTitle',
+      descKey: 'tourPlayDesc',
+      onEnter: () => { if (typeof seekTo === 'function') seekTo(0); },
+      // Auto-advance when playback starts
+      listen: (advance, onCleanup) => {
+        const playBtn = container.querySelector('#play-btn');
+        if (!playBtn) return;
+        const handler = () => { playBtn.removeEventListener('click', handler); advance(); };
+        playBtn.addEventListener('click', handler);
+        onCleanup(() => { playBtn.removeEventListener('click', handler); });
+      },
+    },
+  ];
+
+  let current = 0;
+  let cleanupFn = null;
+
+  const overlay = document.createElement('div');
+  overlay.className = 'onboarding-overlay';
+  document.body.appendChild(overlay);
+
+  const spotlight = document.createElement('div');
+  spotlight.className = 'onboarding-spotlight';
+  document.body.appendChild(spotlight);
+
+  const tooltip = document.createElement('div');
+  tooltip.className = 'onboarding-tooltip';
+  document.body.appendChild(tooltip);
+
+  function cleanup() {
+    if (cleanupFn) { cleanupFn(); cleanupFn = null; }
+  }
+
+  function advance() {
+    cleanup();
+    if (current >= steps.length - 1) finish();
+    else { current++; showStep(current); }
+  }
+
+  function showStep(idx) {
+    const step = steps[idx];
+    const selectors = Array.isArray(step.selector) ? step.selector : [step.selector];
+    const els = selectors.map(s => container.querySelector(s)).filter(Boolean);
+    if (els.length === 0) { finish(); return; }
+    if (step.onEnter) step.onEnter();
+
+    // Merge bounding boxes of all matched elements
+    const rects = els.map(e => e.getBoundingClientRect());
+    const rect = {
+      left: Math.min(...rects.map(r => r.left)),
+      top: Math.min(...rects.map(r => r.top)),
+      right: Math.max(...rects.map(r => r.right)),
+      bottom: Math.max(...rects.map(r => r.bottom)),
+    };
+    rect.width = rect.right - rect.left;
+    rect.height = rect.bottom - rect.top;
+    const pad = 8;
+    spotlight.style.left = (rect.left - pad) + 'px';
+    spotlight.style.top = (rect.top - pad) + 'px';
+    spotlight.style.width = (rect.width + pad * 2) + 'px';
+    spotlight.style.height = (rect.height + pad * 2) + 'px';
+
+    const isLast = idx === steps.length - 1;
+    tooltip.innerHTML = `
+      <div class="onboarding-tooltip__step">${t('tourStep', { current: idx + 1, total: steps.length })}</div>
+      <div class="onboarding-tooltip__title">${t(step.titleKey)}</div>
+      <div class="onboarding-tooltip__desc">${t(step.descKey)}</div>
+      <div class="onboarding-tooltip__actions">
+        <button class="onboarding-tooltip__skip">${t('tourSkip')}</button>
+        <button class="onboarding-tooltip__next">${isLast ? t('tourDone') : t('tourNext')}</button>
+      </div>
+    `;
+
+    // Position tooltip near the spotlight
+    const tooltipRect = tooltip.getBoundingClientRect();
+    let top = rect.bottom + pad + 12;
+    let left = rect.left + rect.width / 2 - tooltipRect.width / 2;
+
+    // Keep within viewport
+    if (top + tooltipRect.height > window.innerHeight - 16) {
+      top = rect.top - pad - 12 - tooltipRect.height;
+    }
+    left = Math.max(12, Math.min(left, window.innerWidth - tooltipRect.width - 12));
+    top = Math.max(12, top);
+
+    tooltip.style.left = left + 'px';
+    tooltip.style.top = top + 'px';
+    tooltip.style.opacity = '1';
+
+    // Manual advance via button
+    tooltip.querySelector('.onboarding-tooltip__next').onclick = () => {
+      if (isLast) finish();
+      else advance();
+    };
+    tooltip.querySelector('.onboarding-tooltip__skip').onclick = finish;
+
+    // Auto-advance via action detection
+    cleanup();
+    if (step.listen) step.listen(advance, (fn) => { cleanupFn = fn; });
+  }
+
+  function finish() {
+    cleanup();
+    localStorage.setItem(ONBOARDING_KEY, '1');
+    overlay.remove();
+    spotlight.remove();
+    tooltip.remove();
+  }
+
+  showStep(0);
 }

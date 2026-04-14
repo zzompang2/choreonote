@@ -40,10 +40,13 @@ export const en = {
   sortRecent: 'Recent',
   sortCreated: 'Created',
   sortName: 'Name',
+  created: 'Created',
+  edited: 'Edited',
   importBtn: 'Import',
   newNote: '+ New Note',
   emptyTitle: 'No notes yet',
   emptyDesc: 'Press + New Note to get started',
+  storageWarning: 'Storage {pct}% used ({used}MB / {total}MB) — consider deleting unused notes',
   confirmDeleteNote: 'Delete this note?',
   importError: 'Failed to load file:',
 
@@ -77,16 +80,16 @@ export const en = {
   swapBtn: 'Swap',
 
   // Editor — Sidebar rail
-  railDancers: 'Dancers',
-  railInspector: 'Inspector',
-  railPresets: 'Presets',
-  railView: 'View',
-  railMarkers: 'Markers',
+  railDancers: 'Dancer List',
+  railInspector: 'Edit Dancer',
+  railPresets: 'Formations',
+  railView: 'Stage Setup',
+  railMarkers: 'Markings',
   railHelp: 'Help',
   railSettings: 'Settings',
 
   // Editor — Inspector panel
-  inspectorTitle: 'Inspector',
+  inspectorTitle: 'Edit Dancer',
   inspectorEmpty: 'Select a dancer on stage',
   inspectorCoord: 'Position',
   inspectorDir: 'Direction',
@@ -95,13 +98,13 @@ export const en = {
   inspectorMulti: '{count} selected',
 
   // Editor — Dancers panel
-  dancersTitle: 'Dancers',
+  dancersTitle: 'Dancer List',
   addDancer: '+ Add Dancer',
   dancerDefault: 'Dancer{n}',
   minDancerError: 'At least 1 dancer is required',
 
   // Editor — Presets panel
-  presetsTitle: 'Presets',
+  presetsTitle: 'Formations',
   presetSpacing: 'Spacing',
   presetSelectionInfo: '{count} selected — applies to selected dancers only',
   presetSelectFirst: 'Select a formation first',
@@ -114,7 +117,7 @@ export const en = {
   presetSaved: 'Preset saved',
 
   // Editor — View panel
-  viewTitle: 'View',
+  viewTitle: 'Stage Setup',
   viewStage: 'Stage View',
   view3d: '3D',
   viewRotate: 'Rotate',
@@ -204,6 +207,7 @@ export const en = {
   toastFormationsDeleted: '{count} formations deleted',
   toastSelectFormation: 'Select a formation first',
   toastStopFirst: 'Stop playback first',
+  toastExitSwap: 'Exit swap mode first',
   toastWaypointReset: '{name} path reset',
   toastWingShow: 'Wing area shown',
   toastWingHide: 'Wing area hidden',
@@ -244,21 +248,51 @@ export const en = {
 
   // Shortcut modal (legacy)
   // Editor — Markers panel
-  markersTitle: 'Markers',
-  markerEditMode: 'Edit Markers',
-  markerEditBanner: 'Marker edit mode — drag, add, or delete markers',
-  markerEditBannerExit: 'Marker edit mode — click to exit',
-  addMarker: '+ Add Marker',
+  markersTitle: 'Markings',
+  markerEditMode: 'Edit Markings',
+  markerEditBanner: 'Marking edit mode — drag, add, or delete markings',
+  markerEditBannerExit: 'Marking edit mode — click to exit',
+  addMarker: '+ Add Marking',
   deleteMarker: 'Delete',
   markerTypeX: 'X Mark',
   markerTypeRect: 'Rectangle',
   markerTypeCircle: 'Circle',
-  markerShowToggle: 'Show Markers',
-  toastMarkerAdded: 'Marker added',
-  toastMarkerDeleted: 'Marker deleted',
+  markerShowToggle: 'Show Markings',
+  toastMarkerAdded: 'Marking added',
+  toastMarkerDeleted: 'Marking deleted',
   markerLabel: 'Label',
-  markerEmpty: 'No markers',
+  markerEmpty: 'No markings yet. Press + Add Marking below, then turn on Edit Markings to position them.',
 
   shortcutTitle: 'Keyboard Shortcuts',
   shortcutHelp: 'Toggle this help',
+
+  restartTour: 'Restart onboarding tour',
+
+  // Feature unlock
+  unlockBtn: '✦ {current}/{total}',
+  unlockToastView: '🔓 Stage Setup unlocked!',
+  unlockToastInspector: '🔓 Edit Dancer unlocked!',
+  unlockToastPresets: '🔓 Formations unlocked!',
+  unlockToastMarkers: '🔓 Markings unlocked!',
+  unlockDescView: 'Configure 3D view, grid, stage size, audience direction, and more',
+  unlockDescInspector: 'Edit dancer position, direction, and color',
+  unlockDescPresets: 'Quickly apply formation patterns like circle, V-shape, and more',
+  unlockDescMarkers: 'Place reference marks on stage for rehearsal positioning',
+
+  // Empty state hints
+  hintAddDancers: 'Press + Add Dancer to add more dancers',
+  hintAddFormation: 'Click an empty spot on the timeline, then press + to add a formation',
+  hintAddMusic: '⚙ Add music in Settings',
+
+  // Onboarding tour
+  tourTimelineTitle: 'Add Formation',
+  tourTimelineDesc: 'Click an empty space on the timeline, then press + to add a formation.',
+  tourStageTitle: 'Place Dancers',
+  tourStageDesc: 'Drag dancers to change their positions.',
+  tourPlayTitle: 'Play',
+  tourPlayDesc: 'Press play to see the result.',
+  tourNext: 'Next',
+  tourDone: 'Get Started',
+  tourSkip: 'Skip',
+  tourStep: '{current} / {total}',
 };

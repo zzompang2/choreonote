@@ -40,10 +40,13 @@ export const ko = {
   sortRecent: '최근 수정',
   sortCreated: '생성일',
   sortName: '이름순',
+  created: '생성',
+  edited: '수정',
   importBtn: '가져오기',
   newNote: '+ 새 노트',
   emptyTitle: '아직 노트가 없습니다',
   emptyDesc: '+ 새 노트를 눌러 시작하세요',
+  storageWarning: '저장 공간 {pct}% 사용 중 ({used}MB / {total}MB) — 불필요한 노트를 삭제하세요',
   confirmDeleteNote: '이 노트를 삭제할까요?',
   importError: '파일을 불러올 수 없습니다:',
 
@@ -77,16 +80,16 @@ export const ko = {
   swapBtn: '교환',
 
   // Editor — Sidebar rail
-  railDancers: '댄서',
-  railInspector: '댄서 정보',
-  railPresets: '추천 대열',
-  railView: '뷰 모드',
-  railMarkers: '마커',
+  railDancers: '댄서 목록',
+  railInspector: '댄서 편집',
+  railPresets: '대열 모음',
+  railView: '무대 설정',
+  railMarkers: '마킹',
   railHelp: '도움말',
   railSettings: '설정',
 
   // Editor — Inspector panel
-  inspectorTitle: '댄서 정보',
+  inspectorTitle: '댄서 편집',
   inspectorEmpty: '스테이지에서 댄서를 선택하세요',
   inspectorCoord: '좌표',
   inspectorDir: '방향',
@@ -95,13 +98,13 @@ export const ko = {
   inspectorMulti: '{count}명 선택됨',
 
   // Editor — Dancers panel
-  dancersTitle: '댄서',
+  dancersTitle: '댄서 목록',
   addDancer: '+ 댄서 추가',
   dancerDefault: '댄서{n}',
   minDancerError: '최소 1명의 댄서가 필요합니다',
 
   // Editor — Presets panel
-  presetsTitle: '추천 대열',
+  presetsTitle: '대열 모음',
   presetSpacing: '간격',
   presetSelectionInfo: '{count}명 선택됨 — 선택된 댄서에만 적용',
   presetSelectFirst: '대열을 먼저 선택하세요',
@@ -114,7 +117,7 @@ export const ko = {
   presetSaved: '프리셋 저장됨',
 
   // Editor — View panel
-  viewTitle: '뷰 모드',
+  viewTitle: '무대 설정',
   viewStage: '스테이지 뷰',
   view3d: '3D',
   viewRotate: '회전',
@@ -204,6 +207,7 @@ export const ko = {
   toastFormationsDeleted: '대형 {count}개 삭제됨',
   toastSelectFormation: '대열을 먼저 선택하세요',
   toastStopFirst: '재생을 멈추고 사용하세요',
+  toastExitSwap: '교환 모드를 종료하고 사용하세요',
   toastWaypointReset: '{name} 경로 초기화됨',
   toastWingShow: '퇴장 영역 표시',
   toastWingHide: '퇴장 영역 숨김',
@@ -244,21 +248,51 @@ export const ko = {
 
   // Shortcut modal (legacy, kept for toggleShortcutHelp)
   // Editor — Markers panel
-  markersTitle: '마커',
-  markerEditMode: '마커 편집',
-  markerEditBanner: '마커 편집 모드 — 마커를 드래그하거나 추가/삭제',
-  markerEditBannerExit: '마커 편집 모드 — 클릭하면 종료',
-  addMarker: '+ 마커 추가',
+  markersTitle: '마킹',
+  markerEditMode: '마킹 편집',
+  markerEditBanner: '마킹 편집 모드 — 마킹을 드래그하거나 추가/삭제',
+  markerEditBannerExit: '마킹 편집 모드 — 클릭하면 종료',
+  addMarker: '+ 마킹 추가',
   deleteMarker: '삭제',
   markerTypeX: 'X 표시',
   markerTypeRect: '사각형',
   markerTypeCircle: '원형',
-  markerShowToggle: '마커 표시',
-  toastMarkerAdded: '마커 추가됨',
-  toastMarkerDeleted: '마커 삭제됨',
+  markerShowToggle: '마킹 표시',
+  toastMarkerAdded: '마킹 추가됨',
+  toastMarkerDeleted: '마킹 삭제됨',
   markerLabel: '라벨',
-  markerEmpty: '마커가 없습니다',
+  markerEmpty: '마킹이 없습니다. 아래 + 마킹 추가를 눌러 마킹을 만들고, 마킹 편집을 켜서 위치를 조정하세요.',
 
   shortcutTitle: '키보드 단축키',
   shortcutHelp: '이 도움말 열기/닫기',
+
+  restartTour: '온보딩 투어 다시 보기',
+
+  // Feature unlock
+  unlockBtn: '✦ {current}/{total}',
+  unlockToastView: '🔓 무대 설정 해금!',
+  unlockToastInspector: '🔓 댄서 편집 해금!',
+  unlockToastPresets: '🔓 대열 모음 해금!',
+  unlockToastMarkers: '🔓 마킹 해금!',
+  unlockDescView: '3D 뷰, 격자, 무대 크기, 객석 방향 등을 설정할 수 있어요',
+  unlockDescInspector: '댄서의 좌표, 방향, 색상을 편집할 수 있어요',
+  unlockDescPresets: '원형, V자 등 대열 패턴을 빠르게 적용할 수 있어요',
+  unlockDescMarkers: '무대 위에 위치 표시를 놓아 연습 기준점으로 활용하세요',
+
+  // Empty state hints
+  hintAddDancers: '+ 댄서 추가를 눌러 댄서를 더 추가하세요',
+  hintAddFormation: '타임라인의 빈 곳을 클릭한 뒤 + 버튼으로 대열을 추가하세요',
+  hintAddMusic: '⚙ 설정에서 음악 추가',
+
+  // Onboarding tour
+  tourTimelineTitle: '대열 추가',
+  tourTimelineDesc: '타임라인 빈 공간을 클릭하고, + 버튼으로 대열을 추가해보세요.',
+  tourStageTitle: '댄서 배치',
+  tourStageDesc: '댄서를 드래그해서 위치를 바꿔보세요.',
+  tourPlayTitle: '재생',
+  tourPlayDesc: '재생 버튼을 눌러 결과를 확인하세요.',
+  tourNext: '다음',
+  tourDone: '시작하기',
+  tourSkip: '건너뛰기',
+  tourStep: '{current} / {total}',
 };
