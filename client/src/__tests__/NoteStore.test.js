@@ -18,7 +18,7 @@ describe('NoteStore CRUD', () => {
     const data = await NoteStore.loadNote(noteId);
     expect(data.note.title).toBe('테스트 노트');
     expect(data.dancers).toHaveLength(3);
-    expect(data.formations).toHaveLength(2);
+    expect(data.formations).toHaveLength(1);
 
     // 각 대형에 댄서 수만큼 포지션 존재
     for (const f of data.formations) {
@@ -79,6 +79,18 @@ describe('NoteStore CRUD', () => {
     expect(data.formations[0].positions).toHaveLength(2);
   });
 
+  it('createNote: 중복 이름 시 자동 번호 부여', async () => {
+    await NoteStore.createNote('테스트');
+    await NoteStore.createNote('테스트');
+    await NoteStore.createNote('테스트');
+
+    const notes = await NoteStore.getAllNotes('title');
+    const titles = notes.map(n => n.title).sort();
+    expect(titles).toContain('테스트');
+    expect(titles).toContain('테스트 2');
+    expect(titles).toContain('테스트 3');
+  });
+
   it('getAllNotes: 최신순 정렬', async () => {
     await NoteStore.createNote('첫 번째');
     await NoteStore.createNote('두 번째');
@@ -103,7 +115,7 @@ describe('NoteStore CRUD', () => {
     const data = await NoteStore.loadNote(newNoteId);
     expect(data.note.title).toBe('내보내기 테스트');
     expect(data.dancers).toHaveLength(3);
-    expect(data.formations).toHaveLength(2);
+    expect(data.formations).toHaveLength(1);
   });
 });
 

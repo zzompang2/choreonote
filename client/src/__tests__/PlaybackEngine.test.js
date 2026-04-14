@@ -135,4 +135,40 @@ describe('calcPositionsAt - 보간', () => {
     const pos = engine.calcPositionsAt(1000);
     expect(pos[0]).toEqual({ x: 50, y: 50, angle: 0 });
   });
+
+  it('댄서 수와 포지션 수 불일치: 누락된 댄서는 (0,0)', () => {
+    engine.setFormations(
+      [makeFormation(0, 1000, [[1, 100, 50]])], // 댄서 2의 포지션 없음
+      DANCERS,
+    );
+    const pos = engine.calcPositionsAt(500);
+    expect(pos[0]).toEqual({ x: 100, y: 50, angle: 0 });
+    expect(pos[1]).toEqual({ x: 0, y: 0, angle: 0 });
+  });
+
+  it('대형 3개 이상: 중간 갭에서 올바른 보간', () => {
+    engine.setFormations(
+      [
+        makeFormation(0, 500, [[1, 0, 0], [2, 0, 0]]),
+        makeFormation(1000, 500, [[1, 100, 0], [2, 0, 0]]),
+        makeFormation(2000, 500, [[1, 200, 0], [2, 0, 0]]),
+      ],
+      DANCERS,
+    );
+    // 두 번째 갭 중간 (1500~2000, ratio 0.5)
+    const pos = engine.calcPositionsAt(1750);
+    expect(pos[0].x).toBeCloseTo(150, 0);
+  });
+
+  it('정확히 대형 시작 시간: 해당 대형 포지션', () => {
+    engine.setFormations(
+      [
+        makeFormation(0, 1000, [[1, 10, 20], [2, 30, 40]]),
+        makeFormation(2000, 1000, [[1, 50, 60], [2, 70, 80]]),
+      ],
+      DANCERS,
+    );
+    const pos = engine.calcPositionsAt(2000);
+    expect(pos[0]).toEqual({ x: 50, y: 60, angle: 0 });
+  });
 });
