@@ -1176,8 +1176,44 @@ function renderFormationBoxes(formationsEl) {
     box.className = 'formation-box' + (selectedFormations.has(i) ? ' formation-box--selected' : '') + (i === selectedFormation ? ' formation-box--active' : '');
     box.style.left = `${TIMELINE_PADDING + f.startTime / 1000 * pixelsPerSec}px`;
     box.style.width = `${f.duration / 1000 * pixelsPerSec}px`;
-    box.textContent = `${i + 1}`;
     box.dataset.index = i;
+
+    // 댄서 배치 dot 썸네일 (왼쪽 정렬)
+    const boxH = 44;
+    const pad = 4;
+    const stageW = HALF_W * 2;
+    const stageH = HALF_H * 2;
+    const scale = (boxH - pad * 2) / stageH;
+    const thumbW = stageW * scale;
+    const thumbH = stageH * scale;
+    const ox = pad + thumbW / 2;
+    const oy = boxH / 2;
+
+    // 썸네일 컨테이너 (overflow: hidden, 핸들은 바깥에 유지)
+    const thumb = document.createElement('div');
+    thumb.className = 'formation-box__thumb';
+
+    // 무대 외곽선
+    const outline = document.createElement('div');
+    outline.className = 'formation-box__stage';
+    outline.style.left = `${pad}px`;
+    outline.style.top = `${pad}px`;
+    outline.style.width = `${thumbW}px`;
+    outline.style.height = `${thumbH}px`;
+    thumb.appendChild(outline);
+
+    for (const pos of f.positions) {
+      const dancer = noteData.dancers.find(d => d.id === pos.dancerId);
+      if (!dancer) continue;
+      const dot = document.createElement('div');
+      dot.className = 'formation-box__dot';
+      dot.dataset.dancerId = pos.dancerId;
+      dot.style.left = `${ox + pos.x * scale}px`;
+      dot.style.top = `${oy + pos.y * scale}px`;
+      dot.style.background = dancer.color || '#4ECDC4';
+      thumb.appendChild(dot);
+    }
+    box.appendChild(thumb);
 
     // Click handled by setupFormationDrag onUp (no separate click handler)
 
@@ -1195,6 +1231,27 @@ function renderFormationBoxes(formationsEl) {
     setupFormationDrag(rightHandle, i, 'right');
 
     formationsEl.appendChild(box);
+  });
+}
+
+function updateFormationDots() {
+  const boxes = document.querySelectorAll('.formation-box');
+  const boxH = 44;
+  const pad = 4;
+  const scale = (boxH - pad * 2) / (HALF_H * 2);
+  const thumbW = (HALF_W * 2) * scale;
+  const ox = pad + thumbW / 2;
+  const oy = boxH / 2;
+  boxes.forEach(box => {
+    const fIdx = parseInt(box.dataset.index);
+    const f = noteData.formations[fIdx];
+    if (!f) return;
+    box.querySelectorAll('.formation-box__dot').forEach(dot => {
+      const pos = f.positions.find(p => String(p.dancerId) === dot.dataset.dancerId);
+      if (!pos) return;
+      dot.style.left = `${ox + pos.x * scale}px`;
+      dot.style.top = `${oy + pos.y * scale}px`;
+    });
   });
 }
 
@@ -1696,9 +1753,9 @@ function updateInspector() {
     if (headerEl) headerEl.innerHTML = `<span class="inspector-header__multi">${t('inspectorMulti', { count: selected.length })}</span>`;
   }
 
-  // Determine if read-only (transition or playing)
+  // Determine if read-only (transition, outside formations, or playing)
   const isTransition = !!selectedTransition;
-  const isReadonly = isTransition || engine.isPlaying;
+  const isReadonly = isTransition || selectedFormation < 0 || engine.isPlaying;
   const f = isReadonly ? null : noteData.formations[selectedFormation];
   const interpolated = isReadonly ? engine.calcPositionsAt(currentMs) : null;
 
@@ -3347,6 +3404,7 @@ function takeSnapshot() {
 function saveSnapshot() {
   pushState(takeSnapshot());
   unsaved = true;
+  updateFormationDots();
   if (_rotationInProgress) {
     _snapshotDuringRotation = true;
   }
@@ -3775,6 +3833,7 @@ function startOnboardingTour(container) {
 
   const overlay = document.createElement('div');
   overlay.className = 'onboarding-overlay';
+  overlay.addEventListener('click', finish);
   document.body.appendChild(overlay);
 
   const spotlight = document.createElement('div');
@@ -3857,9 +3916,6 @@ function startOnboardingTour(container) {
     tooltip.innerHTML = `
       <div class="onboarding-tooltip__step">${t('tourStep', { current: idx + 1, total: steps.length })}</div>
       <div class="onboarding-tooltip__desc">${t(step.descKey)}</div>
-      <div class="onboarding-tooltip__actions">
-        <button class="onboarding-tooltip__skip">${t('tourSkip')}</button>
-      </div>
     `;
 
     // Position tooltip near the spotlight
@@ -3877,8 +3933,6 @@ function startOnboardingTour(container) {
     tooltip.style.left = left + 'px';
     tooltip.style.top = top + 'px';
     tooltip.style.opacity = '1';
-
-    tooltip.querySelector('.onboarding-tooltip__skip').onclick = finish;
 
     // Listen for action completion
     cleanup();

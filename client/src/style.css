@@ -1193,13 +1193,45 @@ html:has(.editor) {
   border: 1px solid rgba(78, 205, 196, 0.5);
   border-radius: 6px;
   cursor: grab;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   font-size: 12px;
   color: var(--text-primary);
   user-select: none;
   touch-action: none;
+}
+
+.formation-box__thumb {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: 5px;
+  pointer-events: none;
+}
+
+.formation-box__stage {
+  position: absolute;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 2px;
+  pointer-events: none;
+}
+
+.formation-box__dot {
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  box-shadow: 0 0 3px rgba(0, 0, 0, 0.5);
+}
+
+[data-theme="light"] .formation-box__stage {
+  background: rgba(0, 0, 0, 0.06);
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] .formation-box__dot {
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.3);
 }
 
 .formation-box--active {
