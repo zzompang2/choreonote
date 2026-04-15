@@ -1786,11 +1786,49 @@ html:has(.editor) {
   opacity: 0.5;
 }
 
+.inspector-dir-row {
+  display: flex;
+  gap: 12px;
+  align-items: start;
+}
+
 .inspector-direction {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 4px;
-  width: calc((100% - 6px) / 2);
+  flex: 1;
+}
+
+.inspector-align {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 4px;
+  flex: 1;
+}
+
+.inspector-align-btn {
+  aspect-ratio: 1;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+  padding: 0;
+}
+
+.inspector-align-btn:hover {
+  border-color: var(--accent);
+  color: var(--text-primary);
+}
+
+.inspector-align-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+  pointer-events: none;
 }
 
 .inspector-dir-btn {

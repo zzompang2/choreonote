@@ -228,17 +228,28 @@ function buildEditorHTML(data) {
               </div>
             </div>
             <div class="settings-section">
-              <div class="settings-label">${t('inspectorDir')}</div>
-              <div class="inspector-direction" id="inspector-direction">
-                <button class="inspector-dir-btn" data-angle="315" title="↖">↖</button>
-                <button class="inspector-dir-btn" data-angle="0" title="↑">↑</button>
-                <button class="inspector-dir-btn" data-angle="45" title="↗">↗</button>
-                <button class="inspector-dir-btn" data-angle="270" title="←">←</button>
-                <div class="inspector-dir-center" id="inspector-angle-display">0°</div>
-                <button class="inspector-dir-btn" data-angle="90" title="→">→</button>
-                <button class="inspector-dir-btn" data-angle="225" title="↙">↙</button>
-                <button class="inspector-dir-btn" data-angle="180" title="↓">↓</button>
-                <button class="inspector-dir-btn" data-angle="135" title="↘">↘</button>
+              <div class="inspector-dir-row">
+                <div class="settings-label" style="flex:1">${t('inspectorDir')}</div>
+                <div class="settings-label" style="flex:1">${t('inspectorAlign')}</div>
+              </div>
+              <div class="inspector-dir-row">
+                <div class="inspector-direction" id="inspector-direction">
+                  <button class="inspector-dir-btn" data-angle="315" title="↖">↖</button>
+                  <button class="inspector-dir-btn" data-angle="0" title="↑">↑</button>
+                  <button class="inspector-dir-btn" data-angle="45" title="↗">↗</button>
+                  <button class="inspector-dir-btn" data-angle="270" title="←">←</button>
+                  <div class="inspector-dir-center" id="inspector-angle-display">0°</div>
+                  <button class="inspector-dir-btn" data-angle="90" title="→">→</button>
+                  <button class="inspector-dir-btn" data-angle="225" title="↙">↙</button>
+                  <button class="inspector-dir-btn" data-angle="180" title="↓">↓</button>
+                  <button class="inspector-dir-btn" data-angle="135" title="↘">↘</button>
+                </div>
+                <div class="inspector-align" id="inspector-align">
+                  <button class="inspector-align-btn" data-align="align-x" title="${t('alignX')}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="12" y1="2" x2="12" y2="22" stroke-dasharray="3 2"/><circle cx="7" cy="6" r="2.5" fill="currentColor" stroke="none" opacity="0.4"/><circle cx="17" cy="12" r="2.5" fill="currentColor" stroke="none" opacity="0.4"/><circle cx="9" cy="18" r="2.5" fill="currentColor" stroke="none" opacity="0.4"/></svg></button>
+                  <button class="inspector-align-btn" data-align="align-y" title="${t('alignY')}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="2" y1="12" x2="22" y2="12" stroke-dasharray="3 2"/><circle cx="5" cy="7" r="2.5" fill="currentColor" stroke="none" opacity="0.4"/><circle cx="12" cy="17" r="2.5" fill="currentColor" stroke="none" opacity="0.4"/><circle cx="19" cy="9" r="2.5" fill="currentColor" stroke="none" opacity="0.4"/></svg></button>
+                  <button class="inspector-align-btn" data-align="distribute-x" title="${t('distributeX')}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="3" x2="4" y2="21"/><line x1="20" y1="3" x2="20" y2="21"/><line x1="12" y1="7" x2="12" y2="17"/></svg></button>
+                  <button class="inspector-align-btn" data-align="distribute-y" title="${t('distributeY')}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="4" x2="21" y2="4"/><line x1="3" y1="20" x2="21" y2="20"/><line x1="7" y1="12" x2="17" y2="12"/></svg></button>
+                </div>
               </div>
             </div>
             <div class="settings-section">
@@ -775,9 +786,14 @@ function setupPlayback(container) {
   let dragStartPositions = null;
   const SMART_GUIDE_THRESHOLD = 8;
 
-  function computeSmartGuides(anchorX, anchorY, positions, draggedIndices) {
+  function computeSmartGuides(anchorX, anchorY, positions, draggedIndices, originX, originY) {
     const guides = { lines: [], snapX: null, snapY: null };
-    // Stage center lines (priority)
+    const others = [];
+    for (let i = 0; i < positions.length; i++) {
+      if (!draggedIndices.has(i) && positions[i]) others.push(positions[i]);
+    }
+
+    // 1) Stage center lines (highest priority)
     if (Math.abs(anchorX) <= SMART_GUIDE_THRESHOLD) {
       guides.lines.push({ axis: 'x', pos: 0, type: 'center' });
       guides.snapX = 0;
@@ -786,18 +802,54 @@ function setupPlayback(container) {
       guides.lines.push({ axis: 'y', pos: 0, type: 'center' });
       guides.snapY = 0;
     }
-    // Other dancers
-    for (let i = 0; i < positions.length; i++) {
-      if (draggedIndices.has(i) || !positions[i]) continue;
-      if (guides.snapX === null && Math.abs(anchorX - positions[i].x) <= SMART_GUIDE_THRESHOLD) {
-        guides.lines.push({ axis: 'x', pos: positions[i].x, type: 'dancer' });
-        guides.snapX = positions[i].x;
-      }
-      if (guides.snapY === null && Math.abs(anchorY - positions[i].y) <= SMART_GUIDE_THRESHOLD) {
-        guides.lines.push({ axis: 'y', pos: positions[i].y, type: 'dancer' });
-        guides.snapY = positions[i].y;
+
+    // 2) Stage edge lines
+    const edges = [-HALF_W, HALF_W];
+    const edgesY = [-HALF_H, HALF_H];
+    if (guides.snapX === null) {
+      for (const ex of edges) {
+        if (Math.abs(anchorX - ex) <= SMART_GUIDE_THRESHOLD) {
+          guides.lines.push({ axis: 'x', pos: ex, type: 'edge' });
+          guides.snapX = ex;
+          break;
+        }
       }
     }
+    if (guides.snapY === null) {
+      for (const ey of edgesY) {
+        if (Math.abs(anchorY - ey) <= SMART_GUIDE_THRESHOLD) {
+          guides.lines.push({ axis: 'y', pos: ey, type: 'edge' });
+          guides.snapY = ey;
+          break;
+        }
+      }
+    }
+
+    // 3) Drag origin snap (keep X or Y from starting position)
+    if (originX != null && originY != null) {
+      if (guides.snapX === null && Math.abs(anchorX - originX) <= SMART_GUIDE_THRESHOLD) {
+        guides.lines.push({ axis: 'x', pos: originX, type: 'origin' });
+        guides.snapX = originX;
+      }
+      if (guides.snapY === null && Math.abs(anchorY - originY) <= SMART_GUIDE_THRESHOLD) {
+        guides.lines.push({ axis: 'y', pos: originY, type: 'origin' });
+        guides.snapY = originY;
+      }
+    }
+
+    // 4) Dancer alignment
+    for (const p of others) {
+      if (guides.snapX === null && Math.abs(anchorX - p.x) <= SMART_GUIDE_THRESHOLD) {
+        guides.lines.push({ axis: 'x', pos: p.x, type: 'dancer' });
+        guides.snapX = p.x;
+      }
+      if (guides.snapY === null && Math.abs(anchorY - p.y) <= SMART_GUIDE_THRESHOLD) {
+        guides.lines.push({ axis: 'y', pos: p.y, type: 'dancer' });
+        guides.snapY = p.y;
+      }
+    }
+
+
     return guides;
   }
 
@@ -856,6 +908,7 @@ function setupPlayback(container) {
       }
     }
     renderer._guides = null;
+    renderer._dragOrigin = null;
     // Recalculate waypoints for moved dancers
     const movedIds = [];
     const oldPositions = new Map();
@@ -894,6 +947,9 @@ function setupPlayback(container) {
       for (let i = 0; i < positions.length; i++) {
         dragStartPositions.set(i, { x: positions[i].x, y: positions[i].y, angle: positions[i].angle || 0 });
       }
+      // Show ghost at drag start position
+      const orig = positions[dancerIndex];
+      if (orig && renderer.smartGuide) renderer._dragOrigin = { x: orig.x, y: orig.y };
     }
 
     if (selectedSet && selectedSet.size > 1 && selectedSet.has(dancerIndex)) {
@@ -902,7 +958,7 @@ function setupPlayback(container) {
       let snappedAnchorY = snap ? roundToGrid(clamp(newY, limit.minY, limit.maxY), gap) : clamp(Math.round(newY), limit.minY, limit.maxY);
       // Smart guide: detect alignment and apply snap for anchor
       if (renderer.smartGuide) {
-        const guides = computeSmartGuides(snappedAnchorX, snappedAnchorY, positions, selectedSet);
+        const guides = computeSmartGuides(snappedAnchorX, snappedAnchorY, positions, selectedSet, origPos.x, origPos.y);
         if (guides.snapX !== null) snappedAnchorX = guides.snapX;
         if (guides.snapY !== null) snappedAnchorY = guides.snapY;
         renderer._guides = guides.lines.length > 0 ? guides : null;
@@ -920,11 +976,12 @@ function setupPlayback(container) {
         }
       }
     } else {
+      const origSingle = dragStartPositions.get(dancerIndex);
       let finalX = snap ? roundToGrid(clamp(newX, limit.minX, limit.maxX), gap) : clamp(Math.round(newX), limit.minX, limit.maxX);
       let finalY = snap ? roundToGrid(clamp(newY, limit.minY, limit.maxY), gap) : clamp(Math.round(newY), limit.minY, limit.maxY);
       // Smart guide: detect alignment and apply snap
       if (renderer.smartGuide) {
-        const guides = computeSmartGuides(finalX, finalY, positions, new Set([dancerIndex]));
+        const guides = computeSmartGuides(finalX, finalY, positions, new Set([dancerIndex]), origSingle?.x, origSingle?.y);
         if (guides.snapX !== null) finalX = guides.snapX;
         if (guides.snapY !== null) finalY = guides.snapY;
         renderer._guides = guides.lines.length > 0 ? guides : null;
@@ -1384,8 +1441,10 @@ function updateTransitionConnectors(formationsEl) {
     const pad = 6;
     const x1 = pad, y1 = h / 2;
     const x2 = width - pad, y2 = h / 2;
+    // 약간 휘는 곡선 (살짝 위로 볼록)
     const wobble = Math.min(8, width * 0.08);
     const cx = width / 2, cy = h / 2 - wobble;
+    // 화살촉 크기
     const headLen = Math.min(8, width * 0.2);
     const headAngle = 0.5;
     const hx1 = x2 - headLen * Math.cos(headAngle);
@@ -1989,6 +2048,15 @@ function updateInspector() {
     dirContainer.classList.toggle('inspector-direction--disabled', isReadonly);
   }
 
+  // Align buttons: enable only when 2+ dancers selected and not readonly
+  const alignEl = document.querySelector('#inspector-align');
+  if (alignEl) {
+    const canAlign = selected.length >= 2 && !isReadonly;
+    alignEl.querySelectorAll('.inspector-align-btn').forEach(btn => {
+      btn.disabled = !canAlign;
+    });
+  }
+
   // Color palette swatches + custom button
   const paletteEl = document.querySelector('#inspector-palette');
   if (paletteEl) {
@@ -2055,6 +2123,42 @@ function setupInspector(container) {
       if (!d) continue;
       const pos = f.positions.find(p => p.dancerId === d.id);
       if (pos) pos.angle = angle;
+    }
+    updateStage(); saveSnapshot();
+  });
+
+  // Align / Distribute buttons
+  container.querySelector('#inspector-align').addEventListener('click', (e) => {
+    const btn = e.target.closest('.inspector-align-btn');
+    if (!btn || btn.disabled) return;
+    const action = btn.dataset.align;
+    const f = noteData.formations[selectedFormation];
+    if (!f) return;
+    const selected = [...renderer._selectedDancers];
+    if (selected.length < 2) return;
+
+    const positions = selected.map(idx => {
+      const d = noteData.dancers[idx];
+      return d ? f.positions.find(p => p.dancerId === d.id) : null;
+    }).filter(Boolean);
+    if (positions.length < 2) return;
+
+    if (action === 'align-x') {
+      const avgX = Math.round(positions.reduce((s, p) => s + p.x, 0) / positions.length);
+      positions.forEach(p => { p.x = avgX; });
+    } else if (action === 'align-y') {
+      const avgY = Math.round(positions.reduce((s, p) => s + p.y, 0) / positions.length);
+      positions.forEach(p => { p.y = avgY; });
+    } else if (action === 'distribute-x') {
+      positions.sort((a, b) => a.x - b.x);
+      const minX = positions[0].x, maxX = positions[positions.length - 1].x;
+      const step = (maxX - minX) / (positions.length - 1);
+      positions.forEach((p, i) => { p.x = Math.round(minX + step * i); });
+    } else if (action === 'distribute-y') {
+      positions.sort((a, b) => a.y - b.y);
+      const minY = positions[0].y, maxY = positions[positions.length - 1].y;
+      const step = (maxY - minY) / (positions.length - 1);
+      positions.forEach((p, i) => { p.y = Math.round(minY + step * i); });
     }
     updateStage(); saveSnapshot();
   });
@@ -4155,6 +4259,7 @@ function startOnboardingTour(container) {
     cleanup();
     _onboardingActive = false;
     localStorage.setItem(ONBOARDING_KEY, '1');
+    // 해금 키가 없으면 빈 배열로 초기화 (기존 사용자와 구분)
     if (!localStorage.getItem(UNLOCK_KEY)) {
       localStorage.setItem(UNLOCK_KEY, JSON.stringify([]));
     }

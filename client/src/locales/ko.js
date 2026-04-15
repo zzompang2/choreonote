@@ -99,6 +99,11 @@ export const ko = {
   inspectorColor: '색상',
   inspectorPresetBtn: '선택 댄서로 대열 만들기',
   inspectorMulti: '{count}명 선택됨',
+  inspectorAlign: '정렬',
+  alignX: '세로 정렬 (X 맞춤)',
+  alignY: '가로 정렬 (Y 맞춤)',
+  distributeX: '가로 균등 배치',
+  distributeY: '세로 균등 배치',
 
   // Editor — Dancers panel
   dancersTitle: '댄서 목록',

@@ -99,6 +99,11 @@ export const en = {
   inspectorColor: 'Color',
   inspectorPresetBtn: 'Make preset from selection',
   inspectorMulti: '{count} selected',
+  inspectorAlign: 'Align',
+  alignX: 'Align vertically (match X)',
+  alignY: 'Align horizontally (match Y)',
+  distributeX: 'Distribute horizontally',
+  distributeY: 'Distribute vertically',
 
   // Editor — Dancers panel
   dancersTitle: 'Dancer List',
