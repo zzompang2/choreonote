@@ -1317,6 +1317,12 @@ html:has(.editor) {
   color: var(--text-primary);
 }
 
+.export-overlay__desc {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+
 .export-options {
   display: flex;
   gap: 12px;
@@ -2237,7 +2243,7 @@ html:has(.editor) {
     font-size: 28px;
   }
   .landing__subtitle {
-    font-size: 15px;
+    font-size: 16px;
   }
   .landing__demo {
     padding: 0 16px 40px;
@@ -2394,7 +2400,7 @@ html:has(.editor) {
     justify-content: center;
   }
   .player-bar__time {
-    font-size: 11px;
+    font-size: 13px;
   }
   .player-bar__music-name {
     display: none;
@@ -2417,14 +2423,14 @@ html:has(.editor) {
   }
   .editor__title-input {
     width: 120px;
-    font-size: 14px;
+    font-size: 15px;
   }
   .editor__actions {
     gap: 4px;
   }
   .editor__actions .btn {
     padding: 6px 10px;
-    font-size: 12px;
+    font-size: 13px;
   }
   .toolbar {
     gap: 4px;
@@ -2437,7 +2443,7 @@ html:has(.editor) {
   }
   .toolbar__btn {
     padding: 6px 10px;
-    font-size: 12px;
+    font-size: 13px;
     min-height: 36px;
     white-space: nowrap;
   }
@@ -2455,6 +2461,12 @@ html:has(.editor) {
   }
 
   /* Sidebar as bottom sheet */
+  .sidebar__section-title {
+    font-size: 13px;
+  }
+  .settings-label {
+    font-size: 13px;
+  }
   .sidebar__section {
     margin-bottom: 16px;
   }
@@ -2482,7 +2494,7 @@ html:has(.editor) {
   #add-dancer-btn {
     width: 100% !important;
     padding: 12px !important;
-    font-size: 14px !important;
+    font-size: 15px !important;
     margin-top: 8px;
   }
 }
