@@ -14,3 +14,8 @@ route('/dashboard', () => renderDashboard(app));
 route('/edit', (noteId) => renderEditor(app, noteId));
 
 startRouter();
+
+// Register Service Worker
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js');
+}

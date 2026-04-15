@@ -1,0 +1,46 @@
+{
+  "name": "ChoreoNote",
+  "short_name": "ChoreoNote",
+  "description": "안무 대형(포메이션) 노트 — 무대 위 댄서 배치를 관리하고 전환 애니메이션을 재생",
+  "start_url": "/",
+  "id": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0f0f14",
+  "theme_color": "#863bff",
+  "categories": ["productivity", "entertainment"],
+  "lang": "ko",
+  "dir": "ltr",
+  "screenshots": [
+    {
+      "src": "/screenshots/desktop.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide"
+    },
+    {
+      "src": "/screenshots/mobile.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "form_factor": "narrow"
+    }
+  ],
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
