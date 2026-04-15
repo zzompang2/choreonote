@@ -434,6 +434,14 @@ function buildEditorHTML(data) {
             </div>
             <div class="settings-divider"></div>
             <div class="settings-section">
+              <div class="settings-label">${t('smartGuideTitle')}</div>
+              <label class="toggle-row">
+                <span>${t('smartGuideLabel')}</span>
+                <div class="toggle-switch toggle-switch--on" id="smart-guide-toggle"><div class="toggle-switch__thumb"></div></div>
+              </label>
+            </div>
+            <div class="settings-divider"></div>
+            <div class="settings-section">
               <div class="settings-label">${t('autosaveTitle')}</div>
               <label class="toggle-row">
                 <span>${t('autosaveLabel')}</span>
@@ -745,8 +753,36 @@ function setupPlayback(container) {
   // Renderer drag callbacks
   // Store drag start positions for multi-drag offset
   let dragStartPositions = null;
+  const SMART_GUIDE_THRESHOLD = 8;
+
+  function computeSmartGuides(anchorX, anchorY, positions, draggedIndices) {
+    const guides = { lines: [], snapX: null, snapY: null };
+    // Stage center lines (priority)
+    if (Math.abs(anchorX) <= SMART_GUIDE_THRESHOLD) {
+      guides.lines.push({ axis: 'x', pos: 0, type: 'center' });
+      guides.snapX = 0;
+    }
+    if (Math.abs(anchorY) <= SMART_GUIDE_THRESHOLD) {
+      guides.lines.push({ axis: 'y', pos: 0, type: 'center' });
+      guides.snapY = 0;
+    }
+    // Other dancers
+    for (let i = 0; i < positions.length; i++) {
+      if (draggedIndices.has(i) || !positions[i]) continue;
+      if (guides.snapX === null && Math.abs(anchorX - positions[i].x) <= SMART_GUIDE_THRESHOLD) {
+        guides.lines.push({ axis: 'x', pos: positions[i].x, type: 'dancer' });
+        guides.snapX = positions[i].x;
+      }
+      if (guides.snapY === null && Math.abs(anchorY - positions[i].y) <= SMART_GUIDE_THRESHOLD) {
+        guides.lines.push({ axis: 'y', pos: positions[i].y, type: 'dancer' });
+        guides.snapY = positions[i].y;
+      }
+    }
+    return guides;
+  }
 
   renderer.onDancerDragEnd = (dancerIndex, newX, newY, selectedSet) => {
+    _noFormationToastShown = false;
     if (swapMode) return;
     if (engine.isPlaying || selectedFormation < 0) return;
     const f = noteData.formations[selectedFormation];
@@ -758,10 +794,16 @@ function setupPlayback(container) {
 
     if (selectedSet.size > 1 && selectedSet.has(dancerIndex) && dragStartPositions) {
       const origPos = dragStartPositions.get(dancerIndex);
-      const rawDx = newX - origPos.x;
-      const rawDy = newY - origPos.y;
-      const snappedAnchorX = snap ? roundToGrid(clamp(newX, limit.minX, limit.maxX), gap) : clamp(Math.round(newX), limit.minX, limit.maxX);
-      const snappedAnchorY = snap ? roundToGrid(clamp(newY, limit.minY, limit.maxY), gap) : clamp(Math.round(newY), limit.minY, limit.maxY);
+      let snappedAnchorX = snap ? roundToGrid(clamp(newX, limit.minX, limit.maxX), gap) : clamp(Math.round(newX), limit.minX, limit.maxX);
+      let snappedAnchorY = snap ? roundToGrid(clamp(newY, limit.minY, limit.maxY), gap) : clamp(Math.round(newY), limit.minY, limit.maxY);
+      if (renderer.smartGuide) {
+        const positions = f.positions.map(p => ({ x: p.x, y: p.y }));
+        const posMap = new Map(f.positions.map(p => [p.dancerId, { x: p.x, y: p.y }]));
+        const otherPositions = noteData.dancers.map((d, i) => selectedSet.has(i) ? null : (posMap.get(d.id) || null));
+        const guides = computeSmartGuides(snappedAnchorX, snappedAnchorY, otherPositions, selectedSet);
+        if (guides.snapX !== null) snappedAnchorX = guides.snapX;
+        if (guides.snapY !== null) snappedAnchorY = guides.snapY;
+      }
       const sdx = snappedAnchorX - origPos.x;
       const sdy = snappedAnchorY - origPos.y;
       for (const idx of selectedSet) {
@@ -777,10 +819,23 @@ function setupPlayback(container) {
       const dancer = noteData.dancers[dancerIndex];
       const pos = f.positions.find(p => p.dancerId === dancer.id);
       if (pos) {
-        pos.x = snap ? roundToGrid(clamp(newX, limit.minX, limit.maxX), gap) : clamp(Math.round(newX), limit.minX, limit.maxX);
-        pos.y = snap ? roundToGrid(clamp(newY, limit.minY, limit.maxY), gap) : clamp(Math.round(newY), limit.minY, limit.maxY);
+        let finalX = snap ? roundToGrid(clamp(newX, limit.minX, limit.maxX), gap) : clamp(Math.round(newX), limit.minX, limit.maxX);
+        let finalY = snap ? roundToGrid(clamp(newY, limit.minY, limit.maxY), gap) : clamp(Math.round(newY), limit.minY, limit.maxY);
+        if (renderer.smartGuide) {
+          const otherPositions = noteData.dancers.map((d, i) => {
+            if (i === dancerIndex) return null;
+            const p = f.positions.find(fp => fp.dancerId === d.id);
+            return p ? { x: p.x, y: p.y } : null;
+          });
+          const guides = computeSmartGuides(finalX, finalY, otherPositions, new Set([dancerIndex]));
+          if (guides.snapX !== null) finalX = guides.snapX;
+          if (guides.snapY !== null) finalY = guides.snapY;
+        }
+        pos.x = finalX;
+        pos.y = finalY;
       }
     }
+    renderer._guides = null;
     // Recalculate waypoints for moved dancers
     const movedIds = [];
     const oldPositions = new Map();
@@ -798,9 +853,15 @@ function setupPlayback(container) {
     updateStage(); saveSnapshot();
   };
 
+  let _noFormationToastShown = false;
   renderer.onDancerDrag = (dancerIndex, newX, newY, selectedSet) => {
     if (swapMode) return;
-    if (engine.isPlaying || selectedFormation < 0) return;
+    if (selectedFormation < 0) {
+      if (!_noFormationToastShown) { showToast(t('toastSelectFormation')); _noFormationToastShown = true; }
+      return;
+    }
+    _noFormationToastShown = false;
+    if (engine.isPlaying) return;
     const positions = engine.calcPositionsAt(currentMs);
     const snap = renderer.isSnap;
     const gap = 15; // fixed snap unit
@@ -817,8 +878,15 @@ function setupPlayback(container) {
 
     if (selectedSet && selectedSet.size > 1 && selectedSet.has(dancerIndex)) {
       const origPos = dragStartPositions.get(dancerIndex);
-      const snappedAnchorX = snap ? roundToGrid(clamp(newX, limit.minX, limit.maxX), gap) : clamp(Math.round(newX), limit.minX, limit.maxX);
-      const snappedAnchorY = snap ? roundToGrid(clamp(newY, limit.minY, limit.maxY), gap) : clamp(Math.round(newY), limit.minY, limit.maxY);
+      let snappedAnchorX = snap ? roundToGrid(clamp(newX, limit.minX, limit.maxX), gap) : clamp(Math.round(newX), limit.minX, limit.maxX);
+      let snappedAnchorY = snap ? roundToGrid(clamp(newY, limit.minY, limit.maxY), gap) : clamp(Math.round(newY), limit.minY, limit.maxY);
+      // Smart guide: detect alignment and apply snap for anchor
+      if (renderer.smartGuide) {
+        const guides = computeSmartGuides(snappedAnchorX, snappedAnchorY, positions, selectedSet);
+        if (guides.snapX !== null) snappedAnchorX = guides.snapX;
+        if (guides.snapY !== null) snappedAnchorY = guides.snapY;
+        renderer._guides = guides.lines.length > 0 ? guides : null;
+      } else { renderer._guides = null; }
       const sdx = snappedAnchorX - origPos.x;
       const sdy = snappedAnchorY - origPos.y;
       for (const idx of selectedSet) {
@@ -832,9 +900,18 @@ function setupPlayback(container) {
         }
       }
     } else {
+      let finalX = snap ? roundToGrid(clamp(newX, limit.minX, limit.maxX), gap) : clamp(Math.round(newX), limit.minX, limit.maxX);
+      let finalY = snap ? roundToGrid(clamp(newY, limit.minY, limit.maxY), gap) : clamp(Math.round(newY), limit.minY, limit.maxY);
+      // Smart guide: detect alignment and apply snap
+      if (renderer.smartGuide) {
+        const guides = computeSmartGuides(finalX, finalY, positions, new Set([dancerIndex]));
+        if (guides.snapX !== null) finalX = guides.snapX;
+        if (guides.snapY !== null) finalY = guides.snapY;
+        renderer._guides = guides.lines.length > 0 ? guides : null;
+      } else { renderer._guides = null; }
       positions[dancerIndex] = {
-        x: snap ? roundToGrid(clamp(newX, limit.minX, limit.maxX), gap) : clamp(Math.round(newX), limit.minX, limit.maxX),
-        y: snap ? roundToGrid(clamp(newY, limit.minY, limit.maxY), gap) : clamp(Math.round(newY), limit.minY, limit.maxY),
+        x: finalX,
+        y: finalY,
         angle: positions[dancerIndex]?.angle || 0,
       };
     }
@@ -2722,6 +2799,13 @@ function setupHeader(container, noteId) {
       showToast(t('toastAutoSaved'), 1500);
     }
   }, 30000);
+
+  // Smart guide toggle
+  const smartGuideToggle = container.querySelector('#smart-guide-toggle');
+  smartGuideToggle.addEventListener('click', () => {
+    renderer.smartGuide = !renderer.smartGuide;
+    smartGuideToggle.classList.toggle('toggle-switch--on', renderer.smartGuide);
+  });
 
   // Auto-save toggle
   const autoSaveToggle = container.querySelector('#autosave-toggle');

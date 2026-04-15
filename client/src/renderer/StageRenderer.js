@@ -25,6 +25,8 @@ export class StageRenderer {
     this.touchScale = 1.0; // mobile touch boost (set from Editor.js)
     this.showWings = false; // show offstage wing areas
     this.hideHandles = false; // hide rotation handles when no formation selected
+    this.smartGuide = true; // show alignment guides when dragging
+    this._guides = null; // { lines: [{axis, pos, type}], snapX, snapY }
 
     // Drag state
     this._dragging = null; // { dancerIndex, startX, startY, offsetX, offsetY }
@@ -513,6 +515,33 @@ export class StageRenderer {
         ctx.restore();
       }
       ctx.globalAlpha = 1.0;
+    }
+
+    // Smart guide lines
+    if (this._guides && this._guides.lines.length > 0) {
+      ctx.save();
+      ctx.setLineDash([6, 3]);
+      ctx.lineWidth = 1;
+      const gox = WING_SIZE + HALF_W;
+      const goy = WING_SIZE + HALF_H;
+      for (const g of this._guides.lines) {
+        ctx.strokeStyle = g.type === 'center'
+          ? 'rgba(0, 200, 255, 0.6)'
+          : 'rgba(255, 150, 50, 0.5)';
+        ctx.beginPath();
+        if (g.axis === 'x') {
+          const sx = gox + g.pos;
+          ctx.moveTo(sx, WING_SIZE);
+          ctx.lineTo(sx, WING_SIZE + STAGE_HEIGHT);
+        } else {
+          const sy = goy + g.pos;
+          ctx.moveTo(WING_SIZE, sy);
+          ctx.lineTo(WING_SIZE + STAGE_WIDTH, sy);
+        }
+        ctx.stroke();
+      }
+      ctx.setLineDash([]);
+      ctx.restore();
     }
 
     // Box selection rect
