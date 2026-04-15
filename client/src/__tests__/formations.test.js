@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { PRESETS, applyPreset } from '../utils/formations.js';
+import { PRESETS, applyPreset, matchNearest } from '../utils/formations.js';
 
 describe('PRESETS', () => {
   const presetNames = Object.keys(PRESETS);
@@ -53,5 +53,40 @@ describe('applyPreset', () => {
 
   it('존재하지 않는 프리셋은 null 반환', () => {
     expect(applyPreset('없는프리셋', 3, 40)).toBeNull();
+  });
+});
+
+describe('matchNearest', () => {
+  it('빈 배열이면 빈 배열 반환', () => {
+    expect(matchNearest([], [])).toEqual([]);
+  });
+
+  it('1명이면 유일한 위치로 매칭', () => {
+    const result = matchNearest([{ x: 0, y: 0 }], [{ x: 10, y: 10 }]);
+    expect(result).toEqual([0]);
+  });
+
+  it('이미 가까운 위치에 있으면 그대로 매칭', () => {
+    const current = [{ x: -50, y: 0 }, { x: 50, y: 0 }];
+    const target = [{ x: -60, y: 0 }, { x: 60, y: 0 }];
+    const result = matchNearest(current, target);
+    expect(result).toEqual([0, 1]);
+  });
+
+  it('교차 이동보다 최소 거리 매칭 선택', () => {
+    // 댄서0은 왼쪽, 댄서1은 오른쪽 → 목표도 왼/오 → 교차 안 함
+    const current = [{ x: -100, y: 0 }, { x: 100, y: 0 }];
+    const target = [{ x: 90, y: 0 }, { x: -90, y: 0 }];
+    const result = matchNearest(current, target);
+    // 댄서0(-100) → target1(-90), 댄서1(100) → target0(90)
+    expect(result).toEqual([1, 0]);
+  });
+
+  it('3명 매칭에서 전체 거리 최소화', () => {
+    const current = [{ x: 0, y: 0 }, { x: 50, y: 50 }, { x: -50, y: -50 }];
+    const target = [{ x: -40, y: -40 }, { x: 10, y: 10 }, { x: 60, y: 60 }];
+    const result = matchNearest(current, target);
+    // 댄서0(0,0)→target1(10,10), 댄서1(50,50)→target2(60,60), 댄서2(-50,-50)→target0(-40,-40)
+    expect(result).toEqual([1, 2, 0]);
   });
 });

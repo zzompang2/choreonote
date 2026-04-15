@@ -114,7 +114,6 @@ export const en = {
   presetSelectFirst: 'Select a formation first',
   presetEmpty: 'Select a formation on the timeline',
   presetApplied: '{name} preset applied',
-  presetAppliedRotated: '{name} preset applied (order {n})',
   presetMismatch: '{count}',
   presetDeleted: 'Preset deleted',
   presetSave: 'Save current layout',

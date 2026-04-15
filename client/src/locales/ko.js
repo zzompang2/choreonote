@@ -114,7 +114,6 @@ export const ko = {
   presetSelectFirst: '대열을 먼저 선택하세요',
   presetEmpty: '타임라인에서 대열을 선택하세요',
   presetApplied: '{name} 대열 적용됨',
-  presetAppliedRotated: '{name} 대열 적용됨 (순서 {n})',
   presetMismatch: '{count}명',
   presetDeleted: '프리셋 삭제됨',
   presetSave: '현재 배치 저장',

@@ -5,7 +5,7 @@ import { VideoExporter } from '../engine/VideoExporter.js';
 import { navigate, setNavigationGuard, clearNavigationGuard } from '../utils/router.js';
 import { showToast } from '../utils/toast.js';
 import { pushState, replaceState, undo, redo, canUndo, canRedo, clearHistory } from '../utils/history.js';
-import { getPresetNames, applyPreset, getCustomPresets, saveCustomPreset, deleteCustomPreset } from '../utils/formations.js';
+import { getPresetNames, applyPreset, getCustomPresets, saveCustomPreset, deleteCustomPreset, matchNearest } from '../utils/formations.js';
 import { toggleTheme, isLightMode } from '../utils/theme.js';
 import {
   PIXEL_PER_SEC, TIMELINE_PADDING, TIME_UNIT, WING_SIZE,
@@ -1427,21 +1427,19 @@ function setupSidebar(container) {
   const spacingValue = container.querySelector('#preset-spacing-value');
   const presetGrid = container.querySelector('#preset-grid');
 
-  let _lastPresetName = null;
-  let _presetRotation = 0;
 
-  function _drawPresetThumb(positions, indices) {
+  function _drawPresetThumb(positions) {
     const cvs = document.createElement('canvas');
     cvs.width = 120;
     cvs.height = 80;
     const ctx = cvs.getContext('2d');
     ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--stage-bg').trim() || '#1a1a2e';
     ctx.fillRect(0, 0, 120, 80);
-    for (let i = 0; i < positions.length && i < indices.length; i++) {
-      const p = positions[i];
+    const accentColor = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#4ECDC4';
+    for (const p of positions) {
       ctx.beginPath();
       ctx.arc(60 + p.x * 0.15, 40 + p.y * 0.15, 4, 0, Math.PI * 2);
-      ctx.fillStyle = noteData.dancers[indices[i]]?.color || '#4ECDC4';
+      ctx.fillStyle = accentColor;
       ctx.fill();
     }
     return cvs;
@@ -1475,35 +1473,40 @@ function setupSidebar(container) {
       infoEl.classList.toggle('preset-selection-info--highlight', hasSelection);
     }
 
-    function applyWithRotation(name, positions) {
+    function applyToNearest(name, positions) {
       if (engine.isPlaying) { showToast(t('toastStopFirst')); return; }
       if (swapMode) { showToast(t('toastExitSwap')); return; }
       if (selectedFormation < 0) { showToast(t('presetSelectFirst')); return; }
-      // Rotate dancer order on repeated click
-      if (_lastPresetName === name) {
-        _presetRotation = (_presetRotation + 1) % count;
-      } else {
-        _lastPresetName = name;
-        _presetRotation = 0;
-      }
       const f = noteData.formations[selectedFormation];
-      const oldPositions = new Map();
-      const movedIds = [];
-      for (let i = 0; i < count && i < positions.length; i++) {
-        const rotatedIdx = (i + _presetRotation) % count;
-        const dancerIdx = targetIndices[rotatedIdx];
-        const d = noteData.dancers[dancerIdx];
+      const n = Math.min(count, positions.length);
+
+      // 현재 댄서 좌표 수집
+      const currentPositions = [];
+      const dancerInfos = []; // {dancer, pos} 쌍
+      for (let i = 0; i < n; i++) {
+        const d = noteData.dancers[targetIndices[i]];
         if (!d) continue;
         const pos = f.positions.find(p => p.dancerId === d.id);
-        if (pos) {
-          oldPositions.set(d.id, { x: pos.x, y: pos.y });
-          pos.x = positions[i].x; pos.y = positions[i].y;
-          movedIds.push(d.id);
-        }
+        if (!pos) continue;
+        currentPositions.push({ x: pos.x, y: pos.y });
+        dancerInfos.push({ dancer: d, pos });
+      }
+
+      // 헝가리안 알고리즘으로 최적 매칭
+      const assignment = matchNearest(currentPositions, positions);
+
+      const oldPositions = new Map();
+      const movedIds = [];
+      for (let i = 0; i < dancerInfos.length; i++) {
+        const { dancer, pos } = dancerInfos[i];
+        const target = positions[assignment[i]];
+        oldPositions.set(dancer.id, { x: pos.x, y: pos.y });
+        pos.x = target.x; pos.y = target.y;
+        movedIds.push(dancer.id);
       }
       recalcWaypoints(movedIds, selectedFormation, oldPositions);
       updateStage(); saveSnapshot();
-      showToast(_presetRotation > 0 ? t('presetAppliedRotated', { name, n: _presetRotation + 1 }) : t('presetApplied', { name }));
+      showToast(t('presetApplied', { name }));
     }
 
     // Built-in presets
@@ -1512,12 +1515,12 @@ function setupSidebar(container) {
       if (!positions) continue;
       const card = document.createElement('div');
       card.className = 'preset-card';
-      card.appendChild(_drawPresetThumb(positions, targetIndices));
+      card.appendChild(_drawPresetThumb(positions));
       const label = document.createElement('div');
       label.className = 'preset-card__name';
       label.textContent = name;
       card.appendChild(label);
-      card.addEventListener('click', () => applyWithRotation(name, positions));
+      card.addEventListener('click', () => applyToNearest(name, positions));
       presetGrid.appendChild(card);
     }
 
@@ -1529,7 +1532,7 @@ function setupSidebar(container) {
       if (positions.length === 0) continue;
       const card = document.createElement('div');
       card.className = 'preset-card preset-card--custom' + (mismatch ? ' preset-card--mismatch' : '');
-      card.appendChild(_drawPresetThumb(positions, targetIndices));
+      card.appendChild(_drawPresetThumb(positions));
       const label = document.createElement('div');
       label.className = 'preset-card__name';
       label.innerHTML = `${name} <span class="preset-card__count">${t('presetMismatch', { count: presetCount })}</span>`;
@@ -1545,7 +1548,7 @@ function setupSidebar(container) {
         showToast(t('presetDeleted'));
       });
       card.appendChild(delBtn);
-      card.addEventListener('click', () => applyWithRotation(name, positions));
+      card.addEventListener('click', () => applyToNearest(name, positions));
       presetGrid.appendChild(card);
     }
 

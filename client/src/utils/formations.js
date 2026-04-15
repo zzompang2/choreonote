@@ -141,3 +141,69 @@ export function applyPreset(name, dancerCount, spacing, stageW = 300, stageH = 2
 
   return positions;
 }
+
+/**
+ * 헝가리안 알고리즘으로 현재 위치 → 목표 위치 최적 매칭.
+ * 전체 이동 거리 합을 최소화하는 할당을 반환한다.
+ * @param {{x:number,y:number}[]} currentPositions - 댄서들의 현재 좌표
+ * @param {{x:number,y:number}[]} targetPositions - 프리셋 목표 좌표
+ * @returns {number[]} assignment[i] = 댄서 i가 이동할 targetPositions 인덱스
+ */
+export function matchNearest(currentPositions, targetPositions) {
+  const n = currentPositions.length;
+  if (n === 0) return [];
+
+  // 비용 행렬: 유클리드 거리의 제곱 (제곱근 불필요, 순서만 중요)
+  const cost = [];
+  for (let i = 0; i < n; i++) {
+    cost[i] = [];
+    for (let j = 0; j < n; j++) {
+      const dx = currentPositions[i].x - targetPositions[j].x;
+      const dy = currentPositions[i].y - targetPositions[j].y;
+      cost[i][j] = dx * dx + dy * dy;
+    }
+  }
+
+  // 헝가리안 알고리즘 (Jonker-Volgenant style, O(n³))
+  const INF = 1e18;
+  const u = new Float64Array(n + 1); // row potentials
+  const v = new Float64Array(n + 1); // col potentials
+  const p = new Int32Array(n + 1);   // col -> row assignment
+  const way = new Int32Array(n + 1);
+
+  for (let i = 1; i <= n; i++) {
+    p[0] = i;
+    let j0 = 0;
+    const minv = new Float64Array(n + 1).fill(INF);
+    const used = new Uint8Array(n + 1);
+
+    do {
+      used[j0] = 1;
+      let i0 = p[j0], delta = INF, j1 = -1;
+      for (let j = 1; j <= n; j++) {
+        if (used[j]) continue;
+        const cur = cost[i0 - 1][j - 1] - u[i0] - v[j];
+        if (cur < minv[j]) { minv[j] = cur; way[j] = j0; }
+        if (minv[j] < delta) { delta = minv[j]; j1 = j; }
+      }
+      for (let j = 0; j <= n; j++) {
+        if (used[j]) { u[p[j]] += delta; v[j] -= delta; }
+        else { minv[j] -= delta; }
+      }
+      j0 = j1;
+    } while (p[j0] !== 0);
+
+    do {
+      const j1 = way[j0];
+      p[j0] = p[j1];
+      j0 = j1;
+    } while (j0);
+  }
+
+  // p[j] = row(1-indexed) assigned to col j → 변환: assignment[row] = col
+  const assignment = new Array(n);
+  for (let j = 1; j <= n; j++) {
+    assignment[p[j] - 1] = j - 1;
+  }
+  return assignment;
+}
