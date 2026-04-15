@@ -1352,22 +1352,34 @@ function setupFormationDrag(el, fIdx, mode) {
       // Sync engine with re-sorted formations
       engine.setFormations(noteData.formations, noteData.dancers);
 
-      // Check if current time is still inside selected formation
+      // Update selection based on currentMs
       const currentFIdx = noteData.formations.findIndex((f) => currentMs >= f.startTime && currentMs < f.startTime + f.duration);
       if (currentFIdx >= 0) {
         selectedFormation = currentFIdx;
-        if (!selectedFormations.has(currentFIdx)) {
-          selectedFormations.clear();
-          selectedFormations.add(currentFIdx);
-        }
+        selectedFormations.clear();
+        selectedFormations.add(currentFIdx);
+        selectedTransition = null;
       } else {
         selectedFormation = -1;
         selectedFormations.clear();
+        // Check if currentMs is in a transition gap
+        selectedTransition = null;
+        const sorted = noteData.formations.slice().sort((a, b) => a.startTime - b.startTime);
+        for (let i = 0; i < sorted.length - 1; i++) {
+          const fromF = sorted[i];
+          const toF = sorted[i + 1];
+          const gapStart = fromF.startTime + fromF.duration;
+          if (currentMs >= gapStart && currentMs < toF.startTime) {
+            selectedTransition = { fromIdx: noteData.formations.indexOf(fromF), toIdx: noteData.formations.indexOf(toF) };
+            break;
+          }
+        }
       }
 
       const formationsEl = document.querySelector('#timeline-formations');
       renderFormationBoxes(formationsEl);
       highlightFormation();
+      highlightTransition();
       updateStage(); saveSnapshot();
     };
 
@@ -3469,37 +3481,6 @@ function restoreSnapshot(snapshot) {
   highlightFormation();
   highlightTransition();
   document.querySelector('#time-display').textContent = formatTime(currentMs, true);
-
-  // Auto-scroll timeline to show the affected area
-  const timelineScroll = document.querySelector('#timeline-scroll');
-  if (timelineScroll) {
-    let targetPx;
-    if (selectedTransition) {
-      // Transition area: scroll to the gap between formations
-      const fromF = noteData.formations[selectedTransition.fromIdx];
-      const toF = noteData.formations[selectedTransition.toIdx];
-      if (fromF && toF) {
-        const gapStart = TIMELINE_PADDING + (fromF.startTime + fromF.duration) / 1000 * pixelsPerSec;
-        const gapEnd = TIMELINE_PADDING + toF.startTime / 1000 * pixelsPerSec;
-        targetPx = (gapStart + gapEnd) / 2;
-      } else {
-        targetPx = null;
-      }
-    } else if (selectedFormation >= 0 && noteData.formations[selectedFormation]) {
-      const f = noteData.formations[selectedFormation];
-      const startPx = TIMELINE_PADDING + f.startTime / 1000 * pixelsPerSec;
-      const endPx = startPx + f.duration / 1000 * pixelsPerSec;
-      targetPx = (startPx + endPx) / 2;
-    } else {
-      targetPx = null;
-    }
-    const viewLeft = timelineScroll.scrollLeft;
-    const viewRight = viewLeft + timelineScroll.clientWidth;
-    const margin = 60;
-    if (targetPx != null && (targetPx < viewLeft + margin || targetPx > viewRight - margin)) {
-      timelineScroll.scrollLeft = targetPx - timelineScroll.clientWidth / 2;
-    }
-  }
 }
 
 function buildRulerTicks(ruler, durationSec) {
