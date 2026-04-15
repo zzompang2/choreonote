@@ -28,19 +28,25 @@ export async function renderDashboard(container) {
             <option value="title">${t('sortName')}</option>
           </select>
         </label>
+        <button class="btn btn--ghost btn--icon" id="view-toggle-btn" title="${t('viewToggle')}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
         <button class="btn btn--ghost" id="import-btn">${t('importBtn')}</button>
         <button class="btn btn--primary" id="create-btn">${t('newNote')}</button>
       </div>
     </div>
-    <div class="storage-warning" id="storage-warning" style="display:none"></div>
-    <div class="note-grid" id="note-grid"></div>
-    ${deletedNotes.length > 0 ? `
-      <details class="trash-section">
-        <summary class="trash-section__toggle">${t('trash')} (${deletedNotes.length})</summary>
-        <div class="note-grid" id="trash-grid"></div>
-      </details>
-    ` : ''}
-    <input type="file" id="import-file" accept=".json" style="display:none" />
+    <div class="dashboard__body">
+      <div class="storage-warning" id="storage-warning" style="display:none"></div>
+      <div class="note-grid" id="note-grid"></div>
+      ${deletedNotes.length > 0 ? `
+        <details class="trash-section">
+          <summary class="trash-section__toggle">
+            ${t('trash')} (${deletedNotes.length})
+            <button class="btn btn--ghost btn--sm btn--danger trash-empty-btn" id="trash-empty-btn">${t('trashEmpty')}</button>
+          </summary>
+          <div class="note-grid" id="trash-grid"></div>
+        </details>
+      ` : ''}
+      <input type="file" id="import-file" accept=".json" style="display:none" />
+    </div>
   `;
 
   container.appendChild(div);
@@ -50,7 +56,10 @@ export async function renderDashboard(container) {
 
   // Render trash grid
   const trashGrid = div.querySelector('#trash-grid');
-  if (trashGrid) renderTrashCards(trashGrid, deletedNotes, div);
+  if (trashGrid) {
+    if (localStorage.getItem('choreonote-list-view') === '1') trashGrid.classList.add('note-grid--list');
+    renderTrashCards(trashGrid, deletedNotes, div);
+  }
 
   // Storage usage warning
   checkStorageUsage(div.querySelector('#storage-warning'));
@@ -66,6 +75,32 @@ export async function renderDashboard(container) {
     const sorted = await NoteStore.getAllNotes(e.target.value);
     renderNoteCards(grid, sorted);
   });
+
+  // View toggle (grid / list)
+  const viewToggleBtn = div.querySelector('#view-toggle-btn');
+  let isListView = localStorage.getItem('choreonote-list-view') === '1';
+  if (isListView) grid.classList.add('note-grid--list');
+  viewToggleBtn.addEventListener('click', () => {
+    isListView = !isListView;
+    localStorage.setItem('choreonote-list-view', isListView ? '1' : '0');
+    grid.classList.toggle('note-grid--list', isListView);
+    const trashG = div.querySelector('#trash-grid');
+    if (trashG) trashG.classList.toggle('note-grid--list', isListView);
+  });
+
+  // Empty trash
+  const trashEmptyBtn = div.querySelector('#trash-empty-btn');
+  if (trashEmptyBtn) {
+    trashEmptyBtn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!confirm(t('confirmEmptyTrash'))) return;
+      for (const note of deletedNotes) {
+        await NoteStore.permanentlyDeleteNote(note.id);
+      }
+      renderDashboard(container);
+    });
+  }
 
   const importFile = div.querySelector('#import-file');
   div.querySelector('#import-btn').addEventListener('click', () => importFile.click());

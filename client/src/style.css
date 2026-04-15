@@ -62,14 +62,21 @@ body {
 .dashboard {
   max-width: 900px;
   margin: 0 auto;
-  padding: 40px 20px;
 }
 
 .dashboard__header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--bg-primary);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 30px;
+  padding: 20px 20px 16px;
+}
+
+.dashboard__body {
+  padding: 0 20px 40px;
 }
 
 .dashboard__title {
@@ -135,6 +142,41 @@ body {
   gap: 16px;
 }
 
+.note-grid--list {
+  grid-template-columns: 1fr;
+}
+
+.note-grid--list .note-card {
+  display: flex;
+  align-items: center;
+}
+
+.note-grid--list .note-card__thumbnail {
+  width: 120px;
+  flex-shrink: 0;
+}
+
+.note-grid--list .note-card__thumbnail canvas {
+  width: 120px;
+  height: 80px;
+}
+
+.note-grid--list .note-card__title {
+  padding: 0 12px;
+  margin: 0;
+}
+
+.note-grid--list .note-card__meta {
+  padding: 0 12px;
+}
+
+.btn--icon {
+  padding: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .trash-section {
   margin-top: 32px;
 }
@@ -143,6 +185,9 @@ body {
   font-size: 14px;
   color: var(--text-secondary);
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   padding: 8px 0;
   user-select: none;
 }
@@ -2417,15 +2462,19 @@ html:has(.editor) {
   }
 
   /* Dashboard */
-  .dashboard {
-    padding: 24px 16px;
-  }
   .dashboard__header {
     flex-direction: column;
     align-items: flex-start;
     gap: 12px;
+    padding: 16px;
+  }
+  .dashboard__body {
+    padding: 0 16px 24px;
   }
   .note-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .note-grid--list {
     grid-template-columns: 1fr;
   }
 

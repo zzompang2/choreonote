@@ -52,7 +52,10 @@ export const ko = {
   trash: '휴지통',
   trashRestore: '복원',
   trashDelete: '완전 삭제',
+  trashEmpty: '비우기',
+  confirmEmptyTrash: '휴지통을 비울까요? 모든 항목이 완전 삭제됩니다.',
   trashDaysLeft: '{days}일 후 자동 삭제',
+  viewToggle: '보기 전환',
   importError: '파일을 불러올 수 없습니다:',
 
   // Editor — Header

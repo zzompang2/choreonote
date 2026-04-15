@@ -52,7 +52,10 @@ export const en = {
   trash: 'Trash',
   trashRestore: 'Restore',
   trashDelete: 'Delete',
+  trashEmpty: 'Empty',
+  confirmEmptyTrash: 'Empty trash? All items will be permanently deleted.',
   trashDaysLeft: 'Auto-delete in {days} days',
+  viewToggle: 'Toggle view',
   importError: 'Failed to load file:',
 
   // Editor — Header
