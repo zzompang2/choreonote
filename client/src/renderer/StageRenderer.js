@@ -29,6 +29,13 @@ export class StageRenderer {
     this._guides = null; // { lines: [{axis, pos, type}], snapX, snapY }
     this._dragOrigin = null; // { x, y } — drag start position for ghost display
 
+    // Zoom / Pan
+    this.zoomLevel = 1.0;
+    this.panX = 0;
+    this.panY = 0;
+    this._pinch = null; // { dist, midX, midY, startZoom, startPanX, startPanY }
+    this._panning = null; // { startClientX, startClientY, startPanX, startPanY }
+
     // Drag state
     this._dragging = null; // { dancerIndex, startX, startY, offsetX, offsetY }
     this._draggingRotate = null; // { dancerIndex, centerX, centerY }
@@ -265,6 +272,10 @@ export class StageRenderer {
     const ctx = this.ctx;
     const topPad = this._3dTopPad || 0;
     ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT + topPad);
+
+    ctx.save();
+    ctx.translate(this.panX, this.panY);
+    ctx.scale(this.zoomLevel, this.zoomLevel);
 
     // Grid: use projected 3D stage for render mode, flat cache otherwise
     if (this.is3D && this._projectionMode === 'render') {
@@ -599,7 +610,8 @@ export class StageRenderer {
         ctx.stroke();
       }
     }
-    ctx.restore();
+    ctx.restore(); // topPad
+    ctx.restore(); // zoom/pan
   }
 
   // --- 3D Projection (for video export) ---
@@ -773,25 +785,72 @@ export class StageRenderer {
 
   // --- Mouse & Touch Events ---
   _setupEvents() {
-    this.canvas.addEventListener('mousedown', (e) => this._onMouseDown(e));
-    document.addEventListener('mousemove', (e) => this._onMouseMove(e));
-    document.addEventListener('mouseup', (e) => this._onMouseUp(e));
+    // Mouse: pan with middle button drag
+    this.canvas.addEventListener('mousedown', (e) => {
+      if (e.button === 1) {
+        e.preventDefault();
+        this._panning = { startClientX: e.clientX, startClientY: e.clientY, startPanX: this.panX, startPanY: this.panY };
+        this.canvas.style.cursor = 'grabbing';
+        return;
+      }
+      this._onMouseDown(e);
+    });
+    document.addEventListener('mousemove', (e) => {
+      if (this._panning) {
+        const rect = this.canvas.getBoundingClientRect();
+        const scaleX = CANVAS_WIDTH / rect.width;
+        const scaleY = CANVAS_HEIGHT / rect.height;
+        this.panX = this._panning.startPanX + (e.clientX - this._panning.startClientX) * scaleX;
+        this.panY = this._panning.startPanY + (e.clientY - this._panning.startClientY) * scaleY;
+        this._clampPan();
+        if (this._dancers && this._positions) this.drawFrame(this._dancers, this._positions);
+        return;
+      }
+      this._onMouseMove(e);
+    });
+    document.addEventListener('mouseup', (e) => {
+      if (this._panning) {
+        this._panning = null;
+        this.canvas.style.cursor = '';
+        return;
+      }
+      this._onMouseUp(e);
+    });
 
-    // Mouse wheel on selected dancers: rotate direction (debounced snapshot)
+    // Mouse wheel: Ctrl+wheel = zoom, plain wheel on dancer = rotate
     let _wheelRotateTimer = null;
     this.canvas.addEventListener('wheel', (e) => {
+      e.preventDefault(); // block browser back/forward gesture
       if (!this._positions || !this._dancers) return;
-      if (this._selectedDancers.size === 0) return;
-      const { x, y } = this._getCanvasPos(e);
-      const hit = this.hitTest(x, y, this._positions);
-      if (hit >= 0 && this._selectedDancers.has(hit)) {
+      // Ctrl+wheel or pinch-zoom gesture (ctrlKey is true for trackpad pinch)
+      if (e.ctrlKey || e.metaKey) {
         e.preventDefault();
-        const delta = e.deltaY > 0 ? 15 : -15;
-        for (const idx of this._selectedDancers) {
-          this.onDancerRotate?.(idx, delta);
+        this._applyZoom(e, -e.deltaY * 0.01);
+        return;
+      }
+      // Wheel on selected dancer = rotate
+      if (this._selectedDancers.size > 0) {
+        const { x, y } = this._getCanvasPos(e);
+        const hit = this.hitTest(x, y, this._positions);
+        if (hit >= 0 && this._selectedDancers.has(hit)) {
+          e.preventDefault();
+          const delta = e.deltaY > 0 ? 15 : -15;
+          for (const idx of this._selectedDancers) {
+            this.onDancerRotate?.(idx, delta);
+          }
+          clearTimeout(_wheelRotateTimer);
+          _wheelRotateTimer = setTimeout(() => this.onDancerRotateEnd?.(hit), 400);
+          return;
         }
-        clearTimeout(_wheelRotateTimer);
-        _wheelRotateTimer = setTimeout(() => this.onDancerRotateEnd?.(hit), 400);
+      }
+      // Otherwise: trackpad two-finger scroll = pan
+      if (this.zoomLevel !== 1.0 || this.panX !== 0 || this.panY !== 0) {
+        e.preventDefault();
+        const rect = this.canvas.getBoundingClientRect();
+        this.panX -= e.deltaX * (CANVAS_WIDTH / rect.width);
+        this.panY -= e.deltaY * (CANVAS_HEIGHT / rect.height);
+        this._clampPan();
+        if (this._dancers && this._positions) this.drawFrame(this._dancers, this._positions);
       }
     }, { passive: false });
 
@@ -858,6 +917,16 @@ export class StageRenderer {
     this.canvas.addEventListener('touchstart', (e) => {
       e.preventDefault();
       _longPressFired = false;
+      // Pinch zoom: two fingers
+      if (e.touches.length === 2) {
+        const t0 = e.touches[0], t1 = e.touches[1];
+        const dist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
+        const rect = this.canvas.getBoundingClientRect();
+        const midX = ((t0.clientX + t1.clientX) / 2 - rect.left) * (CANVAS_WIDTH / rect.width);
+        const midY = ((t0.clientY + t1.clientY) / 2 - rect.top) * (CANVAS_HEIGHT / rect.height);
+        this._pinch = { dist, midX, midY, startZoom: this.zoomLevel, startPanX: this.panX, startPanY: this.panY };
+        return;
+      }
       const touch = e.touches[0];
       const pos = this._getCanvasPos({ clientX: touch.clientX, clientY: touch.clientY });
       _longPressTimer = setTimeout(() => {
@@ -869,13 +938,30 @@ export class StageRenderer {
         }
       }, 500);
       const mouseEvt = this._touchToMouse(e);
-      if (e.touches.length >= 2) {
-        mouseEvt.shiftKey = true;
-      }
       this._onMouseDown(mouseEvt);
     }, { passive: false });
     document.addEventListener('touchmove', (e) => {
       if (_longPressTimer) { clearTimeout(_longPressTimer); _longPressTimer = null; }
+      // Pinch zoom + pan move
+      if (this._pinch && e.touches.length === 2) {
+        e.preventDefault();
+        const t0 = e.touches[0], t1 = e.touches[1];
+        const rect = this.canvas.getBoundingClientRect();
+        const dist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
+        const curMidX = ((t0.clientX + t1.clientX) / 2 - rect.left) * (CANVAS_WIDTH / rect.width);
+        const curMidY = ((t0.clientY + t1.clientY) / 2 - rect.top) * (CANVAS_HEIGHT / rect.height);
+        const scale = dist / this._pinch.dist;
+        const newZoom = clamp(this._pinch.startZoom * scale, 1, 5);
+        const factor = newZoom / this._pinch.startZoom;
+        // Zoom toward original midpoint + pan by midpoint movement
+        this.panX = this._pinch.startPanX * factor + curMidX - this._pinch.midX * factor;
+        this.panY = this._pinch.startPanY * factor + curMidY - this._pinch.midY * factor;
+        this.zoomLevel = newZoom;
+        this._clampPan();
+        if (this._dancers && this._positions) this.drawFrame(this._dancers, this._positions);
+        this.onZoomChange?.(newZoom);
+        return;
+      }
       if (this._dragging || this._draggingWaypoint || this._draggingRotate || this._boxSelect || this._draggingMarker || this._resizingMarker) {
         e.preventDefault();
         this._onMouseMove(this._touchToMouse(e));
@@ -883,11 +969,45 @@ export class StageRenderer {
     }, { passive: false });
     document.addEventListener('touchend', (e) => {
       if (_longPressTimer) { clearTimeout(_longPressTimer); _longPressTimer = null; }
+      if (this._pinch) { this._pinch = null; return; }
       if (!_longPressFired) {
         this._onMouseUp(this._touchToMouse(e, true));
       }
       _longPressFired = false;
     });
+  }
+
+  _clampPan() {
+    // Prevent panning beyond canvas bounds
+    const maxPanX = CANVAS_WIDTH * (this.zoomLevel - 1);
+    const maxPanY = CANVAS_HEIGHT * (this.zoomLevel - 1);
+    this.panX = clamp(this.panX, -maxPanX, 0);
+    this.panY = clamp(this.panY, -maxPanY, 0);
+  }
+
+  _applyZoom(e, delta) {
+    const rect = this.canvas.getBoundingClientRect();
+    const mx = (e.clientX - rect.left) * (CANVAS_WIDTH / rect.width);
+    const my = (e.clientY - rect.top) * (CANVAS_HEIGHT / rect.height);
+    const oldZoom = this.zoomLevel;
+    const newZoom = clamp(oldZoom + delta, 1, 5);
+    if (newZoom === oldZoom) return;
+    // Zoom toward mouse position
+    const factor = newZoom / oldZoom;
+    this.panX = mx - (mx - this.panX) * factor;
+    this.panY = my - (my - this.panY) * factor;
+    this.zoomLevel = newZoom;
+    this._clampPan();
+    if (this._dancers && this._positions) this.drawFrame(this._dancers, this._positions);
+    this.onZoomChange?.(newZoom);
+  }
+
+  resetZoom() {
+    this.zoomLevel = 1.0;
+    this.panX = 0;
+    this.panY = 0;
+    if (this._dancers && this._positions) this.drawFrame(this._dancers, this._positions);
+    this.onZoomChange?.(1.0);
   }
 
   _touchToMouse(e, isEnd = false) {
@@ -903,9 +1023,11 @@ export class StageRenderer {
   _getCanvasPos(e) {
     const rect = this.canvas.getBoundingClientRect();
     this._cssScale = CANVAS_WIDTH / rect.width; // cache for hit tests
+    const rawX = (e.clientX - rect.left) * this._cssScale;
+    const rawY = (e.clientY - rect.top) * (CANVAS_HEIGHT / rect.height);
     return {
-      x: (e.clientX - rect.left) * this._cssScale,
-      y: (e.clientY - rect.top) * (CANVAS_HEIGHT / rect.height),
+      x: (rawX - this.panX) / this.zoomLevel,
+      y: (rawY - this.panY) / this.zoomLevel,
     };
   }
 

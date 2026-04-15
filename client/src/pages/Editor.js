@@ -199,6 +199,7 @@ function buildEditorHTML(data) {
           <div class="stage-3d-banner" id="stage-3d-banner">${t('previewBanner')}</div>
           <div class="stage-swap-banner" id="stage-swap-banner">${t('swapBanner')}</div>
           <div class="stage-marker-banner" id="stage-marker-banner">${t('markerEditBannerExit')}</div>
+          <div class="stage-zoom-badge" id="stage-zoom-badge"></div>
         </div>
       </div>
 
@@ -536,8 +537,10 @@ function buildEditorHTML(data) {
         <div class="editor__timeline" id="timeline-scroll">
           <div class="timeline" id="timeline" style="width:${timelineWidth}px">
           <div class="timeline__ruler" id="timeline-ruler"></div>
-          <canvas class="timeline__waveform" id="timeline-waveform"></canvas>
           <div class="timeline__formations" id="timeline-formations"></div>
+          <div class="timeline__waveform-track">
+            <canvas class="timeline__waveform" id="timeline-waveform"></canvas>
+          </div>
           <div class="timeline__marker" id="timeline-marker" style="left:${TIMELINE_PADDING}px">
             <div class="timeline__marker-handle"></div>
           </div>
@@ -767,6 +770,11 @@ function setupPlayback(container) {
       const dir = e.shiftKey ? -1 : 1;
       const nextIdx = (curIdx + dir + tabPanels.length) % tabPanels.length;
       openPanel(tabPanels[nextIdx]);
+    }
+    // Ctrl+0: reset zoom
+    if ((e.ctrlKey || e.metaKey) && e.code === 'Digit0') {
+      e.preventDefault();
+      renderer.resetZoom();
     }
   };
   document.addEventListener('keydown', window._choreoKeyHandler);
@@ -2276,6 +2284,8 @@ function setupToolbar(container) {
     copyBtn.classList.toggle('toolbar__btn--disabled', !hasFormation || isPlaying);
     // Paste: need copied data
     pasteBtn.classList.toggle('toolbar__btn--disabled', !copiedPositions || isPlaying);
+    // Swap: need a formation selected, not playing, not in transition
+    swapBtn.classList.toggle('toolbar__btn--disabled', (!hasFormation || isTransition || isPlaying) && !swapMode);
     // Undo/Redo
     undoBtn.classList.toggle('toolbar__btn--disabled', !canUndo() || isPlaying);
     redoBtn.classList.toggle('toolbar__btn--disabled', !canRedo() || isPlaying);
@@ -2464,6 +2474,18 @@ function setupToolbar(container) {
   });
 
   swapBanner.addEventListener('click', () => setSwapMode(false));
+
+  // Zoom badge
+  const zoomBadge = container.querySelector('#stage-zoom-badge');
+  renderer.onZoomChange = (zoom) => {
+    if (zoom === 1.0) {
+      zoomBadge.classList.remove('stage-zoom-badge--visible');
+    } else {
+      zoomBadge.textContent = `${Math.round(zoom * 100)}%`;
+      zoomBadge.classList.add('stage-zoom-badge--visible');
+    }
+  };
+  zoomBadge.addEventListener('click', () => renderer.resetZoom());
 
   renderer.onDancerSelect = (dancerIndex) => {
     // Always update stage to refresh waypoint path filtering
@@ -3455,6 +3477,7 @@ function setupMusicUpload(container, noteId) {
 
     // Update duration display
     container.querySelector('#duration-display').textContent = formatTime(durationMs, true);
+    container.querySelector('#settings-duration').innerHTML = formatDurationFull(durationMs);
 
     // Rebuild timeline
     const durationSec = durationMs / 1000;
@@ -3607,7 +3630,7 @@ async function drawWaveform(container, audioBlob, durationMs) {
 
   const durationSec = durationMs / 1000;
   const width = TIMELINE_PADDING * 2 + durationSec * pixelsPerSec;
-  const height = 50;
+  const height = 36;
   canvas.width = width;
   canvas.height = height;
 

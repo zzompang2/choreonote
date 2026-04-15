@@ -4,6 +4,10 @@
   box-sizing: border-box;
 }
 
+html, body {
+  overscroll-behavior-x: none;
+}
+
 .player-bar,
 .sidebar__scroll,
 .editor__timeline,
@@ -445,6 +449,29 @@ html:has(.editor) {
 .stage-container {
   position: relative;
   border-radius: 10px;
+}
+
+.stage-zoom-badge {
+  display: none;
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  font-size: 11px;
+  cursor: pointer;
+  z-index: 10;
+  user-select: none;
+}
+
+.stage-zoom-badge--visible {
+  display: block;
+}
+
+.stage-zoom-badge:hover {
+  background: rgba(0, 0, 0, 0.7);
 }
 
 .stage-container--preview {
@@ -1169,21 +1196,27 @@ html:has(.editor) {
   background: var(--bg-secondary);
 }
 
-.timeline__waveform {
-  position: absolute;
-  top: 48px;
-  left: 0;
-  height: 50px;
-  pointer-events: none;
-}
-
 .timeline__formations {
   position: relative;
   height: 50px;
   margin-top: 8px;
   cursor: pointer;
-  margin-bottom: 16px;
   user-select: none;
+}
+
+.timeline__waveform-track {
+  position: relative;
+  height: 36px;
+  margin-bottom: 12px;
+  pointer-events: none;
+}
+
+.timeline__waveform {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 36px;
+  pointer-events: none;
 }
 
 .formation-box {
