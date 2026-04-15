@@ -39,9 +39,9 @@ let fitStage = () => {};
 let _onboardingActive = false;
 const ONBOARDING_KEY = 'choreonote-onboarding-done';
 const UNLOCK_KEY = 'choreonote-unlocked-features';
-const UNLOCK_ORDER = ['inspector', 'view', 'presets', 'markers'];
-const UNLOCK_TOAST_KEYS = { view: 'unlockToastView', inspector: 'unlockToastInspector', presets: 'unlockToastPresets', markers: 'unlockToastMarkers' };
-const UNLOCK_DESC_KEYS = { view: 'unlockDescView', inspector: 'unlockDescInspector', presets: 'unlockDescPresets', markers: 'unlockDescMarkers' };
+const UNLOCK_ORDER = ['inspector', 'presets', 'markers'];
+const UNLOCK_TOAST_KEYS = { inspector: 'unlockToastInspector', presets: 'unlockToastPresets', markers: 'unlockToastMarkers' };
+const UNLOCK_DESC_KEYS = { inspector: 'unlockDescInspector', presets: 'unlockDescPresets', markers: 'unlockDescMarkers' };
 
 function getUnlockedFeatures() {
   try { return JSON.parse(localStorage.getItem(UNLOCK_KEY)) || []; } catch { return []; }
@@ -264,7 +264,7 @@ function buildEditorHTML(data) {
         <div class="sidebar__panel sidebar__panel--hidden" id="panel-presets">
           <div class="sidebar__panel-title">${t('presetsTitle')}</div>
           <div class="inspector-empty" id="preset-empty">
-            <div class="inspector-empty__icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.4"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></div>
+            <div class="inspector-empty__icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.4"><circle cx="12" cy="5" r="3"/><circle cx="5" cy="18" r="3"/><circle cx="19" cy="18" r="3"/></svg></div>
             <div class="inspector-empty__text">${t('presetEmpty')}</div>
           </div>
           <div class="sidebar__scroll" id="preset-content">
@@ -471,14 +471,14 @@ function buildEditorHTML(data) {
         <button class="sidebar-rail__icon sidebar-rail__icon--active" data-panel="dancers" title="${t('railDancers')}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></button>
         <div class="sidebar-rail__lockable-zone" id="lockable-zone">
           <button class="sidebar-rail__icon" data-panel="inspector" data-unlock="inspector" title="${t('railInspector')}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
-          <button class="sidebar-rail__icon" data-panel="view" data-unlock="view" title="${t('railView')}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg></button>
-          <button class="sidebar-rail__icon" data-panel="presets" data-unlock="presets" title="${t('railPresets')}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></button>
-          <button class="sidebar-rail__icon" data-panel="markers" data-unlock="markers" title="${t('railMarkers')}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></button>
+          <button class="sidebar-rail__icon" data-panel="presets" data-unlock="presets" title="${t('railPresets')}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="3"/><circle cx="5" cy="18" r="3"/><circle cx="19" cy="18" r="3"/></svg></button>
+          <button class="sidebar-rail__icon" data-panel="markers" data-unlock="markers" title="${t('railMarkers')}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"/></svg></button>
           <button class="sidebar-rail__unlock" id="unlock-btn" title="${t('unlockBtn')}">
             <svg class="unlock-icon" width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="12" width="14" height="10" rx="2"/><path d="M8 12V8a4 4 0 0 1 8 0v4" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><circle cx="12" cy="17" r="1.5" fill="var(--bg-secondary)"/></svg>
           </button>
         </div>
         <div class="sidebar-rail__spacer"></div>
+        <button class="sidebar-rail__icon" data-panel="view" title="${t('railView')}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="2" y1="6" x2="22" y2="6"/><line x1="2" y1="18" x2="22" y2="18"/><line x1="6" y1="2" x2="6" y2="22"/><line x1="18" y1="2" x2="18" y2="22"/></svg></button>
         <button class="sidebar-rail__icon" data-panel="help" title="${t('railHelp')}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></button>
         <button class="sidebar-rail__icon" data-panel="settings" title="${t('railSettings')}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg></button>
       </div>
@@ -2474,7 +2474,7 @@ function setupMarkers(container, noteId) {
 
   function renderMarkerList() {
     if (renderer.markers.length === 0) {
-      listEl.innerHTML = `<div class="inspector-empty"><div class="inspector-empty__icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.4"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></div><div class="inspector-empty__text">${t('markerEmpty')}</div></div>`;
+      listEl.innerHTML = `<div class="inspector-empty"><div class="inspector-empty__icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.4"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"/></svg></div><div class="inspector-empty__text">${t('markerEmpty')}</div></div>`;
       return;
     }
     listEl.innerHTML = renderer.markers.map((m, i) => `
@@ -3591,7 +3591,6 @@ function setupFeatureUnlock(container) {
 
   // Map panel name to its panel element
   const panelMap = {
-    view: 'panel-view',
     inspector: 'panel-inspector',
     presets: 'panel-presets',
     markers: 'panel-markers',
