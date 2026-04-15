@@ -52,8 +52,8 @@ function isAllUnlocked() {
 }
 
 function isExistingUser() {
-  // If onboarding was already done or notes exist in DB, treat as existing user
-  return !!localStorage.getItem(ONBOARDING_KEY);
+  // 온보딩 도입 전에 이미 사용 중이던 유저 (해금 키 없이 온보딩 완료 상태)
+  return !!localStorage.getItem(ONBOARDING_KEY) && !localStorage.getItem(UNLOCK_KEY);
 }
 
 export async function renderEditor(container, noteId) {
@@ -381,6 +381,9 @@ function buildEditorHTML(data) {
                 <div class="shortcut-row"><kbd>↑</kbd> <kbd>↓</kbd><span>${t('helpPrevNext')}</span></div>
                 <div class="shortcut-row"><kbd>N</kbd><span>${t('helpAddFormation')}</span></div>
                 <div class="shortcut-row"><kbd>S</kbd><span>${t('helpSnap')}</span></div>
+                <div class="shortcut-row"><kbd>+</kbd><span>${t('helpZoomIn')}</span></div>
+                <div class="shortcut-row"><kbd>−</kbd><span>${t('helpZoomOut')}</span></div>
+                <div class="shortcut-row"><kbd>Tab</kbd><span>${t('helpTabPanel')}</span></div>
                 <div class="shortcut-row"><kbd>Delete</kbd><span>${t('helpDeleteFormation')}</span></div>
                 <div class="shortcut-row"><kbd>Ctrl+Z</kbd><span>${t('helpUndo')}</span></div>
                 <div class="shortcut-row"><kbd>Ctrl+Shift+Z</kbd><span>${t('helpRedo')}</span></div>
@@ -736,6 +739,23 @@ function setupPlayback(container) {
     if (e.key === '?' || (e.shiftKey && e.code === 'Slash')) {
       e.preventDefault();
       openPanel('help');
+    }
+    if ((e.key === '=' || e.key === '+') && !e.ctrlKey && !e.metaKey) {
+      e.preventDefault();
+      container.querySelector('#zoom-in-btn')?.click();
+    }
+    if (e.key === '-' && !e.ctrlKey && !e.metaKey) {
+      e.preventDefault();
+      container.querySelector('#zoom-out-btn')?.click();
+    }
+    if (e.code === 'Tab') {
+      e.preventDefault();
+      const unlocked = getUnlockedFeatures();
+      const tabPanels = ['dancers', ...['inspector', 'presets', 'markers'].filter(p => unlocked.includes(p))];
+      const curIdx = tabPanels.indexOf(activePanel);
+      const dir = e.shiftKey ? -1 : 1;
+      const nextIdx = (curIdx + dir + tabPanels.length) % tabPanels.length;
+      openPanel(tabPanels[nextIdx]);
     }
   };
   document.addEventListener('keydown', window._choreoKeyHandler);
@@ -3742,6 +3762,9 @@ function toggleShortcutHelp(container) {
         <div class="shortcut-row"><kbd>↑</kbd> <kbd>↓</kbd><span>${t('helpPrevNext')}</span></div>
         <div class="shortcut-row"><kbd>N</kbd><span>${t('helpAddFormation')}</span></div>
         <div class="shortcut-row"><kbd>S</kbd><span>${t('helpSnap')}</span></div>
+        <div class="shortcut-row"><kbd>+</kbd><span>${t('helpZoomIn')}</span></div>
+        <div class="shortcut-row"><kbd>−</kbd><span>${t('helpZoomOut')}</span></div>
+        <div class="shortcut-row"><kbd>Tab</kbd><span>${t('helpTabPanel')}</span></div>
         <div class="shortcut-row"><kbd>Delete</kbd><span>${t('helpDeleteFormation')}</span></div>
         <div class="shortcut-row"><kbd>Ctrl+Z</kbd><span>${t('helpUndo')}</span></div>
         <div class="shortcut-row"><kbd>Ctrl+Shift+Z</kbd><span>${t('helpRedo')}</span></div>
@@ -3786,6 +3809,20 @@ function escapeAttr(str) {
 }
 
 // --- Feature Unlock ---
+const DISMISSED_BANNERS_KEY = 'choreonote-dismissed-banners';
+
+function getDismissedBanners() {
+  try { return JSON.parse(localStorage.getItem(DISMISSED_BANNERS_KEY)) || []; } catch { return []; }
+}
+
+function dismissBanner(panel) {
+  const dismissed = getDismissedBanners();
+  if (!dismissed.includes(panel)) {
+    dismissed.push(panel);
+    localStorage.setItem(DISMISSED_BANNERS_KEY, JSON.stringify(dismissed));
+  }
+}
+
 function setupFeatureUnlock(container) {
   const existing = isExistingUser();
   const unlocked = existing ? [...UNLOCK_ORDER] : getUnlockedFeatures();
@@ -3843,7 +3880,7 @@ function setupFeatureUnlock(container) {
         const banner = document.createElement('div');
         banner.className = 'unlock-desc-banner';
         banner.innerHTML = `${t(UNLOCK_DESC_KEYS[nextFeature])}<button class="unlock-desc-banner__close">✕</button>`;
-        banner.querySelector('.unlock-desc-banner__close').addEventListener('click', () => banner.remove());
+        banner.querySelector('.unlock-desc-banner__close').addEventListener('click', () => { dismissBanner(nextFeature); banner.remove(); });
         const title = panel.querySelector('.sidebar__panel-title');
         if (title) title.after(banner);
         else panel.prepend(banner);
@@ -3860,17 +3897,34 @@ function setupFeatureUnlock(container) {
   applyVisibility();
 
   // Show dancers panel description banner for new users
-  if (!existing) {
+  if (!existing && !getDismissedBanners().includes('dancers')) {
     const dancersPanel = container.querySelector('#panel-dancers');
     if (dancersPanel && !dancersPanel.querySelector('.unlock-desc-banner')) {
       const banner = document.createElement('div');
       banner.className = 'unlock-desc-banner';
       banner.innerHTML = `${t('unlockDescDancers')}<button class="unlock-desc-banner__close">✕</button>`;
-      banner.querySelector('.unlock-desc-banner__close').addEventListener('click', () => banner.remove());
+      banner.querySelector('.unlock-desc-banner__close').addEventListener('click', () => { dismissBanner('dancers'); banner.remove(); });
       const title = dancersPanel.querySelector('.sidebar__panel-title');
       if (title) title.after(banner);
       else dancersPanel.prepend(banner);
     }
+  }
+
+  // 해금된 패널 중 닫지 않은 배너 복원
+  const dismissed = getDismissedBanners();
+  for (const feature of unlocked) {
+    if (dismissed.includes(feature)) continue;
+    const pid = panelMap[feature];
+    if (!pid) continue;
+    const panel = container.querySelector(`#${pid}`);
+    if (!panel || panel.querySelector('.unlock-desc-banner')) continue;
+    const banner = document.createElement('div');
+    banner.className = 'unlock-desc-banner';
+    banner.innerHTML = `${t(UNLOCK_DESC_KEYS[feature])}<button class="unlock-desc-banner__close">✕</button>`;
+    banner.querySelector('.unlock-desc-banner__close').addEventListener('click', () => { dismissBanner(feature); banner.remove(); });
+    const title = panel.querySelector('.sidebar__panel-title');
+    if (title) title.after(banner);
+    else panel.prepend(banner);
   }
 
   // Wire unlock button
@@ -3978,7 +4032,7 @@ function startOnboardingTour(container) {
 
   const overlay = document.createElement('div');
   overlay.className = 'onboarding-overlay';
-  overlay.addEventListener('click', finish);
+  overlay.addEventListener('click', (e) => { e.stopPropagation(); });
   document.body.appendChild(overlay);
 
   const spotlight = document.createElement('div');
@@ -4101,6 +4155,9 @@ function startOnboardingTour(container) {
     cleanup();
     _onboardingActive = false;
     localStorage.setItem(ONBOARDING_KEY, '1');
+    if (!localStorage.getItem(UNLOCK_KEY)) {
+      localStorage.setItem(UNLOCK_KEY, JSON.stringify([]));
+    }
     overlay.remove();
     spotlight.remove();
     tooltip.remove();
