@@ -1291,13 +1291,68 @@ html:has(.editor) {
   right: -5px;
 }
 
-.transition-highlight {
+.formation-add-btn {
   position: absolute;
   height: 44px;
-  background: rgba(255, 180, 50, 0.15);
-  border: 1px dashed rgba(255, 180, 50, 0.5);
-  border-radius: 4px;
+  width: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  color: rgba(78, 205, 196, 0.5);
+  border: 1px dashed rgba(78, 205, 196, 0.3);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.formation-add-btn:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: rgba(78, 205, 196, 0.1);
+}
+
+.transition-connector {
+  position: absolute;
+  height: 44px;
   pointer-events: none;
+}
+
+.transition-connector svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.transition-connector__line {
+  fill: none;
+  stroke: rgba(78, 205, 196, 0.4);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+
+.transition-connector__head {
+  fill: none;
+  stroke: rgba(78, 205, 196, 0.4);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.transition-connector--active .transition-connector__line {
+  stroke: rgba(255, 180, 50, 0.6);
+  stroke-width: 2;
+  stroke-dasharray: 6 4;
+  animation: transition-flow 0.8s linear infinite;
+}
+
+.transition-connector--active .transition-connector__head {
+  stroke: rgba(255, 180, 50, 0.6);
+  stroke-width: 2;
+}
+
+@keyframes transition-flow {
+  to { stroke-dashoffset: -10; }
 }
 
 .timeline__marker {

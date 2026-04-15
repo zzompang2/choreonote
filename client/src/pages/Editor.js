@@ -1309,6 +1309,84 @@ function renderFormationBoxes(formationsEl) {
 
     formationsEl.appendChild(box);
   });
+
+  updateTransitionConnectors(formationsEl);
+  updateAddFormationBtn(formationsEl);
+}
+
+function updateAddFormationBtn(formationsEl) {
+  if (!formationsEl) formationsEl = document.querySelector('#timeline-formations');
+  if (!formationsEl) return;
+  formationsEl.querySelectorAll('.formation-add-btn').forEach(el => el.remove());
+  if (noteData.formations.length === 0) return;
+  const lastF = noteData.formations.reduce((a, b) => (a.startTime + a.duration > b.startTime + b.duration) ? a : b);
+  const lastEnd = lastF.startTime + lastF.duration;
+  const gapPx = Math.max(20, 0.5 * pixelsPerSec);
+  const addStart = floorTime(lastEnd + gapPx / pixelsPerSec * 1000);
+  if (addStart >= noteData.note.duration) return;
+  const addBox = document.createElement('div');
+  addBox.className = 'formation-add-btn';
+  addBox.style.left = `${TIMELINE_PADDING + addStart / 1000 * pixelsPerSec}px`;
+  addBox.textContent = '+';
+  addBox.title = t('addFormation');
+  addBox.addEventListener('click', () => {
+    if (engine.isPlaying) { showToast(t('toastStopFirst')); return; }
+    const addBtn = document.querySelector('#add-formation-btn');
+    seekTo(addStart);
+    if (addBtn) addBtn.click();
+  });
+  formationsEl.appendChild(addBox);
+}
+
+function updateTransitionConnectors(formationsEl) {
+  if (!formationsEl) formationsEl = document.querySelector('#timeline-formations');
+  if (!formationsEl) return;
+  formationsEl.querySelectorAll('.transition-connector').forEach(el => el.remove());
+  const indexed = noteData.formations.map((f, i) => ({ f, i })).sort((a, b) => a.f.startTime - b.f.startTime);
+  for (let s = 0; s < indexed.length - 1; s++) {
+    const fromF = indexed[s].f;
+    const toF = indexed[s + 1].f;
+    const fromIdx = indexed[s].i;
+    const toIdx = indexed[s + 1].i;
+    const fromEnd = fromF.startTime + fromF.duration;
+    if (toF.startTime <= fromEnd) continue;
+    const left = TIMELINE_PADDING + fromEnd / 1000 * pixelsPerSec;
+    const width = (toF.startTime - fromEnd) / 1000 * pixelsPerSec;
+    if (width < 4) continue;
+    const isActive = selectedTransition && selectedTransition.fromIdx === fromIdx && selectedTransition.toIdx === toIdx;
+    const connector = document.createElement('div');
+    connector.className = 'transition-connector' + (isActive ? ' transition-connector--active' : '');
+    connector.style.left = `${left}px`;
+    connector.style.width = `${width}px`;
+
+    // 손그림 SVG 화살표
+    const h = 44;
+    const pad = 6;
+    const x1 = pad, y1 = h / 2;
+    const x2 = width - pad, y2 = h / 2;
+    const wobble = Math.min(8, width * 0.08);
+    const cx = width / 2, cy = h / 2 - wobble;
+    const headLen = Math.min(8, width * 0.2);
+    const headAngle = 0.5;
+    const hx1 = x2 - headLen * Math.cos(headAngle);
+    const hy1 = y2 - headLen * Math.sin(headAngle);
+    const hx2 = x2 - headLen * Math.cos(-headAngle);
+    const hy2 = y2 - headLen * Math.sin(-headAngle);
+
+    const svgNS = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(svgNS, 'svg');
+    svg.setAttribute('viewBox', `0 0 ${width} ${h}`);
+    const line = document.createElementNS(svgNS, 'path');
+    line.setAttribute('class', 'transition-connector__line');
+    line.setAttribute('d', `M${x1},${y1} Q${cx},${cy} ${x2},${y2}`);
+    const head = document.createElementNS(svgNS, 'path');
+    head.setAttribute('class', 'transition-connector__head');
+    head.setAttribute('d', `M${hx1},${hy1} L${x2},${y2} L${hx2},${hy2}`);
+    svg.appendChild(line);
+    svg.appendChild(head);
+    connector.appendChild(svg);
+    formationsEl.appendChild(connector);
+  }
 }
 
 function updateFormationDots() {
@@ -1405,6 +1483,8 @@ function setupFormationDrag(el, fIdx, mode) {
         box.style.left = `${TIMELINE_PADDING + f.startTime / 1000 * pixelsPerSec}px`;
         box.style.width = `${f.duration / 1000 * pixelsPerSec}px`;
       });
+      updateTransitionConnectors();
+      updateAddFormationBtn();
     };
 
     const onUp = () => {
@@ -3394,26 +3474,7 @@ function highlightFormation() {
 }
 
 function highlightTransition() {
-  // Remove existing highlight
-  document.querySelectorAll('.transition-highlight').forEach(el => el.remove());
-
-  if (!selectedTransition) return;
-  const { fromIdx, toIdx } = selectedTransition;
-  const fromF = noteData.formations[fromIdx];
-  const toF = noteData.formations[toIdx];
-  if (!fromF || !toF) return;
-
-  const fromEnd = fromF.startTime + fromF.duration;
-  const left = TIMELINE_PADDING + fromEnd / 1000 * pixelsPerSec;
-  const width = (toF.startTime - fromEnd) / 1000 * pixelsPerSec;
-
-  const highlight = document.createElement('div');
-  highlight.className = 'transition-highlight';
-  highlight.style.left = `${left}px`;
-  highlight.style.width = `${width}px`;
-
-  const formationsEl = document.querySelector('#timeline-formations');
-  if (formationsEl) formationsEl.appendChild(highlight);
+  updateTransitionConnectors();
 }
 
 async function drawWaveform(container, audioBlob, durationMs) {
