@@ -63,9 +63,7 @@ export const en = {
   // Editor — Stage banners
   previewBanner: 'Preview mode — click to edit',
   swapBanner: 'Swap mode — click two dancers',
-  preview3dRotate: '3D + Rotated',
   preview3d: '3D',
-  previewRotate: 'Rotated',
   previewExit: 'Preview — click or Esc to edit',
 
   // Editor — Player bar
@@ -127,7 +125,6 @@ export const en = {
   viewTitle: 'Stage Setup',
   viewStage: 'Stage View',
   view3d: '3D',
-  viewRotate: 'Rotate',
   viewLabel: 'Dancer Label',
   viewNumber: 'Number',
   viewName: 'Name',
@@ -155,7 +152,6 @@ export const en = {
   helpCopy: 'Copy formation',
   helpPaste: 'Paste formation',
   help3d: 'Toggle 3D view',
-  helpRotate: 'Toggle rotated view',
   helpEsc: 'Exit preview / Deselect',
   helpMultiSelect: 'Multi-select formations',
   helpScroll: 'Scroll timeline',
@@ -233,13 +229,8 @@ export const en = {
   swapFirst: '{name} selected — click dancer to swap',
   swapDone: '{a} ↔ {b} swapped',
 
-  // Editor — Video export dialog
-  exportDialogTitle: 'Export Video',
-  exportView: 'View',
-  exportAudienceDir: 'Audience',
-  exportAudienceTop: '↑ Top',
-  exportAudienceBottom: '↓ Bottom',
-  exportStart: 'Export',
+  // Editor — Video export
+  exportAudience: 'Audience {dir}',
   exportProgress: 'Exporting video...',
   exportCancelled: 'Export cancelled',
   exportDone: 'Video downloaded ({ext})',

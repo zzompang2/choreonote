@@ -63,9 +63,7 @@ export const ko = {
   // Editor — Stage banners
   previewBanner: '미리보기 모드 — 클릭하면 편집 모드로',
   swapBanner: '교환 모드 — 두 댄서를 차례로 클릭',
-  preview3dRotate: '3D + 회전',
   preview3d: '3D',
-  previewRotate: '회전',
   previewExit: '미리보기 — 클릭 또는 Esc로 편집 모드로',
 
   // Editor — Player bar
@@ -127,7 +125,6 @@ export const ko = {
   viewTitle: '무대 설정',
   viewStage: '스테이지 뷰',
   view3d: '3D',
-  viewRotate: '회전',
   viewLabel: '댄서 라벨',
   viewNumber: '번호',
   viewName: '이름',
@@ -155,7 +152,6 @@ export const ko = {
   helpCopy: '대열 복사',
   helpPaste: '대열 붙여넣기',
   help3d: '3D 뷰 토글',
-  helpRotate: '회전 뷰 토글',
   helpEsc: '미리보기 해제 / 선택 해제',
   helpMultiSelect: '대열 다중 선택',
   helpScroll: '타임라인 스크롤',
@@ -181,7 +177,7 @@ export const ko = {
   stageWidth: '가로',
   stageHeight: '세로',
   dancerScale: '댄서',
-  audienceDir: '객석 방향',
+  audienceDir: '관객 방향',
   audienceTop: '위쪽',
   audienceBottom: '아래쪽',
   audienceNone: '없음',
@@ -219,7 +215,7 @@ export const ko = {
   toastWingShow: '퇴장 영역 표시',
   toastWingHide: '퇴장 영역 숨김',
   toastStageSize: '무대 크기: {w} × {h}',
-  toastAudienceDir: '객석: {dir}',
+  toastAudienceDir: '관객 방향: {dir}',
   toastBackupExported: '백업 파일 다운로드됨',
   toastImportError: '파일을 불러올 수 없습니다:',
   toastFileTooLarge: '20MB 이하 파일만 가능합니다',
@@ -233,13 +229,8 @@ export const ko = {
   swapFirst: '{name} 선택됨 — 교환할 댄서를 클릭',
   swapDone: '{a} ↔ {b} 교환 완료',
 
-  // Editor — Video export dialog
-  exportDialogTitle: '영상 내보내기',
-  exportView: '뷰',
-  exportAudienceDir: '관객 방향',
-  exportAudienceTop: '↑ 위쪽',
-  exportAudienceBottom: '↓ 아래쪽',
-  exportStart: '내보내기',
+  // Editor — Video export
+  exportAudience: '관객 방향 {dir}',
   exportProgress: '영상 내보내는 중...',
   exportCancelled: '영상 내보내기 취소됨',
   exportDone: '영상 다운로드 완료 ({ext})',
@@ -283,7 +274,7 @@ export const ko = {
   unlockToastPresets: '🔓 대열 모음 해금!',
   unlockToastMarkers: '🔓 마킹 해금!',
   unlockDescDancers: '댄서를 추가하고 이름을 변경할 수 있어요',
-  unlockDescView: '무대 크기, 객석 방향, 3D 뷰 등을 바꿀 수 있어요',
+  unlockDescView: '무대 크기, 관객 방향, 3D 뷰 등을 바꿀 수 있어요',
   unlockDescInspector: '댄서를 선택하면 좌표, 방향, 색상을 바꿀 수 있어요',
   unlockDescPresets: '원형, V자 등 대열을 한 번에 적용할 수 있어요',
   unlockDescMarkers: '무대 위의 실제 마킹을 노트에도 표시할 수 있어요',

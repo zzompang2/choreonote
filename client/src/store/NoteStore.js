@@ -93,7 +93,7 @@ export const NoteStore = {
     };
   },
 
-  async saveNote(noteId, { dancers, formations, stageWidth, stageHeight, dancerScale, audienceDirection, dancerShape, gridGap, showWings, markers }) {
+  async saveNote(noteId, { dancers, formations, stageWidth, stageHeight, dancerScale, audienceDirection, dancerShape, gridGap, showWings, markers, duration }) {
     return db.transaction(
       'rw',
       db.notes, db.dancers, db.formations, db.positions,
@@ -107,6 +107,7 @@ export const NoteStore = {
         if (gridGap != null) noteUpdate.gridGap = gridGap;
         if (showWings != null) noteUpdate.showWings = showWings;
         if (markers != null) noteUpdate.markers = markers;
+        if (duration != null) noteUpdate.duration = duration;
         await db.notes.update(noteId, noteUpdate);
 
         // Clear and rewrite dancers

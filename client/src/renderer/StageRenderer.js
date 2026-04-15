@@ -14,7 +14,7 @@ export class StageRenderer {
     this._drawGridCache();
 
     this.is3D = false;
-    this.isRotated = false;
+    this._3dTopPad = 0;
     this.isSnap = false;
     this.showNames = false;
     this.showNumbers = true;
@@ -56,7 +56,10 @@ export class StageRenderer {
 
   _drawGridCache() {
     const ctx = this.gridCanvas.getContext('2d');
-    ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+    const topPad = this._3dTopPad || 0;
+    ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT + topPad);
+    ctx.save();
+    ctx.translate(0, topPad);
 
     // Wing areas (offstage)
     const styles = getComputedStyle(document.documentElement);
@@ -117,7 +120,7 @@ export class StageRenderer {
     ctx.stroke();
 
     // Audience indicator: rows of seat rectangles (skip if 'none')
-    if (this.audienceDirection === 'none') return;
+    if (this.audienceDirection === 'none') { ctx.restore(); return; }
     const isTop = this.audienceDirection === 'top';
     const seatW = 32;
     const seatH = 18;
@@ -139,14 +142,135 @@ export class StageRenderer {
         ctx.fillRect(sx, rowY, seatW, seatH);
       }
     }
+    ctx.restore();
+  }
+
+  // --- 3D Stage Projection (for video export) ---
+  _draw3DStage(ctx) {
+    const ox = WING_SIZE + HALF_W;
+    const oy = WING_SIZE + HALF_H;
+
+    // Project stage corners
+    const corners = [
+      { x: -HALF_W, y: -HALF_H }, // top-left
+      { x:  HALF_W, y: -HALF_H }, // top-right
+      { x:  HALF_W, y:  HALF_H }, // bottom-right
+      { x: -HALF_W, y:  HALF_H }, // bottom-left
+    ].map(c => {
+      const p = this._project3D(c.x, c.y);
+      return { x: ox + p.x, y: oy + p.y };
+    });
+
+    const styles = getComputedStyle(document.documentElement);
+    const wingColor = styles.getPropertyValue('--stage-wing').trim() || '#0a0a15';
+    const stageColor = styles.getPropertyValue('--stage-bg').trim() || '#1a1a2e';
+
+    // Background (behind stage, for audience seats visibility)
+    ctx.fillStyle = wingColor;
+    ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+    // Stage background
+    ctx.fillStyle = stageColor;
+    ctx.beginPath();
+    ctx.moveTo(corners[0].x, corners[0].y);
+    for (let i = 1; i < corners.length; i++) ctx.lineTo(corners[i].x, corners[i].y);
+    ctx.closePath();
+    ctx.fill();
+
+    // Grid lines
+    const gap = this.gridGap;
+
+    // Vertical grid lines (skip stage edges)
+    for (let x = HALF_W % gap; x < STAGE_WIDTH; x += gap) {
+      const lx = x - HALF_W;
+      if (Math.abs(lx) >= HALF_W - 0.5) continue;
+      const isMajor = Math.round(Math.abs(lx) / gap) % 4 === 0;
+      ctx.strokeStyle = isMajor ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.1)';
+      ctx.lineWidth = isMajor ? 1 : 0.5;
+      const top = this._project3D(lx, -HALF_H);
+      const bot = this._project3D(lx,  HALF_H);
+      ctx.beginPath();
+      ctx.moveTo(ox + top.x, oy + top.y);
+      ctx.lineTo(ox + bot.x, oy + bot.y);
+      ctx.stroke();
+    }
+
+    // Horizontal grid lines (skip stage edges)
+    for (let y = HALF_H % gap; y < STAGE_HEIGHT; y += gap) {
+      const ly = y - HALF_H;
+      if (Math.abs(ly) >= HALF_H - 0.5) continue;
+      const isMajor = Math.round(Math.abs(ly) / gap) % 4 === 0;
+      ctx.strokeStyle = isMajor ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.1)';
+      ctx.lineWidth = isMajor ? 1 : 0.5;
+      const left  = this._project3D(-HALF_W, ly);
+      const right = this._project3D( HALF_W, ly);
+      ctx.beginPath();
+      ctx.moveTo(ox + left.x,  oy + left.y);
+      ctx.lineTo(ox + right.x, oy + right.y);
+      ctx.stroke();
+    }
+
+    // Center cross
+    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+    ctx.lineWidth = 1;
+    const cTop = this._project3D(0, -HALF_H);
+    const cBot = this._project3D(0,  HALF_H);
+    const cLeft  = this._project3D(-HALF_W, 0);
+    const cRight = this._project3D( HALF_W, 0);
+    ctx.beginPath();
+    ctx.moveTo(ox + cTop.x, oy + cTop.y);
+    ctx.lineTo(ox + cBot.x, oy + cBot.y);
+    ctx.moveTo(ox + cLeft.x,  oy + cLeft.y);
+    ctx.lineTo(ox + cRight.x, oy + cRight.y);
+    ctx.stroke();
+
+    // Audience seats (projected)
+    if (this.audienceDirection !== 'none') {
+      const isTop = this.audienceDirection === 'top';
+      const seatW = 32, seatH = 18, seatGap = 5, stageGap = 24;
+      const cols = Math.floor((STAGE_WIDTH - seatGap) / (seatW + seatGap));
+      const rows = 2;
+      const totalW = cols * seatW + (cols - 1) * seatGap;
+      const startLocalX = -totalW / 2;
+
+      for (let r = 0; r < rows; r++) {
+        const localY = isTop
+          ? -HALF_H - stageGap - seatH - r * (seatH + 5)
+          : HALF_H + stageGap + r * (seatH + 5);
+        const alpha = r === 0 ? 0.12 : 0.06;
+        ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+        for (let c = 0; c < cols; c++) {
+          const lx = startLocalX + c * (seatW + seatGap);
+          const tl = this._project3D(lx, localY);
+          const tr = this._project3D(lx + seatW, localY);
+          const br = this._project3D(lx + seatW, localY + seatH);
+          const bl = this._project3D(lx, localY + seatH);
+          ctx.beginPath();
+          ctx.moveTo(ox + tl.x, oy + tl.y);
+          ctx.lineTo(ox + tr.x, oy + tr.y);
+          ctx.lineTo(ox + br.x, oy + br.y);
+          ctx.lineTo(ox + bl.x, oy + bl.y);
+          ctx.closePath();
+          ctx.fill();
+        }
+      }
+    }
   }
 
   // --- Main Draw ---
   drawFrame(dancers, positions) {
     const ctx = this.ctx;
-    ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-    // Grid from cache
-    ctx.drawImage(this.gridCanvas, 0, 0);
+    const topPad = this._3dTopPad || 0;
+    ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT + topPad);
+
+    // Grid: use projected 3D stage for render mode, flat cache otherwise
+    if (this.is3D && this._projectionMode === 'render') {
+      this._draw3DStage(ctx);
+    } else {
+      ctx.drawImage(this.gridCanvas, 0, 0);
+    }
+    ctx.save();
+    ctx.translate(0, topPad);
 
     // Draw markers (below waypoints and dancers)
     if (this.showMarkers && this.markers.length > 0) {
@@ -206,8 +330,7 @@ export class StageRenderer {
     // Build draw order: in 3D mode, sort by y (back to front)
     const drawOrder = dancers.map((d, i) => i);
     if (this.is3D) {
-      const flip = this.isRotated ? -1 : 1;
-      drawOrder.sort((a, b) => flip * ((positions[a]?.y || 0) - (positions[b]?.y || 0)));
+      drawOrder.sort((a, b) => (positions[a]?.y || 0) - (positions[b]?.y || 0));
     }
 
     // Draw dancers
@@ -220,11 +343,6 @@ export class StageRenderer {
       let screenY = WING_SIZE + HALF_H + pos.y;
       const scaledRadius = DANCER_RADIUS * this.dancerScale * this.touchScale;
       let radius = scaledRadius;
-
-      // 3D CSS mode: push dancers down so top silhouettes don't clip canvas edge
-      if (this.is3D && this._projectionMode !== 'render') {
-        screenY += scaledRadius * 3;
-      }
 
       // Check if dancer is offstage
       const isOffstage = Math.abs(pos.x) > HALF_W || Math.abs(pos.y) > HALF_H;
@@ -240,16 +358,13 @@ export class StageRenderer {
       const isSelected = this._selectedDancers.has(i);
       ctx.globalAlpha = this.markerEditMode ? 0.25 : (isOffstage ? 0.4 : 1.0);
 
-      // Compensate CSS transforms so dancers appear upright
-      const needsCompensation = !this._force2DRender && (this.isRotated || this.is3D);
+      // Compensate CSS transforms so dancers appear upright (skip in render mode)
+      const needsCompensation = !this._force2DRender && this.is3D && this._projectionMode !== 'render';
       if (needsCompensation) {
         ctx.save();
         ctx.translate(screenX, screenY);
-        if (this.isRotated) ctx.rotate(Math.PI);
-        if (this.is3D) {
-          const angle = 55 * Math.PI / 180;
-          ctx.scale(1, 1 / Math.cos(angle));
-        }
+        const angle = 55 * Math.PI / 180;
+        ctx.scale(1, 1 / Math.cos(angle));
         ctx.translate(-screenX, -screenY);
       }
 
@@ -313,7 +428,7 @@ export class StageRenderer {
       } else {
         // 2D mode: shape with direction
         // In rotated mode, compensation flips 180° so add 180° to angle to counteract
-        const angle = (pos.angle || 0) + (this.isRotated ? 180 : 0);
+        const angle = (pos.angle || 0);
         const rad = angle * Math.PI / 180;
 
         // Shadow
@@ -341,7 +456,7 @@ export class StageRenderer {
           ctx.lineWidth = 2;
           ctx.stroke();
         } else {
-          const angle = (pos.angle || 0) + (this.isRotated ? 180 : 0);
+          const angle = (pos.angle || 0);
           const rad = angle * Math.PI / 180;
           ctx.beginPath();
           this._drawShape(ctx, screenX, screenY, radius + 2, rad);
@@ -350,7 +465,7 @@ export class StageRenderer {
           ctx.stroke();
 
           // Direction handle (line + circle) — only for real selection, not swap, not when no formation selected
-          if (isSelected && !isSwapHighlighted && !this.is3D && !this.isRotated && !this._waypointPaths && !this.hideHandles) {
+          if (isSelected && !isSwapHighlighted && !this.is3D && !this._waypointPaths && !this.hideHandles) {
             const handleLen = radius + 14 * this.touchScale;
             const handleR = 4 * this.touchScale;
             const hx = screenX + Math.sin(rad) * handleLen;
@@ -430,6 +545,7 @@ export class StageRenderer {
         ctx.stroke();
       }
     }
+    ctx.restore();
   }
 
   // --- 3D Projection (for video export) ---
@@ -470,31 +586,41 @@ export class StageRenderer {
   }
 
   _project3D(x, y) {
-    const angle = 30 * (Math.PI / 180);
-    const projectedY = y * Math.cos(angle);
-    const depthFactor = 1 - (y / HALF_H) * 0.15;
-    const scale = clamp(depthFactor, 0.7, 1.3);
-    return { x: x * scale, y: projectedY, scale };
+    // Emulate CSS: perspective(800px) rotateX(55deg)
+    const perspective = 800;
+    const angle = 55 * Math.PI / 180;
+    const z = -y * Math.sin(angle);
+    const scale = perspective / (perspective + z);
+    return {
+      x: x * scale,
+      y: y * Math.cos(angle) * scale,
+      scale,
+    };
   }
 
   set3D(enabled, mode = 'css') {
     this.is3D = enabled;
     this._projectionMode = mode;
-    this._updateTransform();
-  }
-
-  setRotated(enabled) {
-    this.isRotated = enabled;
+    // In 3D CSS mode, extend canvas top to prevent silhouette clipping
+    const topPad = (enabled && mode === 'css') ? Math.round(DANCER_RADIUS * this.dancerScale * 4) : 0;
+    this._3dTopPad = topPad;
+    this.canvas.height = CANVAS_HEIGHT + topPad;
+    this.gridCanvas.height = CANVAS_HEIGHT + topPad;
+    this._drawGridCache();
     this._updateTransform();
   }
 
   _updateTransform() {
     const wrap = this.canvas.parentElement;
     if (!wrap) return;
-    const parts = [];
-    if (this.is3D) parts.push('perspective(800px) rotateX(55deg)');
-    if (this.isRotated) parts.push('rotateZ(180deg)');
-    wrap.style.transform = parts.join(' ') || '';
+    const topPad = this._3dTopPad || 0;
+    if (this.is3D) {
+      wrap.style.transformOrigin = `center ${WING_SIZE + HALF_H + topPad}px`;
+      wrap.style.transform = 'perspective(800px) rotateX(55deg)';
+    } else {
+      wrap.style.transformOrigin = '';
+      wrap.style.transform = '';
+    }
   }
 
   // --- Hit Test ---
@@ -521,7 +647,7 @@ export class StageRenderer {
 
   // Direction handle hit test (returns dancerIndex or -1)
   hitTestRotateHandle(canvasX, canvasY) {
-    if (this.is3D || this.isRotated || this._waypointPaths) return -1;
+    if (this.is3D || this._waypointPaths) return -1;
     if (!this._positions || !this._dancers) return -1;
     const minR = this._minHitRadius();
     const handleLen = Math.max(DANCER_RADIUS * this.dancerScale * this.touchScale, minR) + 14 * this.touchScale;
@@ -731,7 +857,7 @@ export class StageRenderer {
 
   _onMouseDown(e) {
     if (!this._positions || !this._dancers) return;
-    if (this.is3D || this.isRotated) return;
+    if (this.is3D) return;
     const { x, y } = this._getCanvasPos(e);
 
     // Marker edit mode: handle marker interactions
@@ -1042,8 +1168,15 @@ export class StageRenderer {
   _drawMarkers(ctx) {
     for (let i = 0; i < this.markers.length; i++) {
       const m = this.markers[i];
-      const cx = WING_SIZE + HALF_W + m.x;
-      const cy = WING_SIZE + HALF_H + m.y;
+      let cx, cy;
+      if (this.is3D && this._projectionMode === 'render') {
+        const p = this._project3D(m.x, m.y);
+        cx = WING_SIZE + HALF_W + p.x;
+        cy = WING_SIZE + HALF_H + p.y;
+      } else {
+        cx = WING_SIZE + HALF_W + m.x;
+        cy = WING_SIZE + HALF_H + m.y;
+      }
       const isSelected = this.markerEditMode && this._selectedMarker === i;
       const isPoint = this._isPointMarker(m.type);
 
@@ -1075,67 +1208,128 @@ export class StageRenderer {
         // Sized marker: rect or circle
         const w = m.width || StageRenderer.MARKER_DEFAULTS[m.type]?.w || 30;
         const h = m.height || StageRenderer.MARKER_DEFAULTS[m.type]?.h || 30;
-        const rx = cx - w / 2, ry = cy - h / 2;
         const isCircle = m.type === 'circle';
+        const is3DRender = this.is3D && this._projectionMode === 'render';
 
-        // Selection outline
-        if (isSelected) {
-          ctx.strokeStyle = '#F59E0B';
-          ctx.lineWidth = 2;
+        if (is3DRender) {
+          const ox = WING_SIZE + HALF_W;
+          const oy = WING_SIZE + HALF_H;
+          const hw = w / 2, hh = h / 2;
+          const corners = [
+            this._project3D(m.x - hw, m.y - hh),
+            this._project3D(m.x + hw, m.y - hh),
+            this._project3D(m.x + hw, m.y + hh),
+            this._project3D(m.x - hw, m.y + hh),
+          ].map(p => ({ x: ox + p.x, y: oy + p.y }));
+
+          // Projected ellipse radii from corners
+          const pRx = Math.abs(corners[1].x - corners[0].x) / 2;
+          const pRy = Math.abs(corners[2].y - corners[0].y) / 2;
+
+          const drawShape = () => {
+            ctx.beginPath();
+            if (isCircle) {
+              ctx.ellipse(cx, cy, pRx, pRy, 0, 0, Math.PI * 2);
+            } else {
+              ctx.moveTo(corners[0].x, corners[0].y);
+              for (let j = 1; j < 4; j++) ctx.lineTo(corners[j].x, corners[j].y);
+              ctx.closePath();
+            }
+          };
+
+          // Fill
+          ctx.fillStyle = 'rgba(255,255,255,0.08)';
+          drawShape();
+          ctx.fill();
+
+          // Hatch lines (clipped)
+          ctx.save();
+          ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+          ctx.lineWidth = 0.5;
+          drawShape();
+          ctx.clip();
+          const minX = Math.min(...corners.map(c => c.x));
+          const maxX = Math.max(...corners.map(c => c.x));
+          const minY = Math.min(...corners.map(c => c.y));
+          const maxY = Math.max(...corners.map(c => c.y));
+          const span = maxX - minX + maxY - minY;
+          ctx.beginPath();
+          for (let d = -span; d < span; d += 8) {
+            ctx.moveTo(minX + Math.max(0, d), minY + Math.max(0, -d));
+            ctx.lineTo(minX + Math.min(maxX - minX, d + (maxY - minY)), minY + Math.min(maxY - minY, (maxY - minY) - d));
+          }
+          ctx.stroke();
+          ctx.restore();
+
+          // Border
+          ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+          ctx.lineWidth = 1;
+          ctx.setLineDash([4, 3]);
+          drawShape();
+          ctx.stroke();
+          ctx.setLineDash([]);
+        } else {
+          const rx = cx - w / 2, ry = cy - h / 2;
+
+          // Selection outline
+          if (isSelected) {
+            ctx.strokeStyle = '#F59E0B';
+            ctx.lineWidth = 2;
+            if (isCircle) {
+              ctx.beginPath();
+              ctx.ellipse(cx, cy, w / 2 + 3, h / 2 + 3, 0, 0, Math.PI * 2);
+              ctx.stroke();
+            } else {
+              ctx.strokeRect(rx - 3, ry - 3, w + 6, h + 6);
+            }
+          }
+
+          // Fill
+          ctx.fillStyle = 'rgba(255,255,255,0.08)';
           if (isCircle) {
             ctx.beginPath();
-            ctx.ellipse(cx, cy, w / 2 + 3, h / 2 + 3, 0, 0, Math.PI * 2);
+            ctx.ellipse(cx, cy, w / 2, h / 2, 0, 0, Math.PI * 2);
+            ctx.fill();
+          } else {
+            ctx.fillRect(rx, ry, w, h);
+          }
+
+          // Hatch lines
+          ctx.save();
+          ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+          ctx.lineWidth = 0.5;
+          if (isCircle) {
+            ctx.beginPath();
+            ctx.ellipse(cx, cy, w / 2, h / 2, 0, 0, Math.PI * 2);
+            ctx.clip();
+          }
+          ctx.beginPath();
+          for (let d = -w - h; d < w + h; d += 8) {
+            ctx.moveTo(rx + Math.max(0, d), ry + Math.max(0, -d));
+            ctx.lineTo(rx + Math.min(w, d + h), ry + Math.min(h, h - d));
+          }
+          ctx.stroke();
+          ctx.restore();
+
+          // Border
+          ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+          ctx.lineWidth = 1;
+          ctx.setLineDash([4, 3]);
+          if (isCircle) {
+            ctx.beginPath();
+            ctx.ellipse(cx, cy, w / 2, h / 2, 0, 0, Math.PI * 2);
             ctx.stroke();
           } else {
-            ctx.strokeRect(rx - 3, ry - 3, w + 6, h + 6);
+            ctx.strokeRect(rx, ry, w, h);
           }
-        }
+          ctx.setLineDash([]);
 
-        // Fill
-        ctx.fillStyle = 'rgba(255,255,255,0.08)';
-        if (isCircle) {
-          ctx.beginPath();
-          ctx.ellipse(cx, cy, w / 2, h / 2, 0, 0, Math.PI * 2);
-          ctx.fill();
-        } else {
-          ctx.fillRect(rx, ry, w, h);
-        }
-
-        // Hatch lines
-        ctx.save();
-        ctx.strokeStyle = 'rgba(255,255,255,0.15)';
-        ctx.lineWidth = 0.5;
-        if (isCircle) {
-          ctx.beginPath();
-          ctx.ellipse(cx, cy, w / 2, h / 2, 0, 0, Math.PI * 2);
-          ctx.clip();
-        }
-        ctx.beginPath();
-        for (let d = -w - h; d < w + h; d += 8) {
-          ctx.moveTo(rx + Math.max(0, d), ry + Math.max(0, -d));
-          ctx.lineTo(rx + Math.min(w, d + h), ry + Math.min(h, h - d));
-        }
-        ctx.stroke();
-        ctx.restore();
-
-        // Border
-        ctx.strokeStyle = 'rgba(255,255,255,0.5)';
-        ctx.lineWidth = 1;
-        ctx.setLineDash([4, 3]);
-        if (isCircle) {
-          ctx.beginPath();
-          ctx.ellipse(cx, cy, w / 2, h / 2, 0, 0, Math.PI * 2);
-          ctx.stroke();
-        } else {
-          ctx.strokeRect(rx, ry, w, h);
-        }
-        ctx.setLineDash([]);
-
-        // Resize handle (edit mode + selected)
-        if (isSelected) {
-          const hs = 4;
-          ctx.fillStyle = '#F59E0B';
-          ctx.fillRect(rx + w - hs, ry + h - hs, hs * 2, hs * 2);
+          // Resize handle (edit mode + selected)
+          if (isSelected) {
+            const hs = 4;
+            ctx.fillStyle = '#F59E0B';
+            ctx.fillRect(rx + w - hs, ry + h - hs, hs * 2, hs * 2);
+          }
         }
       }
 

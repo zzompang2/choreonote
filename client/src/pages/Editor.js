@@ -31,6 +31,7 @@ let activePanel = null;
 let audienceDirection = 'top';
 let pixelsPerSec = PIXEL_PER_SEC;
 let _renderPresetThumbnails = null; // set by setupSidebar // mutable, for timeline zoom
+let _renderMarkerList = () => {};
 let _updateToolbarState = () => {};
 let fitStage = () => {};
 
@@ -106,17 +107,23 @@ export async function renderEditor(container, noteId) {
     const pad = 20; // matches .editor__main padding
     const availW = main.clientWidth - pad * 2;
     const availH = main.clientHeight - pad * 2;
-    const ratio = CANVAS_WIDTH / CANVAS_HEIGHT;
+    // Fit based on the base canvas size (without 3D top padding)
+    const baseRatio = CANVAS_WIDTH / CANVAS_HEIGHT;
     let w, h;
-    if (availW / availH > ratio) {
+    if (availW / availH > baseRatio) {
       h = availH;
-      w = h * ratio;
+      w = h * baseRatio;
     } else {
       w = availW;
-      h = w / ratio;
+      h = w / baseRatio;
     }
+    // Scale canvas including topPad, pull up so stage stays centered
+    const topPad = renderer._3dTopPad || 0;
+    const scale = w / CANVAS_WIDTH;
+    const topPadCss = Math.round(topPad * scale);
     canvas.style.width = Math.floor(w) + 'px';
-    canvas.style.height = Math.floor(h) + 'px';
+    canvas.style.height = Math.floor(h + topPadCss) + 'px';
+    canvas.style.marginTop = topPad ? `-${topPadCss}px` : '';
 
     // Mobile adjustments
     const isMobile = window.innerWidth <= 768;
@@ -280,10 +287,6 @@ function buildEditorHTML(data) {
                 <span>${t('view3d')}</span>
                 <div class="toggle-switch" id="sidebar-3d-toggle"><div class="toggle-switch__thumb"></div></div>
               </label>
-              <label class="toggle-row">
-                <span>${t('viewRotate')}</span>
-                <div class="toggle-switch" id="sidebar-rotate-toggle"><div class="toggle-switch__thumb"></div></div>
-              </label>
             </div>
             <div class="settings-section">
               <div class="settings-label">${t('viewLabel')}</div>
@@ -385,7 +388,6 @@ function buildEditorHTML(data) {
                 <div class="shortcut-row"><kbd>Ctrl+C</kbd><span>${t('helpCopy')}</span></div>
                 <div class="shortcut-row"><kbd>Ctrl+V</kbd><span>${t('helpPaste')}</span></div>
                 <div class="shortcut-row"><kbd>3</kbd><span>${t('help3d')}</span></div>
-                <div class="shortcut-row"><kbd>R</kbd><span>${t('helpRotate')}</span></div>
                 <div class="shortcut-row"><kbd>Esc</kbd><span>${t('helpEsc')}</span></div>
                 <div class="shortcut-row"><kbd>Shift+클릭</kbd><span>${t('helpMultiSelect')}</span></div>
                 <div class="shortcut-row"><kbd>Shift+휠</kbd><span>${t('helpScroll')}</span></div>
@@ -751,7 +753,8 @@ function setupPlayback(container) {
     if (!f) return;
     const snap = renderer.isSnap;
     const gap = 15; // fixed snap unit
-    const limit = { minX: -(HALF_W + WING_SIZE - 20), maxX: HALF_W + WING_SIZE - 20, minY: -(HALF_H + WING_SIZE - 20), maxY: HALF_H + WING_SIZE - 20 };
+    const wing = renderer.showWings ? WING_SIZE - 20 : 0;
+    const limit = { minX: -(HALF_W + wing), maxX: HALF_W + wing, minY: -(HALF_H + wing), maxY: HALF_H + wing };
 
     if (selectedSet.size > 1 && selectedSet.has(dancerIndex) && dragStartPositions) {
       const origPos = dragStartPositions.get(dancerIndex);
@@ -801,7 +804,8 @@ function setupPlayback(container) {
     const positions = engine.calcPositionsAt(currentMs);
     const snap = renderer.isSnap;
     const gap = 15; // fixed snap unit
-    const limit = { minX: -(HALF_W + WING_SIZE - 20), maxX: HALF_W + WING_SIZE - 20, minY: -(HALF_H + WING_SIZE - 20), maxY: HALF_H + WING_SIZE - 20 };
+    const wing = renderer.showWings ? WING_SIZE - 20 : 0;
+    const limit = { minX: -(HALF_W + wing), maxX: HALF_W + wing, minY: -(HALF_H + wing), maxY: HALF_H + wing };
 
     // Capture start positions on first drag frame
     if (!dragStartPositions) {
@@ -1999,7 +2003,7 @@ function setupToolbar(container) {
       return;
     }
     const f = noteData.formations[selectedFormation];
-    copiedPositions = f.positions.map((p) => ({ dancerId: p.dancerId, x: p.x, y: p.y }));
+    copiedPositions = f.positions.map((p) => ({ dancerId: p.dancerId, x: p.x, y: p.y, angle: p.angle || 0 }));
     showToast(t('toastCopied'));
     _updateToolbarState();
   });
@@ -2019,6 +2023,7 @@ function setupToolbar(container) {
         if (copied) {
           pos.x = copied.x;
           pos.y = copied.y;
+          pos.angle = copied.angle || 0;
         }
       }
       updateStage(); saveSnapshot();
@@ -2223,6 +2228,7 @@ function setupToolbar(container) {
       updateStage();
     }
     fn();
+    fitStage();
     updateBanner();
     updateViewButtons();
     updateStage();
@@ -2244,31 +2250,18 @@ function setupToolbar(container) {
     });
   }
 
-  function toggleRotate(forceOff) {
-    _transitionView(() => {
-      const isRotated = forceOff ? false : !renderer.isRotated;
-      renderer.setRotated(isRotated);
-      if (isRotated) renderer._selectedDancers.clear();
-    });
-  }
-
   function updateViewButtons() {
     const t3d = container.querySelector('#sidebar-3d-toggle');
-    const tRot = container.querySelector('#sidebar-rotate-toggle');
     if (t3d) t3d.classList.toggle('toggle-switch--on', renderer.is3D);
-    if (tRot) tRot.classList.toggle('toggle-switch--on', renderer.isRotated);
   }
 
   const stageContainer = container.querySelector('.stage-container');
 
   function updateBanner() {
     const is3D = renderer.is3D;
-    const isRotated = renderer.isRotated;
-    const visible = is3D || isRotated;
+    const visible = is3D;
     let text = '';
-    if (is3D && isRotated) text = t('preview3dRotate') + ' ' + t('previewExit');
-    else if (is3D) text = t('preview3d') + ' ' + t('previewExit');
-    else if (isRotated) text = t('previewRotate') + ' ' + t('previewExit');
+    if (is3D) text = t('preview3d') + ' ' + t('previewExit');
     banner3d.textContent = text;
     banner3d.classList.toggle('stage-3d-banner--visible', visible);
     stageContainer.classList.toggle('stage-container--preview', visible);
@@ -2276,27 +2269,19 @@ function setupToolbar(container) {
 
   banner3d.addEventListener('click', () => {
     if (renderer.is3D) toggle3D(true);
-    if (renderer.isRotated) toggleRotate(true);
   });
 
-  // Esc key exits preview/swap mode; 3/R toggle view
+  // Esc key exits preview/swap mode; 3 toggles 3D view
   document.addEventListener('keydown', (e) => {
     if (_onboardingActive) return;
     if (e.target.tagName === 'INPUT') return;
     if (e.key === 'Escape') {
       if (swapMode) { setSwapMode(false); return; }
-      if (renderer.is3D || renderer.isRotated) {
-        if (renderer.is3D) toggle3D(true);
-        if (renderer.isRotated) toggleRotate(true);
-      }
+      if (renderer.is3D) toggle3D(true);
     }
     if (e.code === 'Digit3' && !e.ctrlKey && !e.metaKey) {
       e.preventDefault();
       toggle3D();
-    }
-    if (e.code === 'KeyR' && !e.ctrlKey && !e.metaKey) {
-      e.preventDefault();
-      toggleRotate();
     }
   });
 
@@ -2358,10 +2343,7 @@ function setupToolbar(container) {
 
   // View mode toggles
   const toggle3dEl = container.querySelector('#sidebar-3d-toggle');
-  const toggleRotateEl = container.querySelector('#sidebar-rotate-toggle');
-
   toggle3dEl.addEventListener('click', () => toggle3D());
-  toggleRotateEl.addEventListener('click', () => toggleRotate());
 
   // Wing area toggle — now in view panel
   const toggleWingEl = container.querySelector('#view-wing-toggle');
@@ -2572,6 +2554,7 @@ function setupMarkers(container, noteId) {
   function saveMarkers() {
     noteData.note.markers = renderer.markers;
     unsaved = true;
+    saveSnapshot();
   }
 
   // Show toggle
@@ -2620,6 +2603,7 @@ function setupMarkers(container, noteId) {
 
   // Initial render
   renderMarkerList();
+  _renderMarkerList = renderMarkerList;
 }
 
 // --- Header ---
@@ -2632,6 +2616,7 @@ function setupHeader(container, noteId) {
     await NoteStore.saveNote(noteId, {
       stageWidth: STAGE_WIDTH,
       stageHeight: STAGE_HEIGHT,
+      duration: noteData.note.duration,
       dancerScale: noteData.note.dancerScale || 1,
       audienceDirection,
       dancerShape: renderer.dancerShape,
@@ -2683,85 +2668,29 @@ function setupHeader(container, noteId) {
   const videoExporter = new VideoExporter();
   const exportVideoBtn = container.querySelector('#export-video-btn');
 
-  // Export option dialog
-  const optionDialog = document.createElement('div');
-  optionDialog.className = 'export-overlay';
-  optionDialog.innerHTML = `
-    <div class="export-overlay__box">
-      <div class="export-overlay__text">${t('exportDialogTitle')}</div>
-      <div class="settings-section">
-        <div class="settings-label">${t('exportView')}</div>
-        <div class="export-options">
-          <button class="btn btn--ghost export-option-btn export-option--active" data-view="2d">2D</button>
-          <button class="btn btn--ghost export-option-btn" data-view="3d">3D</button>
-        </div>
-      </div>
-      <div class="settings-section">
-        <div class="settings-label">${t('exportAudienceDir')}</div>
-        <div class="export-options">
-          <button class="btn btn--ghost export-option-btn" data-dir="normal">${t('exportAudienceTop')}</button>
-          <button class="btn btn--ghost export-option-btn" data-dir="rotated">${t('exportAudienceBottom')}</button>
-        </div>
-      </div>
-      <div style="display:flex;gap:8px;margin-top:12px">
-        <button class="btn btn--primary" id="export-start-btn">${t('exportStart')}</button>
-        <button class="btn btn--danger" id="export-option-cancel">${t('cancel')}</button>
-      </div>
-    </div>
-  `;
-
   // Export progress overlay
   const progressOverlay = document.createElement('div');
   progressOverlay.className = 'export-overlay';
-  progressOverlay.innerHTML = `
-    <div class="export-overlay__box">
-      <div class="export-overlay__text">${t('exportProgress')}</div>
-      <div class="export-overlay__progress" id="export-progress">0%</div>
-      <button class="btn btn--danger" id="export-cancel-btn">${t('cancel')}</button>
-    </div>
-  `;
 
   exportVideoBtn.addEventListener('click', () => {
     if (videoExporter.isExporting) return;
     if (engine.isPlaying) engine.pause();
-
-    // Set defaults based on current view mode
-    optionDialog.querySelectorAll('[data-view]').forEach(b => {
-      b.classList.toggle('export-option--active',
-        (b.dataset.view === '3d') === renderer.is3D);
-    });
-    optionDialog.querySelectorAll('[data-dir]').forEach(b => {
-      const isBottom = audienceDirection === 'bottom';
-      b.classList.toggle('export-option--active',
-        (b.dataset.dir === 'rotated') === isBottom);
-    });
-
-    // Show option dialog
-    container.appendChild(optionDialog);
-
-    optionDialog.querySelector('#export-option-cancel').onclick = () => {
-      optionDialog.remove();
-    };
-
-    // Toggle selection within each group
-    optionDialog.querySelectorAll('.export-options').forEach(group => {
-      group.querySelectorAll('.export-option-btn').forEach(btn => {
-        btn.onclick = () => {
-          group.querySelectorAll('.export-option-btn').forEach(b => b.classList.remove('export-option--active'));
-          btn.classList.add('export-option--active');
-        };
-      });
-    });
-
-    optionDialog.querySelector('#export-start-btn').onclick = () => {
-      const is3D = optionDialog.querySelector('[data-view].export-option--active')?.dataset.view === '3d';
-      const isRotated = optionDialog.querySelector('[data-dir].export-option--active')?.dataset.dir === 'rotated';
-      optionDialog.remove();
-      startExport(is3D, isRotated);
-    };
+    const is3D = renderer.is3D;
+    const viewMode = is3D ? '3D' : '2D';
+    const descParts = [viewMode];
+    if (audienceDirection !== 'none') descParts.push(t('exportAudience', { dir: audienceDirection === 'bottom' ? '↓' : '↑' }));
+    progressOverlay.innerHTML = `
+      <div class="export-overlay__box">
+        <div class="export-overlay__text">${t('exportProgress')}</div>
+        <div class="export-overlay__desc">${descParts.join(' · ')}</div>
+        <div class="export-overlay__progress" id="export-progress">0%</div>
+        <button class="btn btn--danger" id="export-cancel-btn">${t('cancel')}</button>
+      </div>
+    `;
+    startExport(is3D);
   });
 
-  function startExport(is3D, isRotated = false) {
+  function startExport(is3D) {
     container.appendChild(progressOverlay);
     const progressEl = progressOverlay.querySelector('#export-progress');
     progressEl.textContent = '0%';
@@ -2777,8 +2706,10 @@ function setupHeader(container, noteId) {
       audioBlob: noteData.musicBlob,
       duration: noteData.note.duration,
       is3D,
-      isRotated,
+      audienceDirection,
+      showWings: renderer.showWings,
       showNames: renderer.showNames,
+      markers: renderer.showMarkers ? renderer.markers : [],
       dancerScale: renderer.dancerScale,
       onProgress: (percent) => {
         progressEl.textContent = `${percent}%`;
@@ -2789,7 +2720,11 @@ function setupHeader(container, noteId) {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `${noteData.note.title || 'choreonote'}.${ext}`;
+        const title = noteData.note.title || 'choreonote';
+        const date = new Date().toISOString().slice(0, 10);
+        const suffix = [is3D ? '3D' : '2D'];
+        if (audienceDirection !== 'none') suffix.push(audienceDirection === 'bottom' ? '↓' : '↑');
+        a.download = `${title}_${suffix.join('_')}_${date}.${ext}`;
         a.click();
         URL.revokeObjectURL(url);
         showToast(t('exportDone', { ext: ext.toUpperCase() }));
@@ -3072,7 +3007,13 @@ function setupSettings(container, noteId) {
             }
           }
         }
+        for (const m of renderer.markers) {
+          m.x = -m.x;
+          m.y = -m.y;
+        }
+        noteData.note.markers = renderer.markers;
         engine.setFormations(noteData.formations, noteData.dancers);
+        _renderMarkerList();
         saveSnapshot();
       }
       updateStage();
@@ -3383,6 +3324,8 @@ function takeSnapshot() {
     duration: noteData.note.duration,
     stageWidth: STAGE_WIDTH,
     stageHeight: STAGE_HEIGHT,
+    audienceDirection,
+    markers: (renderer.markers || []).map(m => ({ ...m })),
   };
 }
 
@@ -3403,26 +3346,43 @@ function restoreSnapshot(snapshot) {
   noteData.dancers = snapshot.dancers;
   noteData.formations = snapshot.formations;
 
-  // Determine selection: undo uses the affected area, redo uses snapshot's own state
-  const affected = snapshot._affected;
-  if (affected) {
-    if (affected.selectedTransition) {
-      selectedTransition = affected.selectedTransition;
-      selectedFormation = -1;
-    } else if (affected.selectedFormation >= 0 && affected.selectedFormation < noteData.formations.length) {
-      selectedFormation = affected.selectedFormation;
-      selectedTransition = null;
-    } else {
-      selectedFormation = snapshot.selectedFormation;
-      selectedTransition = snapshot.selectedTransition || null;
+  // Clamp positions to stage bounds when wings are hidden
+  if (!renderer.showWings) {
+    for (const f of noteData.formations) {
+      for (const p of f.positions) {
+        p.x = clamp(p.x, -HALF_W, HALF_W);
+        p.y = clamp(p.y, -HALF_H, HALF_H);
+      }
     }
-  } else {
-    selectedFormation = snapshot.selectedFormation;
-    selectedTransition = snapshot.selectedTransition || null;
   }
+
+  // Determine selection based on currentMs position
+  selectedFormation = -1;
+  selectedTransition = null;
   selectedFormations.clear();
-  if (selectedFormation >= 0) selectedFormations.add(selectedFormation);
-  currentMs = affected ? affected.currentMs : snapshot.currentMs;
+  const sorted = noteData.formations.slice().sort((a, b) => a.startTime - b.startTime);
+  for (let i = 0; i < noteData.formations.length; i++) {
+    const f = noteData.formations[i];
+    if (currentMs >= f.startTime && currentMs < f.startTime + f.duration) {
+      selectedFormation = i;
+      selectedFormations.add(i);
+      break;
+    }
+  }
+  if (selectedFormation < 0) {
+    // Check if currentMs is in a transition gap
+    for (let i = 0; i < sorted.length - 1; i++) {
+      const fromF = sorted[i];
+      const toF = sorted[i + 1];
+      const gapStart = fromF.startTime + fromF.duration;
+      if (currentMs >= gapStart && currentMs < toF.startTime) {
+        const fromIdx = noteData.formations.indexOf(fromF);
+        const toIdx = noteData.formations.indexOf(toF);
+        selectedTransition = { fromIdx, toIdx };
+        break;
+      }
+    }
+  }
 
   // Restore stage size if changed
   if (snapshot.stageWidth && snapshot.stageHeight &&
@@ -3456,6 +3416,26 @@ function restoreSnapshot(snapshot) {
     const durationDisplay = document.querySelector('#duration-display');
     if (durationDisplay) durationDisplay.textContent = formatTime(snapshot.duration, true);
     if (noteData.musicBlob) drawWaveform(document.querySelector('.editor'), noteData.musicBlob, snapshot.duration);
+  }
+
+  // Restore audience direction if changed
+  if (snapshot.audienceDirection && snapshot.audienceDirection !== audienceDirection) {
+    audienceDirection = snapshot.audienceDirection;
+    renderer.audienceDirection = audienceDirection;
+    renderer._drawGridCache();
+    const audienceOptions = document.querySelector('#view-audience-options');
+    if (audienceOptions) {
+      audienceOptions.querySelectorAll('.settings-option').forEach(b =>
+        b.classList.toggle('settings-option--active', b.dataset.audience === audienceDirection)
+      );
+    }
+  }
+
+  // Restore markers if present in snapshot
+  if (snapshot.markers) {
+    renderer.markers = snapshot.markers.map(m => ({ ...m }));
+    noteData.note.markers = renderer.markers;
+    _renderMarkerList();
   }
 
   engine.setFormations(noteData.formations, noteData.dancers);
@@ -3503,7 +3483,7 @@ function restoreSnapshot(snapshot) {
         const gapEnd = TIMELINE_PADDING + toF.startTime / 1000 * pixelsPerSec;
         targetPx = (gapStart + gapEnd) / 2;
       } else {
-        targetPx = TIMELINE_PADDING + currentMs / 1000 * pixelsPerSec;
+        targetPx = null;
       }
     } else if (selectedFormation >= 0 && noteData.formations[selectedFormation]) {
       const f = noteData.formations[selectedFormation];
@@ -3511,12 +3491,12 @@ function restoreSnapshot(snapshot) {
       const endPx = startPx + f.duration / 1000 * pixelsPerSec;
       targetPx = (startPx + endPx) / 2;
     } else {
-      targetPx = TIMELINE_PADDING + currentMs / 1000 * pixelsPerSec;
+      targetPx = null;
     }
     const viewLeft = timelineScroll.scrollLeft;
     const viewRight = viewLeft + timelineScroll.clientWidth;
     const margin = 60;
-    if (targetPx < viewLeft + margin || targetPx > viewRight - margin) {
+    if (targetPx != null && (targetPx < viewLeft + margin || targetPx > viewRight - margin)) {
       timelineScroll.scrollLeft = targetPx - timelineScroll.clientWidth / 2;
     }
   }
@@ -3580,7 +3560,6 @@ function toggleShortcutHelp(container) {
         <div class="shortcut-row"><kbd>Ctrl+Shift+Z</kbd><span>${t('helpRedo')}</span></div>
         <div class="shortcut-row"><kbd>Ctrl+A</kbd><span>${t('helpSelectAll')}</span></div>
         <div class="shortcut-row"><kbd>3</kbd><span>${t('help3d')}</span></div>
-        <div class="shortcut-row"><kbd>R</kbd><span>${t('helpRotate')}</span></div>
         <div class="shortcut-row"><kbd>Esc</kbd><span>${t('helpEsc')}</span></div>
         <div class="shortcut-row"><kbd>Ctrl+C</kbd><span>${t('helpCopy')}</span></div>
         <div class="shortcut-row"><kbd>Ctrl+V</kbd><span>${t('helpPaste')}</span></div>

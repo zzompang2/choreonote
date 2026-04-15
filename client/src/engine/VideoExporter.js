@@ -1,5 +1,36 @@
 import { StageRenderer } from '../renderer/StageRenderer.js';
-import { STAGE_WIDTH, STAGE_HEIGHT } from '../utils/constants.js';
+import { STAGE_WIDTH, STAGE_HEIGHT, CANVAS_WIDTH, CANVAS_HEIGHT, WING_SIZE } from '../utils/constants.js';
+
+function interpolateWithWaypoints(start, end, waypoints, t) {
+  if (waypoints.length === 1) {
+    const pt = waypoints[0];
+    const cp = {
+      x: 2 * pt.x - 0.5 * (start.x + end.x),
+      y: 2 * pt.y - 0.5 * (start.y + end.y),
+    };
+    const u = 1 - t;
+    return {
+      x: u * u * start.x + 2 * u * t * cp.x + t * t * end.x,
+      y: u * u * start.y + 2 * u * t * cp.y + t * t * end.y,
+    };
+  }
+  // Multiple waypoints: piecewise linear
+  const points = [
+    { x: start.x, y: start.y, t: 0 },
+    ...waypoints.slice().sort((a, b) => a.t - b.t),
+    { x: end.x, y: end.y, t: 1 },
+  ];
+  for (let i = 0; i < points.length - 1; i++) {
+    if (t >= points[i].t && t <= points[i + 1].t) {
+      const segT = (t - points[i].t) / (points[i + 1].t - points[i].t);
+      return {
+        x: points[i].x + (points[i + 1].x - points[i].x) * segT,
+        y: points[i].y + (points[i + 1].y - points[i].y) * segT,
+      };
+    }
+  }
+  return { x: end.x, y: end.y };
+}
 
 export class VideoExporter {
   constructor() {
@@ -14,7 +45,7 @@ export class VideoExporter {
     this.onError = null;    // (error) => void
   }
 
-  async export({ dancers, formations, audioBlob, duration, is3D, isRotated, showNames, dancerScale, onProgress, onComplete, onError }) {
+  async export({ dancers, formations, audioBlob, duration, is3D, showNames, dancerScale, audienceDirection, showWings, markers, onProgress, onComplete, onError }) {
     if (this.isExporting) return;
     this.isExporting = true;
     this._cancelRequested = false;
@@ -26,15 +57,29 @@ export class VideoExporter {
     try {
       // Create offscreen canvas for rendering
       const canvas = document.createElement('canvas');
-      canvas.width = 1280;
-      canvas.height = Math.round(1280 * (STAGE_HEIGHT / STAGE_WIDTH));
       const renderer = new StageRenderer(canvas);
       renderer.showNames = showNames;
+      renderer.audienceDirection = audienceDirection || 'top';
+      renderer.showWings = !!showWings;
+      const exportMarkers = (markers || []).map(m => ({ ...m }));
+      renderer.markers = exportMarkers;
+      renderer.showMarkers = exportMarkers.length > 0;
+      renderer._drawGridCache();
       if (dancerScale) renderer.dancerScale = dancerScale;
 
-      // Scale rendering to 720p
-      const scaleX = canvas.width / STAGE_WIDTH;
-      const scaleY = canvas.height / STAGE_HEIGHT;
+      // Export canvas: include wings if showWings is on, otherwise add audience margin
+      const audienceMargin = 65; // stageGap(24) + 2 rows of seats(18+5+18)
+      const dir = audienceDirection || 'top';
+      const hasAudience = !showWings && dir !== 'none';
+      const baseW = showWings ? CANVAS_WIDTH : STAGE_WIDTH;
+      const baseH = showWings ? CANVAS_HEIGHT : (STAGE_HEIGHT + (hasAudience ? audienceMargin : 0));
+      const exportWidth = 1280;
+      const exportHeight = Math.round(exportWidth * (baseH / baseW));
+      canvas.width = exportWidth;
+      canvas.height = exportHeight;
+
+      const scaleX = exportWidth / baseW;
+      const scaleY = exportHeight / baseH;
 
       // Set up audio via Web Audio API
       let audioContext = null;
@@ -132,10 +177,30 @@ export class VideoExporter {
         const prevPos = getFormationPositions(prevIdx);
         const nextPos = getFormationPositions(nextIdx);
 
-        return dancers.map((_, i) => ({
-          x: prevPos[i].x + (nextPos[i].x - prevPos[i].x) * ratio,
-          y: prevPos[i].y + (nextPos[i].y - prevPos[i].y) * ratio,
-        }));
+        return dancers.map((d, i) => {
+          const prev = prevPos[i];
+          const next = nextPos[i];
+
+          // Angle interpolation (shortest path)
+          let angleDiff = (next.angle || 0) - (prev.angle || 0);
+          if (angleDiff > 180) angleDiff -= 360;
+          if (angleDiff < -180) angleDiff += 360;
+          const angle = (((prev.angle || 0) + angleDiff * ratio) + 360) % 360;
+
+          // Waypoint interpolation
+          const nextPosData = nextF.positions.find(p => p.dancerId === d.id);
+          const waypoints = nextPosData?.waypoints;
+          if (waypoints && waypoints.length > 0) {
+            const pos = interpolateWithWaypoints(prev, next, waypoints, ratio);
+            return { ...pos, angle };
+          }
+
+          return {
+            x: prev.x + (next.x - prev.x) * ratio,
+            y: prev.y + (next.y - prev.y) * ratio,
+            angle,
+          };
+        });
       };
 
       const getFormationPositions = (fIdx) => {
@@ -143,7 +208,7 @@ export class VideoExporter {
         if (!f || !f.positions) return dancers.map(() => ({ x: 0, y: 0 }));
         return dancers.map(d => {
           const p = f.positions.find(p => p.dancerId === d.id);
-          return p ? { x: p.x, y: p.y } : { x: 0, y: 0 };
+          return p ? { x: p.x, y: p.y, angle: p.angle || 0 } : { x: 0, y: 0, angle: 0 };
         });
       };
 
@@ -175,20 +240,18 @@ export class VideoExporter {
 
         // Calculate positions and draw
         let positions = calcPositionsAt(ms);
-        // Rotate positions if needed
-        if (isRotated) {
-          positions = positions.map(p => ({ x: -p.x, y: -p.y, angle: ((p.angle || 0) + 180) % 360 }));
-        }
         const ctx = canvas.getContext('2d');
         ctx.save();
         ctx.scale(scaleX, scaleY);
-
-        // Use 3D projection mode for video if enabled
-        if (is3D) {
-          renderer.is3D = true;
-          renderer._projectionMode = 'render';
+        if (!showWings) {
+          const offsetY = hasAudience && dir === 'top'
+            ? -(WING_SIZE - audienceMargin)
+            : -WING_SIZE;
+          ctx.translate(-WING_SIZE, offsetY);
         }
-        renderer.isRotated = false;
+
+        renderer.is3D = !!is3D;
+        if (is3D) renderer._projectionMode = 'render';
 
         renderer.drawFrame(dancers, positions);
         ctx.restore();
