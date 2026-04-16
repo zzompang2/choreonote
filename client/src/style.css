@@ -3848,10 +3848,11 @@ html:has(.editor) {
 
 .market-upload__formation-list {
   display: flex;
-  gap: 8px;
+  gap: 0;
+  align-items: center;
   overflow-x: auto;
   padding: 8px 0;
-  margin-bottom: 16px;
+  margin-bottom: 8px;
 }
 
 .market-upload__hint {
@@ -3871,6 +3872,7 @@ html:has(.editor) {
   padding: 4px;
   border: 2px solid transparent;
   transition: border-color 0.15s, background 0.15s;
+  position: relative;
 }
 
 .market-upload__formation-item:hover {
@@ -3882,19 +3884,64 @@ html:has(.editor) {
   background: color-mix(in srgb, var(--accent) 10%, transparent);
 }
 
+.market-upload__formation-item--preview {
+  border-style: dashed;
+}
+
+.market-upload__formation-item--over-max {
+  border-color: var(--danger, #e55);
+  border-style: dashed;
+  background: color-mix(in srgb, var(--danger, #e55) 8%, transparent);
+}
+
+.market-upload__badge {
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 11px;
+  font-weight: 600;
+  color: #fff;
+  background: var(--accent);
+  padding: 1px 6px;
+  border-radius: 8px;
+  white-space: nowrap;
+  z-index: 1;
+  pointer-events: none;
+}
+
 .market-upload__formation-item canvas {
   border-radius: 6px;
   background: var(--stage-bg);
 }
 
-.market-upload__formation-item span {
+.market-upload__formation-item > span:last-child {
   font-size: 12px;
   color: var(--text-secondary);
 }
 
-.market-upload__formation-item--selected span {
+.market-upload__formation-item--selected > span:last-child {
   color: var(--accent);
   font-weight: 600;
+}
+
+.market-upload__connector {
+  flex-shrink: 0;
+  width: 24px;
+  text-align: center;
+  font-size: 14px;
+  color: var(--text-secondary);
+  opacity: 0.3;
+  transition: opacity 0.15s, color 0.15s;
+}
+
+.market-upload__connector--active {
+  color: var(--accent);
+  opacity: 1;
+}
+
+.market-upload__connector--preview {
+  opacity: 0.6;
 }
 
 .market-upload__selection-count {
