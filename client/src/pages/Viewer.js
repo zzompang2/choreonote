@@ -273,6 +273,22 @@ export async function renderViewer(container, shareId) {
       e.preventDefault();
       container.querySelector('#play-btn').click();
     }
+    if (e.code === 'ArrowUp') {
+      e.preventDefault();
+      container.querySelector('#prev-formation-btn').click();
+    }
+    if (e.code === 'ArrowDown') {
+      e.preventDefault();
+      container.querySelector('#next-formation-btn').click();
+    }
+    if ((e.key === '=' || e.key === '+') && !e.ctrlKey && !e.metaKey) {
+      e.preventDefault();
+      container.querySelector('#zoom-in-btn')?.click();
+    }
+    if (e.key === '-' && !e.ctrlKey && !e.metaKey) {
+      e.preventDefault();
+      container.querySelector('#zoom-out-btn')?.click();
+    }
   };
   document.addEventListener('keydown', onKeydown);
 }
