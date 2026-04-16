@@ -121,9 +121,14 @@ body {
   border: 1px solid var(--border-strong);
 }
 
-.btn--ghost:hover {
+.btn--ghost:hover:not(:disabled) {
   border-color: var(--text-secondary);
   color: var(--text-primary);
+}
+
+.btn--ghost:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
 }
 
 .storage-warning {
@@ -3849,6 +3854,12 @@ html:has(.editor) {
   margin-bottom: 16px;
 }
 
+.market-upload__hint {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin: -4px 0 4px;
+}
+
 .market-upload__formation-item {
   display: flex;
   flex-direction: column;
@@ -3856,6 +3867,19 @@ html:has(.editor) {
   gap: 4px;
   cursor: pointer;
   flex-shrink: 0;
+  border-radius: 8px;
+  padding: 4px;
+  border: 2px solid transparent;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.market-upload__formation-item:hover {
+  background: var(--hover-bg);
+}
+
+.market-upload__formation-item--selected {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
 }
 
 .market-upload__formation-item canvas {
@@ -3863,13 +3887,21 @@ html:has(.editor) {
   background: var(--stage-bg);
 }
 
-.market-upload__formation-item input {
-  accent-color: var(--accent);
-}
-
 .market-upload__formation-item span {
   font-size: 12px;
   color: var(--text-secondary);
+}
+
+.market-upload__formation-item--selected span {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.market-upload__selection-count {
+  font-size: 13px;
+  color: var(--accent);
+  min-height: 20px;
+  margin-bottom: 8px;
 }
 
 .market-upload__form {

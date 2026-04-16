@@ -264,6 +264,7 @@ function buildEditorHTML(data) {
           </div>
           <div class="sidebar__actions sidebar__actions--hidden" id="inspector-actions">
             <button class="btn btn--ghost" id="inspector-preset-btn" style="width:100%;font-size:12px">${t('inspectorPresetBtn')}</button>
+            <button class="btn btn--ghost" id="inspector-reset-waypoints-btn" style="width:100%;font-size:12px">${t('inspectorResetWaypoints')}</button>
           </div>
         </div>
 
@@ -693,6 +694,10 @@ function setupPlayback(container) {
       e.preventDefault();
       const snapBtn = container.querySelector('#snap-btn');
       if (snapBtn) snapBtn.click();
+    }
+    if ((e.ctrlKey || e.metaKey) && e.code === 'KeyS') {
+      e.preventDefault();
+      container.querySelector('#save-btn')?.click();
     }
     if ((e.ctrlKey || e.metaKey) && e.code === 'KeyA') {
       e.preventDefault();
@@ -1963,9 +1968,14 @@ function updateInspector() {
   if (emptyEl) emptyEl.style.display = 'none';
   if (contentEl) contentEl.classList.remove('sidebar__scroll--hidden');
 
-  // Show preset shortcut button for multi-selection
+  // Show actions area when 1+ dancers selected; toggle button states by context
+  const isTransitionCtx = !!selectedTransition;
   const actionsEl = document.querySelector('#inspector-actions');
-  if (actionsEl) actionsEl.classList.toggle('sidebar__actions--hidden', selected.length < 2);
+  if (actionsEl) actionsEl.classList.toggle('sidebar__actions--hidden', selected.length < 1);
+  const presetBtn = document.querySelector('#inspector-preset-btn');
+  if (presetBtn) presetBtn.disabled = isTransitionCtx || selected.length < 2;
+  const waypointBtn = document.querySelector('#inspector-reset-waypoints-btn');
+  if (waypointBtn) waypointBtn.disabled = !isTransitionCtx;
 
   // Header
   if (selected.length === 1) {
@@ -2197,6 +2207,34 @@ function setupInspector(container) {
   });
   colorInput.addEventListener('change', () => {
     saveSnapshot();
+  });
+
+  // Waypoint reset button for selected dancers in transition
+  container.querySelector('#inspector-reset-waypoints-btn').addEventListener('click', () => {
+    if (!selectedTransition || renderer._selectedDancers.size === 0) return;
+    const { fromIdx, toIdx } = selectedTransition;
+    const fromF = noteData.formations[fromIdx];
+    const toF = noteData.formations[toIdx];
+    const selected = Array.from(renderer._selectedDancers);
+    let count = 0;
+    for (const idx of selected) {
+      const d = noteData.dancers[idx];
+      if (!d) continue;
+      const fromPos = fromF.positions.find(p => p.dancerId === d.id);
+      const toPos = toF.positions.find(p => p.dancerId === d.id);
+      if (fromPos && toPos) {
+        toPos.waypoints = [{
+          x: Math.round((fromPos.x + toPos.x) / 2),
+          y: Math.round((fromPos.y + toPos.y) / 2),
+          t: 0.5,
+        }];
+        count++;
+      }
+    }
+    if (count > 0) {
+      updateStage(); saveSnapshot();
+      showToast(t('toastWaypointsResetBulk', { count }));
+    }
   });
 }
 
@@ -3917,6 +3955,7 @@ function toggleShortcutHelp(container) {
         <div class="shortcut-row"><kbd>Delete</kbd><span>${t('helpDeleteFormation')}</span></div>
         <div class="shortcut-row"><kbd>Ctrl+Z</kbd><span>${t('helpUndo')}</span></div>
         <div class="shortcut-row"><kbd>Ctrl+Shift+Z</kbd><span>${t('helpRedo')}</span></div>
+        <div class="shortcut-row"><kbd>Ctrl+S</kbd><span>${t('helpSave')}</span></div>
         <div class="shortcut-row"><kbd>Ctrl+A</kbd><span>${t('helpSelectAll')}</span></div>
         <div class="shortcut-row"><kbd>3</kbd><span>${t('help3d')}</span></div>
         <div class="shortcut-row"><kbd>Esc</kbd><span>${t('helpEsc')}</span></div>
