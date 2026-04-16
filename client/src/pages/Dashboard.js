@@ -1,8 +1,12 @@
 import { NoteStore } from '../store/NoteStore.js';
+import { db } from '../store/db.js';
 import { navigate } from '../utils/router.js';
 import { formatTime } from '../utils/constants.js';
 import { t } from '../utils/i18n.js';
 import { renderFormationThumbnail } from '../utils/thumbnail.js';
+import { getCurrentUser, signInWithGoogle, signOut } from '../utils/auth.js';
+import { getSyncStatus, fetchCloudNotes, downloadCloudNote } from '../utils/cloudSync.js';
+import { showToast } from '../utils/toast.js';
 
 export async function renderDashboard(container) {
   container.innerHTML = '';
@@ -14,6 +18,12 @@ export async function renderDashboard(container) {
 
   const notes = await NoteStore.getAllNotes();
   const deletedNotes = await NoteStore.getDeletedNotes();
+  const user = await getCurrentUser();
+
+  const userBtnHTML = user
+    ? `<button class="btn btn--ghost btn--sm" id="dashboard-user-btn" title="${user.email}">${user.user_metadata?.name || user.email?.split('@')[0] || '유저'}</button>
+       <button class="btn btn--ghost btn--sm" id="dashboard-logout-btn">${t('marketLogout')}</button>`
+    : `<button class="btn btn--ghost btn--sm" id="dashboard-login-btn">${t('marketLoginGoogle')}</button>`;
 
   div.innerHTML = `
     <div class="dashboard__header">
@@ -22,6 +32,7 @@ export async function renderDashboard(container) {
         <div class="dashboard__subtitle">${t('backToLanding')}</div>
       </div>
       <div style="display:flex;gap:8px;align-items:center;">
+        ${userBtnHTML}
         <label class="sort-dropdown">
           <select id="sort-select">
             <option value="editedAt">${t('sortRecent')}</option>
@@ -38,6 +49,7 @@ export async function renderDashboard(container) {
     <div class="dashboard__body">
       <div class="storage-warning" id="storage-warning" style="display:none"></div>
       <div class="note-grid" id="note-grid"></div>
+      <div id="cloud-section"></div>
       ${deletedNotes.length > 0 ? `
         <details class="trash-section">
           <summary class="trash-section__toggle">
@@ -54,7 +66,10 @@ export async function renderDashboard(container) {
   container.appendChild(div);
 
   const grid = div.querySelector('#note-grid');
-  renderNoteCards(grid, notes);
+  renderNoteCards(grid, notes, user);
+
+  // 클라우드 노트 섹션 (로그인 시)
+  renderCloudSection(div.querySelector('#cloud-section'), notes, user, container);
 
   // Render trash grid
   const trashGrid = div.querySelector('#trash-grid');
@@ -68,6 +83,19 @@ export async function renderDashboard(container) {
 
   div.querySelector('#dashboard-logo').addEventListener('click', () => navigate('/'));
 
+  // 로그인/로그아웃
+  const loginBtn = div.querySelector('#dashboard-login-btn');
+  if (loginBtn) {
+    loginBtn.addEventListener('click', () => signInWithGoogle('/dashboard'));
+  }
+  const logoutBtn = div.querySelector('#dashboard-logout-btn');
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', async () => {
+      await signOut();
+      renderDashboard(container);
+    });
+  }
+
   div.querySelector('#market-btn').addEventListener('click', () => navigate('/market'));
 
   div.querySelector('#create-btn').addEventListener('click', async () => {
@@ -77,7 +105,7 @@ export async function renderDashboard(container) {
 
   div.querySelector('#sort-select').addEventListener('change', async (e) => {
     const sorted = await NoteStore.getAllNotes(e.target.value);
-    renderNoteCards(grid, sorted);
+    renderNoteCards(grid, sorted, user);
   });
 
   // View toggle (grid / list)
@@ -121,7 +149,7 @@ export async function renderDashboard(container) {
   });
 }
 
-function renderNoteCards(grid, notes) {
+function renderNoteCards(grid, notes, user) {
   if (notes.length === 0) {
     grid.innerHTML = `
       <div class="empty-state" style="grid-column:1/-1">
@@ -133,18 +161,22 @@ function renderNoteCards(grid, notes) {
     return;
   }
 
-  grid.innerHTML = notes.map((note) => `
-    <div class="note-card" data-id="${note.id}">
-      <button class="note-card__delete" data-delete="${note.id}" title="${t('delete')}">✕</button>
-      <div class="note-card__thumbnail">
-        <canvas data-thumb="${note.id}" width="200" height="134"></canvas>
+  grid.innerHTML = notes.map((note) => {
+    const syncBadge = user ? renderSyncBadge(note) : '';
+    return `
+      <div class="note-card" data-id="${note.id}">
+        <button class="note-card__delete" data-delete="${note.id}" title="${t('delete')}">✕</button>
+        <div class="note-card__thumbnail">
+          <canvas data-thumb="${note.id}" width="200" height="134"></canvas>
+        </div>
+        <div class="note-card__title">${escapeHtml(note.title)}</div>
+        <div class="note-card__meta">
+          ${t('created')} ${formatDate(note.createdAt)} · ${t('edited')} ${formatDate(note.editedAt)} · ${formatTime(note.duration)}
+        </div>
+        ${syncBadge}
       </div>
-      <div class="note-card__title">${escapeHtml(note.title)}</div>
-      <div class="note-card__meta">
-        ${t('created')} ${formatDate(note.createdAt)} · ${t('edited')} ${formatDate(note.editedAt)} · ${formatTime(note.duration)}
-      </div>
-    </div>
-  `).join('');
+    `;
+  }).join('');
 
   // Render thumbnails asynchronously
   for (const note of notes) {
@@ -249,4 +281,92 @@ async function checkStorageUsage(el) {
     el.style.display = '';
     el.textContent = t('storageWarning', { used: usedMB, total: totalMB, pct: Math.round(pct * 100) });
   } catch (_) {}
+}
+
+// ── 클라우드 동기화 뱃지 ──
+
+function renderSyncBadge(note) {
+  const status = getSyncStatus(note);
+  if (status === 'synced') {
+    return `<div class="note-card__sync note-card__sync--synced"><span class="note-card__sync-icon">☁</span>${t('cloudSynced')}</div>`;
+  }
+  if (status === 'unsynced') {
+    return `<div class="note-card__sync note-card__sync--unsynced"><span class="note-card__sync-icon">☁</span>${t('cloudUnsynced')}</div>`;
+  }
+  return `<div class="note-card__sync"><span class="note-card__sync-icon">💾</span>${t('cloudLocal')}</div>`;
+}
+
+// ── 클라우드 노트 섹션 (이 기기에 없는 노트) ──
+
+async function renderCloudSection(el, localNotes, user, dashboardContainer) {
+  if (!el || !user) return;
+
+  try {
+    const cloudNotes = await fetchCloudNotes();
+    // 로컬에 이미 있는 cloudId 목록
+    const localCloudIds = new Set();
+    const allLocalNotes = await db.notes.toArray();
+    for (const n of allLocalNotes) {
+      if (n.cloudId) localCloudIds.add(n.cloudId);
+    }
+
+    // 로컬에 없는 클라우드 노트만 필터
+    const missingNotes = cloudNotes.filter(cn => !localCloudIds.has(cn.id));
+    if (missingNotes.length === 0) return;
+
+    el.innerHTML = `
+      <div class="cloud-section">
+        <div class="cloud-section__title">☁ ${t('cloudSection')}</div>
+        <div class="note-grid" id="cloud-grid">
+          ${missingNotes.map(cn => {
+            const noteJson = cn.note_json;
+            const dancerCount = noteJson.dancers?.length || 0;
+            const formationCount = noteJson.formations?.length || 0;
+            return `
+              <div class="cloud-note-card" data-cloud-id="${cn.id}">
+                <div class="cloud-note-card__title">${escapeHtml(cn.title)}</div>
+                <div class="cloud-note-card__meta">
+                  ${t('marketDancerCount', { count: dancerCount })} · ${t('marketFormationCount', { count: formationCount })} · ${formatDate(cn.updated_at)}
+                </div>
+                <button class="cloud-note-card__download" data-cloud-download="${cn.id}">${t('cloudDownload')}</button>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    `;
+
+    // 리스트뷰 적용
+    const cloudGrid = el.querySelector('#cloud-grid');
+    if (localStorage.getItem('choreonote-list-view') === '1') {
+      cloudGrid.classList.add('note-grid--list');
+    }
+
+    // 다운로드 버튼 이벤트
+    el.querySelectorAll('[data-cloud-download]').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const cloudId = btn.dataset.cloudDownload;
+        const cloudNote = missingNotes.find(cn => cn.id === cloudId);
+        if (!cloudNote) return;
+
+        btn.disabled = true;
+        btn.textContent = '...';
+        try {
+          const newNoteId = await downloadCloudNote(cloudNote);
+          // 음악 미포함 안내
+          if (cloudNote.music_name) {
+            showToast(t('cloudMusicNotice'), 5000);
+          }
+          renderDashboard(dashboardContainer);
+        } catch (err) {
+          console.error('Cloud download failed:', err);
+          btn.disabled = false;
+          btn.textContent = t('cloudDownload');
+        }
+      });
+    });
+  } catch (err) {
+    console.warn('Failed to load cloud notes:', err);
+  }
 }
