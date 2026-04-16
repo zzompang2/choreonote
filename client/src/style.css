@@ -997,7 +997,7 @@ html:has(.editor) {
   display: none;
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.4);
+  background: rgba(0,0,0,0.6);
   z-index: 199;
 }
 
@@ -1626,17 +1626,6 @@ html:has(.editor) {
 .viewer > .sidebar-rail {
   grid-row: 2;
   grid-column: 3;
-}
-.viewer-overlay {
-  display: none;
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.4);
-  z-index: 199;
-}
-.viewer-overlay--visible {
-  display: block;
-  touch-action: none;
 }
 .viewer > .player-bar {
   grid-column: 1 / -1;
