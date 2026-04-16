@@ -137,9 +137,15 @@ export async function renderViewer(container, shareId) {
           </div>
         </div>
       </div>
-      <div class="viewer-overlay" id="viewer-overlay"></div>
     </div>
   `;
+
+  // 모바일 오버레이
+  let existingOverlay = document.querySelector('.sidebar-overlay');
+  if (existingOverlay) existingOverlay.remove();
+  const overlayEl = document.createElement('div');
+  overlayEl.className = 'sidebar-overlay';
+  document.body.appendChild(overlayEl);
 
   // --- 엔진 초기화 ---
   engine = new PlaybackEngine();
@@ -569,14 +575,14 @@ function updateMarker() {
 function updateWaypointPaths(ms) {
   renderer._waypointPaths = null;
 
-  // 전환 구간(두 대형 사이 갭)에 있는지 확인
+  // 동선 구간(두 대형 사이 갭)에 있는지 확인
   const sorted = formations.map((f, i) => ({ f, i })).sort((a, b) => a.f.startTime - b.f.startTime);
   for (let s = 0; s < sorted.length - 1; s++) {
     const fromF = sorted[s].f;
     const toF = sorted[s + 1].f;
     const fromEnd = fromF.startTime + fromF.duration;
     if (ms >= fromEnd && ms < toF.startTime) {
-      // 전환 구간 — 모든 댄서의 경로 표시
+      // 동선 구간 — 모든 댄서의 경로 표시
       const paths = [];
       for (let i = 0; i < dancers.length; i++) {
         const d = dancers[i];
@@ -652,7 +658,7 @@ function renderFormationBoxes(formationsEl) {
     formationsEl.appendChild(box);
   });
 
-  // 전환 구간 화살표
+  // 동선 구간 화살표
   updateTransitionConnectors(formationsEl);
 }
 
@@ -711,8 +717,8 @@ function setupViewerSidebar(container) {
   const isMobile = () => window.innerWidth <= 768;
   let activePanel = null;
 
-  // 모바일 오버레이
-  const overlay = container.querySelector('.viewer-overlay');
+  // 모바일 오버레이 (body에 추가됨)
+  const overlay = document.querySelector('.sidebar-overlay');
 
   function closePanel() {
     sidebar.classList.add('editor__sidebar--hidden');
@@ -736,7 +742,6 @@ function setupViewerSidebar(container) {
 
     if (isMobile()) {
       overlay.classList.add('sidebar-overlay--visible');
-      console.log('[viewer] overlay visible', overlay.className, overlay.parentElement?.tagName);
     } else {
       viewer.classList.add('viewer--sidebar-open');
     }

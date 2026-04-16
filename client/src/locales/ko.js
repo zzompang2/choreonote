@@ -177,8 +177,8 @@ export const ko = {
   helpStageWaypoint: '경유점 더블클릭/더블탭으로 초기화',
   helpTimeline: '타임라인',
   helpTimelineDrag: '대형 박스를 드래그하여 이동/리사이즈',
-  helpTimelineGap: '대형 사이 빈 공간 클릭으로 이동 구간 선택',
-  helpTimelineWaypoint: '이동 구간에서 경유점으로 경로 편집',
+  helpTimelineGap: '대형 사이 화살표를 클릭하여 동선 구간 선택',
+  helpTimelineWaypoint: '동선 구간에서 경유점으로 동선 편집',
 
   // Editor — Settings panel
   settingsTitle: '설정',

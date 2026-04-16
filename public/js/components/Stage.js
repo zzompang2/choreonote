@@ -107,7 +107,7 @@ export default class Stage {
     else if(this.isRotated || this.isSloped)
     this.dancerObjArray.forEach(obj => obj.setDraggable(false, "무대가 회전되어 있거나 3D 상태일 땐 움직일 수 없어요."));
     else if(!this.isBoxSelected)
-    this.dancerObjArray.forEach(obj => obj.setDraggable(false, "대열 상자를 먼저 선택해주세요."));
+    this.dancerObjArray.forEach(obj => obj.setDraggable(false, "대형 상자를 먼저 선택해주세요."));
     else
     this.dancerObjArray.forEach(obj => obj.setDraggable(true));
   }

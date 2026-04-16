@@ -151,7 +151,7 @@ function handleMusicFile(file) {
       }
       
       if(duration < state.noteInfo.duration) {
-        if(!window.confirm("노래 길이가 기존보다 짧습니다. 계속 진행하시겠습니까?\n기존 대열 일부가 삭제됩니다.")) {
+        if(!window.confirm("노래 길이가 기존보다 짧습니다. 계속 진행하시겠습니까?\n기존 대형 일부가 삭제됩니다.")) {
           return;
         }
                 
@@ -454,7 +454,7 @@ function deleteFormationBox() {
   if(targetId == -1) return;
 
   if(state.formations.length == 1) {
-    new Toast("최소 1개의 대열은 있어야 해요.", "warning");
+    new Toast("최소 1개의 대형은 있어야 해요.", "warning");
     return;
   }
 
@@ -480,12 +480,12 @@ function pasteFormation() {
   if(targetId == -1) return;
 
   if(state.copiedFormation.length == 0) {
-    new Toast("복사한 대열이 없어요.", "warning");
+    new Toast("복사한 대형이 없어요.", "warning");
     return;
   }
   
   if (state.copiedFormation.length !== state.dancers.length) {
-    new Toast(`복사한 대열이 현재 댄서 수와 맞지 않아요. (복사한 대열: ${state.copiedFormation.length-1}명)`, "warning");
+    new Toast(`복사한 대형이 현재 댄서 수와 맞지 않아요. (복사한 대형: ${state.copiedFormation.length-1}명)`, "warning");
     return;
   }
 

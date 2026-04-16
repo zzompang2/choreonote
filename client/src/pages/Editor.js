@@ -3554,7 +3554,7 @@ function seekTo(ms) {
       }
     }
   }
-  // 교환 모드: 이동 영역/빈 구간 선택 또는 다른 대열 선택 시 해제
+  // 교환 모드: 동선 구간 선택 또는 다른 대형 선택 시 해제
   if (swapMode && (selectedTransition || selectedFormation < 0 || selectedFormation !== prevFormation)) {
     setSwapMode(false);
   }
