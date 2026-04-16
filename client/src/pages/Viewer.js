@@ -43,59 +43,92 @@ export async function renderViewer(container, shareId) {
 
   const timelineWidth = TIMELINE_PADDING * 2 + durationSec * pixelsPerSec;
 
+  const initAudience = noteData.note.audienceDirection || 'top';
+  const isMobile = window.innerWidth <= 768;
+
   container.innerHTML = `
-    <div class="viewer">
+    <div class="viewer${isMobile ? '' : ' viewer--sidebar-open'}">
       <div class="viewer__header">
         <div class="viewer__title">${noteData.note.title || t('shareUntitled')}</div>
         <a href="/#/" class="viewer__logo">ChoreoNote</a>
       </div>
-      <div class="viewer__body">
-        <div class="viewer__stage">
-          <canvas id="stage-canvas"></canvas>
-          <div class="stage-zoom-badge" id="stage-zoom-badge"></div>
-        </div>
-        <div class="viewer__toolbar">
-          <span class="viewer__toolbar-label">${t('viewLabel')}</span>
-          <div class="settings-options">
-            <button class="settings-option settings-option--active" id="opt-number">${t('viewNumber')}</button>
-            <button class="settings-option" id="opt-name">${t('viewName')}</button>
-            <button class="settings-option" id="opt-none">${t('viewNone')}</button>
-          </div>
-          <div class="viewer__toolbar-sep"></div>
-          <span class="viewer__toolbar-label">${t('viewAudience')}</span>
-          <div class="settings-options">
-            <button class="settings-option settings-option--active" id="opt-audience-top">${t('audienceTop')}</button>
-            <button class="settings-option" id="opt-audience-bottom">${t('audienceBottom')}</button>
-            <button class="settings-option" id="opt-audience-none">${t('audienceNone')}</button>
+
+      <div class="viewer__stage">
+        <canvas id="stage-canvas"></canvas>
+        <div class="stage-zoom-badge" id="stage-zoom-badge"></div>
+      </div>
+
+      <div class="editor__sidebar" id="sidebar">
+        <div class="sidebar__panel" id="panel-dancers">
+          <div class="sidebar__panel-title">${t('dancersTitle')}</div>
+          <div class="sidebar__scroll">
+            <div class="dancer-list" id="dancer-list"></div>
           </div>
         </div>
-        <div class="viewer__player-bar">
-          <button class="player-bar__play" id="play-btn">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><polygon id="play-icon" points="6,4 20,12 6,20"/></svg>
-          </button>
-          <span class="player-bar__time" id="time-display">00:00.00</span>
-          <span class="player-bar__sep">/</span>
-          <span class="player-bar__time">${formatTime(duration, true)}</span>
-        </div>
-        <div class="editor__timeline-wrap">
-          <div class="editor__timeline" id="timeline-scroll">
-            <div class="timeline" id="timeline" style="width:${timelineWidth}px">
-              <div class="timeline__ruler" id="timeline-ruler"></div>
-              <div class="timeline__formations" id="timeline-formations"></div>
-              <div class="timeline__marker" id="timeline-marker" style="left:${TIMELINE_PADDING}px">
-                <div class="timeline__marker-handle"></div>
+        <div class="sidebar__panel sidebar__panel--hidden" id="panel-settings">
+          <div class="sidebar__panel-title">${t('viewTitle')}</div>
+          <div class="sidebar__scroll">
+            <div class="settings-section">
+              <div class="settings-label">${t('viewLabel')}</div>
+              <div class="settings-options" id="sidebar-display-options">
+                <button class="settings-option settings-option--active" data-display="number">${t('viewNumber')}</button>
+                <button class="settings-option" data-display="name">${t('viewName')}</button>
+                <button class="settings-option" data-display="none">${t('none')}</button>
               </div>
             </div>
+            <div class="settings-section">
+              <div class="settings-label">${t('audienceDir')}</div>
+              <div class="settings-options" id="view-audience-options">
+                <button class="settings-option${initAudience === 'top' ? ' settings-option--active' : ''}" data-audience="top">${t('audienceTop')}</button>
+                <button class="settings-option${initAudience === 'bottom' ? ' settings-option--active' : ''}" data-audience="bottom">${t('audienceBottom')}</button>
+              </div>
+            </div>
+            <div class="settings-divider"></div>
+            <div class="settings-section">
+              <div class="settings-label">${t('addMusic')}</div>
+              <button class="btn btn--ghost" id="viewer-music-btn" style="width:100%;font-size:12px">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+                <span id="viewer-music-label">${t('addMusic')}</span>
+              </button>
+              <input type="file" id="viewer-music-input" accept="audio/*" style="display:none" />
+            </div>
           </div>
-          <div class="timeline__bottom-bar">
-            <div class="timeline__scrollbar" id="timeline-scrollbar">
-              <div class="timeline__scrollbar-thumb" id="scrollbar-thumb"></div>
+        </div>
+      </div>
+
+      <div class="sidebar-rail" id="sidebar-rail">
+        <button class="sidebar-rail__icon sidebar-rail__icon--active" data-panel="dancers" title="${t('railDancers')}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></button>
+        <button class="sidebar-rail__icon" data-panel="settings" title="${t('railView')}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="2" y1="6" x2="22" y2="6"/><line x1="2" y1="18" x2="22" y2="18"/><line x1="6" y1="2" x2="6" y2="22"/><line x1="18" y1="2" x2="18" y2="22"/></svg></button>
+      </div>
+
+      <div class="player-bar">
+        <div class="player-bar__row">
+          <button class="player-bar__btn" id="play-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path id="play-icon" d="M8 5v14l11-7z"/></svg></button>
+          <button class="player-bar__btn" id="stop-btn" title="${t('stopBtn')}"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12"/></svg></button>
+          <button class="player-bar__btn" id="prev-formation-btn" title="${t('prevFormation')}"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg></button>
+          <button class="player-bar__btn" id="next-formation-btn" title="${t('nextFormation')}"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg></button>
+          <span class="player-bar__time" id="time-display">${formatTime(0, true)}</span><span class="player-bar__time player-bar__time--sep">/</span><span class="player-bar__time">${formatTime(duration, true)}</span>
+        </div>
+      </div>
+
+      <div class="editor__timeline-wrap">
+        <div class="editor__timeline" id="timeline-scroll">
+          <div class="timeline" id="timeline" style="width:${timelineWidth}px">
+            <div class="timeline__ruler" id="timeline-ruler"></div>
+            <div class="timeline__formations" id="timeline-formations"></div>
+            <div class="timeline__marker" id="timeline-marker" style="left:${TIMELINE_PADDING}px">
+              <div class="timeline__marker-handle"></div>
             </div>
-            <div class="timeline__zoom">
-              <button class="timeline__zoom-btn" id="zoom-out-btn">−</button>
-              <span class="timeline__zoom-label" id="zoom-label">100%</span>
-              <button class="timeline__zoom-btn" id="zoom-in-btn">+</button>
-            </div>
+          </div>
+        </div>
+        <div class="timeline__bottom-bar">
+          <div class="timeline__scrollbar" id="timeline-scrollbar">
+            <div class="timeline__scrollbar-thumb" id="scrollbar-thumb"></div>
+          </div>
+          <div class="timeline__zoom">
+            <button class="timeline__zoom-btn" id="zoom-out-btn">−</button>
+            <span class="timeline__zoom-label" id="zoom-label">100%</span>
+            <button class="timeline__zoom-btn" id="zoom-in-btn">+</button>
           </div>
         </div>
       </div>
@@ -138,58 +171,63 @@ export async function renderViewer(container, shareId) {
     }
   };
 
-  // 댄서 라벨 (번호/이름/없음)
-  const labelBtns = [container.querySelector('#opt-number'), container.querySelector('#opt-name'), container.querySelector('#opt-none')];
-  labelBtns.forEach((btn) => {
-    btn.addEventListener('click', () => {
-      labelBtns.forEach((b) => b.classList.remove('settings-option--active'));
-      btn.classList.add('settings-option--active');
-      renderer.showNumbers = btn.id === 'opt-number';
-      renderer.showNames = btn.id === 'opt-name';
-      redraw();
-    });
+  // --- 사이드바 레일 토글 ---
+  setupViewerSidebar(container);
+
+  // --- 댄서 목록 (읽기 전용) ---
+  renderViewerDancerList(container);
+
+  // --- 댄서 라벨 (번호/이름/없음) ---
+  const displayOptions = container.querySelector('#sidebar-display-options');
+  displayOptions.addEventListener('click', (e) => {
+    const btn = e.target.closest('.settings-option');
+    if (!btn) return;
+    displayOptions.querySelectorAll('.settings-option').forEach(b => b.classList.remove('settings-option--active'));
+    btn.classList.add('settings-option--active');
+    const mode = btn.dataset.display;
+    renderer.showNumbers = mode === 'number';
+    renderer.showNames = mode === 'name';
+    redraw();
   });
 
-  // 관객 방향
-  const audienceBtns = [container.querySelector('#opt-audience-top'), container.querySelector('#opt-audience-bottom'), container.querySelector('#opt-audience-none')];
-  // 초기 상태 반영
-  audienceBtns.forEach((b) => b.classList.remove('settings-option--active'));
-  const initAud = container.querySelector(`#opt-audience-${renderer.audienceDirection}`);
-  if (initAud) initAud.classList.add('settings-option--active');
-
+  // --- 관객 방향 ---
+  const audienceOptions = container.querySelector('#view-audience-options');
   let currentAudience = renderer.audienceDirection;
-  audienceBtns.forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const newDir = btn.id.replace('opt-audience-', '');
-      const prevFlipped = currentAudience === 'bottom';
-      const newFlipped = newDir === 'bottom';
+  audienceOptions.addEventListener('click', (e) => {
+    const btn = e.target.closest('.settings-option');
+    if (!btn) return;
+    const newDir = btn.dataset.audience;
+    const prevFlipped = currentAudience === 'bottom';
+    const newFlipped = newDir === 'bottom';
 
-      // top↔bottom 전환 시 좌표 180° 회전
-      if (prevFlipped !== newFlipped) {
-        for (const f of formations) {
-          for (const pos of f.positions) {
-            pos.x = -pos.x;
-            pos.y = -pos.y;
-            pos.angle = ((pos.angle || 0) + 180) % 360;
-            if (pos.waypoints) {
-              for (const wp of pos.waypoints) { wp.x = -wp.x; wp.y = -wp.y; }
-            }
+    // top↔bottom 전환 시 좌표 180° 회전
+    if (prevFlipped !== newFlipped) {
+      for (const f of formations) {
+        for (const pos of f.positions) {
+          pos.x = -pos.x;
+          pos.y = -pos.y;
+          pos.angle = ((pos.angle || 0) + 180) % 360;
+          if (pos.waypoints) {
+            for (const wp of pos.waypoints) { wp.x = -wp.x; wp.y = -wp.y; }
           }
         }
-        if (renderer.markers) {
-          for (const m of renderer.markers) { m.x = -m.x; m.y = -m.y; }
-        }
-        engine.setFormations(formations, dancers);
       }
+      if (renderer.markers) {
+        for (const m of renderer.markers) { m.x = -m.x; m.y = -m.y; }
+      }
+      engine.setFormations(formations, dancers);
+    }
 
-      currentAudience = newDir;
-      audienceBtns.forEach((b) => b.classList.remove('settings-option--active'));
-      btn.classList.add('settings-option--active');
-      renderer.audienceDirection = newDir;
-      renderer._drawGridCache();
-      redraw();
-    });
+    currentAudience = newDir;
+    audienceOptions.querySelectorAll('.settings-option').forEach(b => b.classList.remove('settings-option--active'));
+    btn.classList.add('settings-option--active');
+    renderer.audienceDirection = newDir;
+    renderer._drawGridCache();
+    redraw();
   });
+
+  // --- 음악 로드 ---
+  setupViewerMusic(container);
 
   // --- 캔버스 크기 맞추기 ---
   const fitStage = () => {
@@ -244,10 +282,13 @@ export async function renderViewer(container, shareId) {
 function setupViewerPlayback(container, duration) {
   const playBtn = container.querySelector('#play-btn');
   const playIcon = container.querySelector('#play-icon');
+  const stopBtn = container.querySelector('#stop-btn');
+  const prevBtn = container.querySelector('#prev-formation-btn');
+  const nextBtn = container.querySelector('#next-formation-btn');
   const timeDisplay = container.querySelector('#time-display');
 
-  const pausePoints = '6,4 6,20 10,20 10,4 14,4 14,20 18,20 18,4';
-  const playPoints = '6,4 20,12 6,20';
+  const playPath = 'M8 5v14l11-7z';
+  const pausePath = 'M6 4h4v16H6zM14 4h4v16h-4z';
 
   engine.onPositionsUpdate = (positions) => {
     renderer.setCurrentState(dancers, positions);
@@ -269,17 +310,47 @@ function setupViewerPlayback(container, duration) {
   };
 
   engine.onPlaybackEnd = () => {
-    playIcon.setAttribute('points', playPoints);
+    playIcon.setAttribute('d', playPath);
   };
 
   playBtn.addEventListener('click', () => {
     if (engine.isPlaying) {
       engine.pause();
-      playIcon.setAttribute('points', playPoints);
+      playIcon.setAttribute('d', playPath);
     } else {
       engine.play(currentMs >= duration ? 0 : undefined);
-      playIcon.setAttribute('points', pausePoints);
+      playIcon.setAttribute('d', pausePath);
     }
+  });
+
+  // 정지 — 처음으로 돌아가기
+  stopBtn.addEventListener('click', () => {
+    if (engine.isPlaying) engine.pause();
+    playIcon.setAttribute('d', playPath);
+    seekTo(container, 0, duration);
+  });
+
+  // 이전 대형
+  prevBtn.addEventListener('click', () => {
+    if (formations.length === 0) return;
+    const sorted = [...formations].sort((a, b) => a.startTime - b.startTime);
+    // 현재 시간보다 이전에 시작하는 대형 찾기
+    let target = sorted[0];
+    for (let i = sorted.length - 1; i >= 0; i--) {
+      if (sorted[i].startTime < currentMs - 50) { target = sorted[i]; break; }
+    }
+    seekTo(container, target.startTime, duration);
+  });
+
+  // 다음 대형
+  nextBtn.addEventListener('click', () => {
+    if (formations.length === 0) return;
+    const sorted = [...formations].sort((a, b) => a.startTime - b.startTime);
+    let target = sorted[sorted.length - 1];
+    for (let i = 0; i < sorted.length; i++) {
+      if (sorted[i].startTime > currentMs + 50) { target = sorted[i]; break; }
+    }
+    seekTo(container, target.startTime, duration);
   });
 }
 
@@ -464,7 +535,7 @@ function seekTo(container, ms, duration) {
 
   // 재생 아이콘 복원
   const playIcon = container.querySelector('#play-icon');
-  if (playIcon) playIcon.setAttribute('points', '6,4 20,12 6,20');
+  if (playIcon) playIcon.setAttribute('d', 'M8 5v14l11-7z');
 }
 
 function updateMarker() {
@@ -605,6 +676,65 @@ function updateTransitionConnectors(formationsEl) {
     connector.appendChild(svg);
     formationsEl.appendChild(connector);
   }
+}
+
+// ====== 사이드바 ======
+
+function setupViewerSidebar(container) {
+  const viewer = container.querySelector('.viewer');
+  const railIcons = container.querySelectorAll('.sidebar-rail__icon');
+  const panels = container.querySelectorAll('.sidebar__panel');
+
+  railIcons.forEach((icon) => {
+    icon.addEventListener('click', () => {
+      const panelName = icon.dataset.panel;
+      const isActive = icon.classList.contains('sidebar-rail__icon--active');
+
+      if (isActive) {
+        // 같은 아이콘 다시 누르면 사이드바 닫기/열기
+        viewer.classList.toggle('viewer--sidebar-open');
+        return;
+      }
+
+      // 다른 패널 선택 — 사이드바 열기 + 패널 전환
+      viewer.classList.add('viewer--sidebar-open');
+      railIcons.forEach(ic => ic.classList.remove('sidebar-rail__icon--active'));
+      icon.classList.add('sidebar-rail__icon--active');
+      panels.forEach(p => {
+        p.classList.toggle('sidebar__panel--hidden', p.id !== `panel-${panelName}`);
+      });
+    });
+  });
+}
+
+function renderViewerDancerList(container) {
+  const list = container.querySelector('#dancer-list');
+  list.innerHTML = dancers.map((d, i) => `
+    <div class="dancer-item" data-index="${i}">
+      <span class="dancer-item__number">${i + 1}</span>
+      <div class="dancer-item__color" style="background:${d.color}"></div>
+      <span class="dancer-item__name-label">${d.name || `Dancer ${i + 1}`}</span>
+    </div>
+  `).join('');
+}
+
+function setupViewerMusic(container) {
+  const musicBtn = container.querySelector('#viewer-music-btn');
+  const musicInput = container.querySelector('#viewer-music-input');
+  const musicLabel = container.querySelector('#viewer-music-label');
+
+  musicBtn.addEventListener('click', () => musicInput.click());
+
+  musicInput.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    try {
+      await engine.loadAudio(file);
+      musicLabel.textContent = file.name;
+    } catch (err) {
+      console.error('Music load error:', err);
+    }
+  });
 }
 
 function buildRulerTicks(ruler, durationSec) {
