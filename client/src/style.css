@@ -1532,6 +1532,49 @@ html:has(.editor) {
   transform: translateX(-50%) translateY(0);
 }
 
+/* --- PWA update banner --- */
+.pwa-update-banner {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%) translateY(100px);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  padding: 12px 20px;
+  border-radius: 10px;
+  font-size: 14px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.5);
+  transition: transform 0.3s ease;
+  z-index: 10000;
+}
+.pwa-update-banner--visible {
+  transform: translateX(-50%) translateY(0);
+}
+.pwa-update-btn {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  font-weight: 600;
+}
+.pwa-update-btn:hover {
+  background: var(--accent-hover);
+}
+.pwa-dismiss-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+  padding: 6px 8px;
+}
+
 /* --- Settings panel --- */
 .settings-panel {
   position: fixed;
