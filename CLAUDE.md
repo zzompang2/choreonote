@@ -7,7 +7,7 @@
 ## 기술 스택
 - **프론트엔드**: Vanilla JS (SPA, 프레임워크 없음), Canvas 2D 렌더링
 - **저장소**: IndexedDB (Dexie.js) — 클라이언트 전용
-- **서버**: Supabase (서울 리전, Free) — 공유 링크, 대열 마켓, Google OAuth, 추후 통계/리뷰/동기화
+- **서버**: Supabase (서울 리전, Free) — 공유 링크, 대형 마켓, Google OAuth, 추후 통계/리뷰/동기화
 - **빌드**: Vite 5 + vite-plugin-pwa (Workbox generateSW)
 - **배포**: GitHub Pages (정적)
 - **PWA**: 오프라인 지원, 전체 에셋 프리캐시, 업데이트 알림
@@ -21,7 +21,7 @@
 | | `pages/Dashboard.js` | 노트 목록, 생성/삭제/정렬/가져오기 |
 | | `pages/Landing.js` | 랜딩 페이지 |
 | | `pages/Viewer.js` | 공유 재생 전용 뷰어 (읽기 전용, Supabase 조회) |
-| | `pages/Market.js` | 대열 마켓 — 목록/상세/업로드 (Google OAuth 인증) |
+| | `pages/Market.js` | 대형 마켓 — 목록/상세/업로드 (Google OAuth 인증) |
 | 렌더링 | `renderer/StageRenderer.js` | Canvas 무대 렌더링 (댄서, 그리드, 경로, 2D/3D) |
 | 엔진 | `engine/PlaybackEngine.js` | Web Audio 재생, 시간 동기화, 선형 보간 |
 | | `engine/VideoExporter.js` | captureStream + MediaRecorder 영상 내보내기 |
@@ -36,7 +36,7 @@
 | | `utils/toast.js` | 토스트 알림 |
 | | `utils/share.js` | 공유 링크 생성/조회 (Supabase) |
 | | `utils/auth.js` | Google OAuth 인증 (로그인/로그아웃/requireAuth 모달) |
-| | `utils/market.js` | 대열 마켓 CRUD API (Supabase) |
+| | `utils/market.js` | 대형 마켓 CRUD API (Supabase) |
 | | `utils/thumbnail.js` | 캔버스 썸네일 렌더링 (Dashboard/Market 공용) |
 | 컴포넌트 | `components/ChatBot.js` | FAQ 챗봇 (FAB + 사이드바 임베드, 팁 배너, 자동완성) |
 | 스타일 | `style.css` | 전역 CSS (다크/라이트 변수 포함) |
