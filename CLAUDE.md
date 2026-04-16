@@ -32,6 +32,7 @@
 | | `utils/theme.js` | 다크/라이트 모드 |
 | | `utils/toast.js` | 토스트 알림 |
 | | `utils/share.js` | 공유 링크 생성/조회 (Supabase) |
+| 컴포넌트 | `components/ChatBot.js` | FAQ 챗봇 (FAB + 사이드바 임베드, 팁 배너, 자동완성) |
 | 스타일 | `style.css` | 전역 CSS (다크/라이트 변수 포함) |
 
 ## 데이터 모델 (IndexedDB)
