@@ -5,7 +5,7 @@ import { t, getLang } from '../utils/i18n.js';
 const FAQ_KO = [
   // 일반
   { q: ['코레오노트', '뭐하는', '어떤 앱', '소개'], a: 'ChoreoNote는 안무 대형(포메이션)을 타임라인으로 관리하고, 전환 애니메이션을 재생·영상 내보내기할 수 있는 웹앱입니다.', context: 'all' },
-  { q: ['시작', '처음', '어떻게 쓰'], a: '대시보드에서 "새 노트"를 만들고, 에디터에서 댄서를 배치한 뒤 타임라인에 대형을 추가하세요. 재생 버튼으로 결과를 확인할 수 있어요.', context: 'all' },
+  { q: ['시작', '처음', '어떻게 쓰'], a: '노트 목록에서 "새 노트"를 만들고, 편집 화면에서 댄서를 배치한 뒤 타임라인에 대형을 추가하세요. 재생 버튼으로 결과를 확인할 수 있어요.', context: 'all' },
   { q: ['로그인', '회원가입', '계정'], a: '로그인 없이 바로 사용할 수 있어요. 모든 데이터는 브라우저에 저장됩니다.', context: 'all' },
   { q: ['저장', '데이터', '어디에'], a: '모든 데이터는 브라우저의 IndexedDB에 저장됩니다. 서버에 전송되지 않아요. 설정에서 JSON 백업을 내보낼 수 있습니다.', context: 'all' },
   { q: ['모바일', '아이패드', '태블릿', '핸드폰'], a: '모바일과 아이패드에서도 사용할 수 있어요. 터치로 댄서를 드래그하고, 핀치 줌으로 무대를 확대/축소할 수 있습니다.', context: 'all' },
@@ -17,15 +17,38 @@ const FAQ_KO = [
   { q: ['오프라인', '인터넷'], a: 'PWA를 지원해서 한 번 접속하면 오프라인에서도 사용할 수 있어요.', context: 'landing' },
 
   // 대시보드
-  { q: ['노트 만들기', '새 노트', '노트 생성'], a: '대시보드에서 "+ 새 노트" 버튼을 누르면 새 노트가 생성되고 에디터로 이동합니다.', context: 'dashboard' },
+  { q: ['노트 만들기', '새 노트', '노트 생성'], a: '노트 목록에서 "+ 새 노트" 버튼을 누르면 새 노트가 생성되고 편집 화면으로 이동합니다.', context: 'dashboard' },
   { q: ['삭제', '휴지통', '복원'], a: '노트를 삭제하면 휴지통으로 이동합니다. 30일 후 자동 삭제되며, 그 전에 복원할 수 있어요.', context: 'dashboard' },
-  { q: ['가져오기', 'import', 'json'], a: '대시보드의 "가져오기" 버튼으로 JSON 백업 파일을 불러올 수 있습니다.', context: 'dashboard' },
+  { q: ['가져오기', 'import', 'json'], a: '노트 목록의 "가져오기" 버튼으로 JSON 백업 파일을 불러올 수 있습니다.', context: 'dashboard' },
 
+  // 에디터 — 추천 키워드 상위 4개: 스냅, 교환, 정렬, 단축키
+  { q: ['스냅', '격자', '자석'], a: '스냅을 켜면(S 키) 댄서가 격자에 딱 맞게 붙습니다. 깔끔한 배치가 필요할 때 유용해요.', context: 'editor' },
+  { q: ['교환', '스왑', 'swap'], a: '툴바의 교환 버튼을 누른 뒤, 두 댄서를 차례로 클릭하면 위치가 교환됩니다.', context: 'editor' },
+  { q: ['정렬', '균등 배치', 'align'], a: '여러 댄서를 선택하면 댄서 편집 패널에 정렬 버튼이 나타나요. 가로/세로 정렬, 균등 배치를 할 수 있습니다.', context: 'editor' },
+
+  // 에디터 — 단축키 (기존 도움말 패널 내용을 FAQ로 통합)
+  { q: ['단축키', '키보드', '핫키'], html: true, a: `<div class="chatbot-shortcuts">
+<div class="shortcut-row"><kbd>Space</kbd><span>재생 / 일시정지</span></div>
+<div class="shortcut-row"><kbd>←</kbd> <kbd>→</kbd><span>250ms 이동</span></div>
+<div class="shortcut-row"><kbd>↑</kbd> <kbd>↓</kbd><span>이전 / 다음 대형</span></div>
+<div class="shortcut-row"><kbd>N</kbd><span>대형 추가</span></div>
+<div class="shortcut-row"><kbd>S</kbd><span>스냅 토글</span></div>
+<div class="shortcut-row"><kbd>+</kbd> <kbd>−</kbd><span>타임라인 줌</span></div>
+<div class="shortcut-row"><kbd>Tab</kbd><span>패널 전환</span></div>
+<div class="shortcut-row"><kbd>Del</kbd><span>대형 삭제</span></div>
+<div class="shortcut-row"><kbd>Ctrl+Z</kbd><span>되돌리기</span></div>
+<div class="shortcut-row"><kbd>Ctrl+Shift+Z</kbd><span>다시 실행</span></div>
+<div class="shortcut-row"><kbd>Ctrl+A</kbd><span>전체 선택</span></div>
+<div class="shortcut-row"><kbd>Ctrl+C</kbd> <kbd>V</kbd><span>복사 / 붙여넣기</span></div>
+<div class="shortcut-row"><kbd>3</kbd><span>3D 뷰 토글</span></div>
+<div class="shortcut-row"><kbd>Esc</kbd><span>해제</span></div>
+<div class="shortcut-row"><kbd>Shift+클릭</kbd><span>다중 선택</span></div>
+<div class="shortcut-row"><kbd>Shift+휠</kbd><span>타임라인 스크롤</span></div>
+</div>`, context: 'editor' },
   // 에디터 — 댄서
   { q: ['댄서 추가', '댄서 만들기', '멤버 추가'], a: '사이드바의 댄서 목록에서 "+ 댄서 추가"를 누르세요. 이름, 색상 등은 댄서를 선택 후 댄서 편집 패널에서 변경할 수 있어요.', context: 'editor' },
   { q: ['댄서 선택', '다중 선택', '여러 명'], a: '무대에서 Shift+클릭으로 여러 댄서를 선택하거나, 빈 공간을 드래그해서 영역 선택할 수 있어요.', context: 'editor' },
   { q: ['댄서 색상', '색 바꾸기'], a: '댄서를 선택하면 사이드바 댄서 편집 패널에서 색상을 변경할 수 있어요.', context: 'editor' },
-  { q: ['교환', '스왑', 'swap'], a: '툴바의 교환 버튼을 누른 뒤, 두 댄서를 차례로 클릭하면 위치가 교환됩니다.', context: 'editor' },
 
   // 에디터 — 대형/타임라인
   { q: ['대형 추가', '대열 추가', '포메이션'], a: '타임라인의 빈 곳을 클릭한 뒤 "+ 대형" 버튼을 누르거나, N 키를 누르세요.', context: 'editor' },
@@ -40,8 +63,7 @@ const FAQ_KO = [
   { q: ['영상', '내보내기', '동영상', 'mp4', '비디오'], a: '헤더의 "영상 저장" 버튼을 누르면 현재 보이는 그대로 MP4로 내보낼 수 있어요.', context: 'editor' },
   { q: ['경유점', 'waypoint', '이동 경로', '곡선'], a: '두 대형 사이 전환 구간(화살표 영역)을 클릭하면 경유점을 편집할 수 있어요. 댄서의 이동 경로를 곡선으로 만들 수 있습니다.', context: 'editor' },
 
-  // 에디터 — 단축키 (기존 도움말 패널 내용을 FAQ로 통합)
-  { q: ['단축키', '키보드', '핫키'], a: 'Space=재생, ←→=250ms 이동, ↑↓=대형 이동, N=대형 추가, S=스냅, +/-=줌, Tab=패널 전환, Del=대형 삭제, Ctrl+Z/Shift+Z=되돌리기/다시, Ctrl+A=전체 선택, Ctrl+C/V=복사/붙여넣기, 3=3D 뷰, Esc=해제, Shift+클릭=다중 선택, Shift+휠=스크롤', context: 'editor' },
+  // 에디터 — 기타
   { q: ['되돌리기', 'undo', 'redo', '실행 취소'], a: 'Ctrl+Z로 되돌리기, Ctrl+Shift+Z로 다시 실행할 수 있어요. 최대 50단계까지 지원합니다.', context: 'editor' },
   { q: ['3d', '3D', '입체'], a: '무대 설정에서 3D 뷰를 켤 수 있어요. 입체적인 시점에서 대형을 확인할 수 있습니다.', context: 'editor' },
   { q: ['공유', '링크', '보내기'], a: '설정의 "공유 링크 복사"를 누르면 읽기 전용 URL이 생성됩니다. 링크를 받은 사람은 로그인 없이 볼 수 있어요.', context: 'editor' },
@@ -51,13 +73,12 @@ const FAQ_KO = [
 
   // 뷰어
   { q: ['뷰어', '공유 페이지', '읽기 전용'], a: '공유 뷰어는 읽기 전용입니다. 재생, 대형 이동, 줌, 음악 로드가 가능하고, 사이드바에서 라벨/관객 방향을 변경할 수 있어요.', context: 'viewer' },
-  { q: ['단축키', '키보드'], a: 'Space=재생/일시정지, ↑↓=이전/다음 대형, +/-=타임라인 줌', context: 'viewer' },
 ];
 
 const FAQ_EN = [
   // General
   { q: ['choreonote', 'what is', 'about', 'intro'], a: 'ChoreoNote is a web app for managing dance formations on a timeline with transition animations, playback, and video export.', context: 'all' },
-  { q: ['start', 'begin', 'how to use', 'get started'], a: 'Create a "New Note" on the dashboard, place dancers in the editor, and add formations to the timeline. Press play to see the result.', context: 'all' },
+  { q: ['start', 'begin', 'how to use', 'get started'], a: 'Create a "New Note" in the note list, place dancers in the editor, and add formations to the timeline. Press play to see the result.', context: 'all' },
   { q: ['login', 'signup', 'account'], a: 'No login required. All data is stored in your browser.', context: 'all' },
   { q: ['save', 'data', 'where stored'], a: 'All data is stored in your browser\'s IndexedDB. Nothing is sent to a server. You can export a JSON backup in Settings.', context: 'all' },
   { q: ['mobile', 'ipad', 'tablet', 'phone', 'touch'], a: 'Works on mobile and iPad. Drag dancers with touch, pinch to zoom the stage.', context: 'all' },
@@ -69,15 +90,38 @@ const FAQ_EN = [
   { q: ['offline', 'internet'], a: 'PWA supported — once loaded, it works offline too.', context: 'landing' },
 
   // Dashboard
-  { q: ['create note', 'new note'], a: 'Press "+ New Note" on the dashboard to create a note and open the editor.', context: 'dashboard' },
+  { q: ['create note', 'new note'], a: 'Press "+ New Note" in the note list to create a note and open the editor.', context: 'dashboard' },
   { q: ['delete', 'trash', 'restore'], a: 'Deleted notes go to the trash. They\'re auto-deleted after 30 days, but can be restored before then.', context: 'dashboard' },
-  { q: ['import', 'json', 'load file'], a: 'Use the "Import" button on the dashboard to load a JSON backup file.', context: 'dashboard' },
+  { q: ['import', 'json', 'load file'], a: 'Use the "Import" button in the note list to load a JSON backup file.', context: 'dashboard' },
 
+  // Editor — top 4 suggestions: snap, swap, align, shortcut
+  { q: ['snap', 'grid'], a: 'Toggle snap (S key) to make dancers stick to the grid. Great for clean positioning.', context: 'editor' },
+  { q: ['swap', 'exchange'], a: 'Press the swap button in the toolbar, then click two dancers to exchange their positions.', context: 'editor' },
+  { q: ['align', 'distribute'], a: 'Select multiple dancers to reveal align buttons in the Edit Dancer panel. Align horizontally/vertically or distribute evenly.', context: 'editor' },
+
+  // Editor — Shortcuts
+  { q: ['shortcut', 'keyboard', 'hotkey'], html: true, a: `<div class="chatbot-shortcuts">
+<div class="shortcut-row"><kbd>Space</kbd><span>Play / Pause</span></div>
+<div class="shortcut-row"><kbd>←</kbd> <kbd>→</kbd><span>Seek 250ms</span></div>
+<div class="shortcut-row"><kbd>↑</kbd> <kbd>↓</kbd><span>Prev / Next formation</span></div>
+<div class="shortcut-row"><kbd>N</kbd><span>Add formation</span></div>
+<div class="shortcut-row"><kbd>S</kbd><span>Toggle snap</span></div>
+<div class="shortcut-row"><kbd>+</kbd> <kbd>−</kbd><span>Timeline zoom</span></div>
+<div class="shortcut-row"><kbd>Tab</kbd><span>Switch panel</span></div>
+<div class="shortcut-row"><kbd>Del</kbd><span>Delete formation</span></div>
+<div class="shortcut-row"><kbd>Ctrl+Z</kbd><span>Undo</span></div>
+<div class="shortcut-row"><kbd>Ctrl+Shift+Z</kbd><span>Redo</span></div>
+<div class="shortcut-row"><kbd>Ctrl+A</kbd><span>Select all</span></div>
+<div class="shortcut-row"><kbd>Ctrl+C</kbd> <kbd>V</kbd><span>Copy / Paste</span></div>
+<div class="shortcut-row"><kbd>3</kbd><span>Toggle 3D</span></div>
+<div class="shortcut-row"><kbd>Esc</kbd><span>Deselect</span></div>
+<div class="shortcut-row"><kbd>Shift+click</kbd><span>Multi-select</span></div>
+<div class="shortcut-row"><kbd>Shift+wheel</kbd><span>Scroll timeline</span></div>
+</div>`, context: 'editor' },
   // Editor — Dancers
   { q: ['add dancer', 'create dancer', 'new dancer'], a: 'Press "+ Add Dancer" in the sidebar dancer list. Edit name, color, etc. by selecting a dancer and using the Edit Dancer panel.', context: 'editor' },
   { q: ['select dancer', 'multi select', 'multiple'], a: 'Shift+click to select multiple dancers, or drag an empty area to box-select.', context: 'editor' },
   { q: ['dancer color', 'change color'], a: 'Select a dancer, then change the color in the Edit Dancer panel.', context: 'editor' },
-  { q: ['swap', 'exchange'], a: 'Press the swap button in the toolbar, then click two dancers to exchange their positions.', context: 'editor' },
 
   // Editor — Formations/Timeline
   { q: ['add formation', 'new formation'], a: 'Click an empty spot on the timeline and press "+ Form." or press the N key.', context: 'editor' },
@@ -92,8 +136,7 @@ const FAQ_EN = [
   { q: ['video', 'export', 'mp4', 'record'], a: 'Press "Export Video" in the header to export the current view as MP4.', context: 'editor' },
   { q: ['waypoint', 'path', 'curve'], a: 'Click the transition area (arrow between formations) to edit waypoints. You can create curved dancer paths.', context: 'editor' },
 
-  // Editor — Shortcuts
-  { q: ['shortcut', 'keyboard', 'hotkey'], a: 'Space=play, ←→=seek 250ms, ↑↓=prev/next formation, N=add formation, S=snap, +/-=zoom, Tab=switch panel, Del=delete formation, Ctrl+Z/Shift+Z=undo/redo, Ctrl+A=select all, Ctrl+C/V=copy/paste, 3=3D, Esc=deselect, Shift+click=multi-select, Shift+wheel=scroll', context: 'editor' },
+  // Editor — Other
   { q: ['undo', 'redo'], a: 'Ctrl+Z to undo, Ctrl+Shift+Z to redo. Up to 50 steps.', context: 'editor' },
   { q: ['3d', '3D', 'perspective'], a: 'Toggle 3D view in Stage Setup for a perspective view of formations.', context: 'editor' },
   { q: ['share', 'link', 'send'], a: 'Press "Copy Share Link" in Settings to generate a read-only URL. No login needed to view.', context: 'editor' },
@@ -103,7 +146,6 @@ const FAQ_EN = [
 
   // Viewer
   { q: ['viewer', 'shared page', 'read only'], a: 'The shared viewer is read-only. You can play, navigate formations, zoom, load music, and change labels/audience direction in the sidebar.', context: 'viewer' },
-  { q: ['shortcut', 'keyboard'], a: 'Space=play/pause, ↑↓=prev/next formation, +/-=timeline zoom', context: 'viewer' },
 ];
 
 // --- 팁 데이터 (페이지별) ---
@@ -199,8 +241,8 @@ function detectPage() {
 
 function getPageLabel(page) {
   const labels = {
-    ko: { landing: '랜딩', dashboard: '대시보드', editor: '에디터', viewer: '공유 뷰어' },
-    en: { landing: 'Landing', dashboard: 'Dashboard', editor: 'Editor', viewer: 'Viewer' },
+    ko: { landing: '시작 화면', dashboard: '노트 목록', editor: '편집 화면', viewer: '공유 뷰어' },
+    en: { landing: 'Home', dashboard: 'Note List', editor: 'Editor', viewer: 'Shared Viewer' },
   };
   return (labels[getLang()] || labels.ko)[page] || page;
 }
@@ -531,10 +573,24 @@ export function initEmbeddedChat(container, page) {
 
 // ====== 칩 렌더링 ======
 
+function updateChipsFade(container) {
+  if (!container) return;
+  const atEnd = container.scrollWidth - container.scrollLeft - container.clientWidth < 4;
+  container.classList.toggle('chatbot-embed__chips--end', atEnd);
+}
+
 function renderChips(container, labels, isAutocomplete) {
   if (!container) return;
   const cls = isAutocomplete ? 'chatbot-chip chatbot-chip--auto' : 'chatbot-chip';
   container.innerHTML = labels.map((s) => `<button class="${cls}">${s}</button>`).join('');
+  // fade 힌트 갱신
+  if (container.classList.contains('chatbot-embed__chips')) {
+    requestAnimationFrame(() => updateChipsFade(container));
+    if (!container._fadeListenerAdded) {
+      container.addEventListener('scroll', () => updateChipsFade(container), { passive: true });
+      container._fadeListenerAdded = true;
+    }
+  }
 }
 
 function getRelatedSuggestions(query, page) {
@@ -568,6 +624,24 @@ function getRelatedSuggestions(query, page) {
 
 // ====== 공용 헬퍼 ======
 
+/** context를 사용자 친화적 라벨로 변환 (현재 페이지와 같거나 'all'이면 null) */
+function getContextBadge(context) {
+  const page = detectPage();
+  if (context === 'all' || context === page) return null;
+  const labels = {
+    ko: { landing: '시작 화면', dashboard: '노트 목록', editor: '편집 화면', viewer: '공유 뷰어' },
+    en: { landing: 'Home', dashboard: 'Note List', editor: 'Editor', viewer: 'Shared Viewer' },
+  };
+  return (labels[getLang()] || labels.ko)[context] || null;
+}
+
+function formatAnswer(text, context, isHtml) {
+  const badge = getContextBadge(context);
+  const content = isHtml ? text : `<p>${text}</p>`;
+  if (!badge) return content;
+  return `<span class="chatbot-badge">${badge}</span>${content}`;
+}
+
 function appendMessage(body, text, isUser) {
   const msg = document.createElement('div');
   msg.className = `chatbot-msg chatbot-msg--${isUser ? 'user' : 'bot'}`;
@@ -583,23 +657,29 @@ function appendAnswer(body, results) {
   if (results.length === 0) {
     msg.textContent = t('chatNoResult');
   } else if (results.length === 1) {
-    msg.innerHTML = `<p>${results[0].a}</p>`;
+    msg.innerHTML = formatAnswer(results[0].a, results[0].context, results[0].html);
   } else {
     // 2개 이상 — 선택지 제시
     msg.innerHTML = `<p>${t('chatDisambiguate')}</p>`;
     const choices = document.createElement('div');
     choices.className = 'chatbot-choices';
     results.forEach((r) => {
+      const badge = getContextBadge(r.context);
       const btn = document.createElement('button');
       btn.className = 'chatbot-choice';
-      btn.textContent = r.q[0];
+      btn.textContent = badge ? `${r.q[0]}` : r.q[0];
+      if (badge) {
+        const tag = document.createElement('span');
+        tag.className = 'chatbot-badge chatbot-badge--inline';
+        tag.textContent = badge;
+        btn.prepend(tag);
+      }
       btn.addEventListener('click', () => {
-        // 선택한 항목을 사용자 메시지로 표시 후 답변
         msg.remove();
         appendMessage(body, r.q[0], true);
         const answer = document.createElement('div');
         answer.className = 'chatbot-msg chatbot-msg--bot';
-        answer.innerHTML = `<p>${r.a}</p>`;
+        answer.innerHTML = formatAnswer(r.a, r.context, r.html);
         body.appendChild(answer);
         body.scrollTop = body.scrollHeight;
       });

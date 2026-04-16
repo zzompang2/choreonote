@@ -3134,9 +3134,8 @@ html:has(.editor) {
 }
 .chatbot-panel__close:hover { color: var(--text-primary); }
 
-.chatbot-panel__tip {
-  margin: 0 14px;
-  margin-top: 10px;
+.chatbot-tip.chatbot-panel__tip {
+  margin: 10px 14px 6px;
 }
 
 .chatbot-panel__body {
@@ -3210,6 +3209,53 @@ html:has(.editor) {
 .chatbot-chip--auto:hover {
   background: var(--accent);
   color: #fff;
+}
+
+.chatbot-shortcuts {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.chatbot-shortcuts .shortcut-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 3px 0;
+  font-size: 11px;
+  color: var(--text-secondary);
+  gap: 8px;
+}
+.chatbot-shortcuts .shortcut-row kbd {
+  background: var(--border);
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 10px;
+  font-family: inherit;
+  color: var(--text-primary);
+  min-width: 20px;
+  text-align: center;
+}
+.chatbot-shortcuts .shortcut-row span {
+  flex: 1;
+  text-align: right;
+}
+
+.chatbot-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--accent);
+  color: #fff;
+  opacity: 0.85;
+  margin-bottom: 4px;
+}
+.chatbot-badge--inline {
+  margin-bottom: 0;
+  margin-right: 6px;
+  vertical-align: middle;
 }
 
 .chatbot-choices {
@@ -3292,17 +3338,9 @@ html:has(.editor) {
 .chatbot-tip__text {
   opacity: 0;
   transition: opacity 0.4s;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 .chatbot-tip--visible .chatbot-tip__text {
   opacity: 1;
-}
-.chatbot-tip:hover .chatbot-tip__text {
-  white-space: normal;
-  overflow: visible;
-  text-overflow: unset;
 }
 
 .chatbot-embed__body {
@@ -3315,6 +3353,7 @@ html:has(.editor) {
   scrollbar-width: thin;
 }
 .chatbot-embed__chips {
+  position: relative;
   display: flex;
   gap: 6px;
   overflow-x: auto;
@@ -3322,6 +3361,12 @@ html:has(.editor) {
   margin-top: auto;
   scrollbar-width: none;
   flex-shrink: 0;
+  mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent);
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent);
+}
+.chatbot-embed__chips--end {
+  mask-image: none;
+  -webkit-mask-image: none;
 }
 .chatbot-embed__chips::-webkit-scrollbar { display: none; }
 .chatbot-embed__chips .chatbot-chip {
