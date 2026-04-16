@@ -282,9 +282,77 @@ export async function renderMarket(container) {
       });
     }
 
+    const MAX_UPLOAD_FORMATIONS = 5;
+
     function renderStep2() {
       const formations = noteData.formations.sort((a, b) => a.order - b.order);
       const dancers = noteData.dancers;
+
+      // 범위 선택 상태: startIdx, endIdx (null이면 미선택)
+      let rangeStart = null;
+      let rangeEnd = null;
+
+      function getSelectedRange() {
+        if (rangeStart === null) return [];
+        const lo = Math.min(rangeStart, rangeEnd ?? rangeStart);
+        const hi = Math.max(rangeStart, rangeEnd ?? rangeStart);
+        return formations.slice(lo, hi + 1);
+      }
+
+      function updateSelectionUI(hoverIdx) {
+        const items = overlay.querySelectorAll('.market-upload__formation-item');
+        const connectors = overlay.querySelectorAll('.market-upload__connector');
+        const lo = rangeStart !== null ? Math.min(rangeStart, rangeEnd ?? hoverIdx ?? rangeStart) : -1;
+        const hi = rangeStart !== null ? Math.max(rangeStart, rangeEnd ?? hoverIdx ?? rangeStart) : -1;
+        const isPreview = rangeStart !== null && rangeEnd === null && hoverIdx != null && hoverIdx !== rangeStart;
+        const overMax = hi - lo + 1 > MAX_UPLOAD_FORMATIONS;
+
+        items.forEach((item, i) => {
+          const inRange = i >= lo && i <= hi;
+          item.classList.toggle('market-upload__formation-item--selected', inRange && !overMax);
+          item.classList.toggle('market-upload__formation-item--preview', inRange && isPreview && !overMax);
+          item.classList.toggle('market-upload__formation-item--over-max', inRange && overMax);
+          // 뱃지 업데이트
+          const badge = item.querySelector('.market-upload__badge');
+          if (badge) {
+            if (!inRange || overMax) {
+              badge.textContent = '';
+              badge.style.display = 'none';
+            } else if (lo === hi && i === lo) {
+              badge.textContent = rangeEnd === null ? t('marketBadgeStart') : '';
+              badge.style.display = rangeEnd === null ? '' : 'none';
+            } else if (i === lo) {
+              badge.textContent = t('marketBadgeStart');
+              badge.style.display = '';
+            } else if (i === hi) {
+              badge.textContent = t('marketBadgeEnd');
+              badge.style.display = '';
+            } else {
+              badge.textContent = '';
+              badge.style.display = 'none';
+            }
+          }
+        });
+        // 커넥터 하이라이트
+        connectors.forEach((conn, i) => {
+          // 커넥터 i는 아이템 i와 i+1 사이
+          const active = i >= lo && i < hi && !overMax;
+          conn.classList.toggle('market-upload__connector--active', active);
+          conn.classList.toggle('market-upload__connector--preview', active && isPreview);
+        });
+        // 선택 개수 표시
+        const selected = getSelectedRange();
+        const countEl = overlay.querySelector('.market-upload__selection-count');
+        if (countEl) {
+          if (rangeStart !== null && rangeEnd === null) {
+            countEl.textContent = t('marketSelectEnd');
+          } else if (selected.length > 0) {
+            countEl.textContent = t('marketSelectionCount', { count: selected.length, max: MAX_UPLOAD_FORMATIONS });
+          } else {
+            countEl.textContent = '';
+          }
+        }
+      }
 
       overlay.innerHTML = `
         <div class="market-modal__box">
@@ -294,15 +362,18 @@ export async function renderMarket(container) {
           </div>
 
           <h3 class="market-modal__subtitle">${t('marketSelectFormations')}</h3>
+          <p class="market-upload__hint">${t('marketSelectHint', { max: MAX_UPLOAD_FORMATIONS })}</p>
           <div class="market-upload__formation-list">
             ${formations.map((f, i) => `
-              <label class="market-upload__formation-item">
-                <input type="checkbox" value="${f.id}" checked />
+              <div class="market-upload__formation-item" data-idx="${i}">
+                <span class="market-upload__badge" style="display:none"></span>
                 <canvas data-formation-thumb="${f.id}" width="100" height="67"></canvas>
                 <span>${i + 1}</span>
-              </label>
+              </div>
+              ${i < formations.length - 1 ? '<div class="market-upload__connector">→</div>' : ''}
             `).join('')}
           </div>
+          <div class="market-upload__selection-count"></div>
 
           <div class="market-upload__form">
             <label class="market-upload__label">
@@ -326,6 +397,40 @@ export async function renderMarket(container) {
       overlay.querySelector('#upload-cancel-btn').addEventListener('click', () => overlay.remove());
       overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
 
+      // 대형 클릭 → 범위 선택, hover → 미리보기
+      overlay.querySelectorAll('.market-upload__formation-item').forEach(item => {
+        item.addEventListener('click', () => {
+          const idx = Number(item.dataset.idx);
+          if (rangeStart === null) {
+            rangeStart = idx;
+            rangeEnd = null;
+          } else if (rangeEnd === null && idx !== rangeStart) {
+            const lo = Math.min(rangeStart, idx);
+            const hi = Math.max(rangeStart, idx);
+            if (hi - lo + 1 > MAX_UPLOAD_FORMATIONS) {
+              showToast(t('marketMaxFormations', { max: MAX_UPLOAD_FORMATIONS }));
+              return;
+            }
+            rangeStart = lo;
+            rangeEnd = hi;
+          } else {
+            rangeStart = idx;
+            rangeEnd = null;
+          }
+          updateSelectionUI();
+        });
+        item.addEventListener('mouseenter', () => {
+          if (rangeStart !== null && rangeEnd === null) {
+            updateSelectionUI(Number(item.dataset.idx));
+          }
+        });
+        item.addEventListener('mouseleave', () => {
+          if (rangeStart !== null && rangeEnd === null) {
+            updateSelectionUI();
+          }
+        });
+      });
+
       // 대형 썸네일
       for (const f of formations) {
         const canvas = overlay.querySelector(`canvas[data-formation-thumb="${f.id}"]`);
@@ -346,14 +451,13 @@ export async function renderMarket(container) {
 
       // 업로드 실행
       overlay.querySelector('#upload-submit-btn').addEventListener('click', async () => {
-        const checked = overlay.querySelectorAll('.market-upload__formation-list input:checked');
-        const selectedIds = Array.from(checked).map(c => Number(c.value));
-
-        if (selectedIds.length === 0) {
+        const selected = getSelectedRange();
+        if (selected.length === 0) {
           showToast(t('marketSelectFormations'));
           return;
         }
 
+        const selectedIds = selected.map(f => f.id);
         const title = overlay.querySelector('#upload-title').value.trim();
         if (!title) {
           overlay.querySelector('#upload-title').focus();
