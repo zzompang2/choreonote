@@ -32,6 +32,30 @@ export async function generateShareURL(noteId) {
  * 공유 ID로 노트 데이터 조회
  */
 export async function loadShareData(shareId) {
+  // DEV: mock data for testing
+  if (shareId === '_test') {
+    return {
+      note: { title: '테스트 안무', duration: 16000, stageWidth: 600, stageHeight: 400, audienceDirection: 'top' },
+      dancers: [
+        { name: 'Ham', color: '#E74C3C' },
+        { name: 'Chance', color: '#3498DB' },
+        { name: 'Luna', color: '#2ECC71' },
+      ],
+      formations: [
+        { startTime: 0, duration: 4000, positions: [
+          { dancerIndex: 0, x: -80, y: 0 },
+          { dancerIndex: 1, x: 0, y: 0 },
+          { dancerIndex: 2, x: 80, y: 0 },
+        ]},
+        { startTime: 5000, duration: 4000, positions: [
+          { dancerIndex: 0, x: 0, y: -60 },
+          { dancerIndex: 1, x: -60, y: 40 },
+          { dancerIndex: 2, x: 60, y: 40 },
+        ]},
+      ],
+    };
+  }
+
   const { data, error } = await supabase
     .from('shares')
     .select('note_json, title, view_count')

@@ -137,6 +137,7 @@ export async function renderViewer(container, shareId) {
           </div>
         </div>
       </div>
+      <div class="viewer-overlay" id="viewer-overlay"></div>
     </div>
   `;
 
@@ -708,53 +709,51 @@ function setupViewerSidebar(container) {
   const railIcons = container.querySelectorAll('.sidebar-rail__icon');
   const panels = container.querySelectorAll('.sidebar__panel');
   const isMobile = () => window.innerWidth <= 768;
+  let activePanel = null;
 
-  function openSidebar() {
+  // 모바일 오버레이
+  const overlay = container.querySelector('.viewer-overlay');
+
+  function closePanel() {
+    sidebar.classList.add('editor__sidebar--hidden');
+    railIcons.forEach(ic => ic.classList.remove('sidebar-rail__icon--active'));
+    activePanel = null;
+    overlay.classList.remove('sidebar-overlay--visible');
+    if (viewer) viewer.classList.remove('viewer--sidebar-open');
+  }
+
+  function openPanel(name) {
+    if (activePanel === name && !sidebar.classList.contains('editor__sidebar--hidden')) {
+      closePanel();
+      return;
+    }
+    sidebar.classList.remove('editor__sidebar--hidden');
+    panels.forEach(p => p.classList.add('sidebar__panel--hidden'));
+    const target = container.querySelector(`#panel-${name}`);
+    if (target) target.classList.remove('sidebar__panel--hidden');
+    railIcons.forEach(ic => ic.classList.toggle('sidebar-rail__icon--active', ic.dataset.panel === name));
+    activePanel = name;
+
     if (isMobile()) {
-      sidebar.classList.remove('editor__sidebar--hidden');
+      overlay.classList.add('sidebar-overlay--visible');
+      console.log('[viewer] overlay visible', overlay.className, overlay.parentElement?.tagName);
     } else {
       viewer.classList.add('viewer--sidebar-open');
     }
   }
 
-  function closeSidebar() {
-    if (isMobile()) {
-      sidebar.classList.add('editor__sidebar--hidden');
-    } else {
-      viewer.classList.remove('viewer--sidebar-open');
-    }
-  }
-
-  function isSidebarOpen() {
-    if (isMobile()) {
-      return !sidebar.classList.contains('editor__sidebar--hidden');
-    }
-    return viewer.classList.contains('viewer--sidebar-open');
-  }
-
-  railIcons.forEach((icon) => {
-    icon.addEventListener('click', () => {
-      const panelName = icon.dataset.panel;
-      const isActive = icon.classList.contains('sidebar-rail__icon--active');
-
-      if (isActive) {
-        // 같은 아이콘 다시 누르면 사이드바 닫기/열기
-        if (isSidebarOpen()) closeSidebar(); else openSidebar();
-        return;
-      }
-
-      // 다른 패널 선택 — 사이드바 열기 + 패널 전환
-      openSidebar();
-      railIcons.forEach(ic => ic.classList.remove('sidebar-rail__icon--active'));
-      icon.classList.add('sidebar-rail__icon--active');
-      panels.forEach(p => {
-        p.classList.toggle('sidebar__panel--hidden', p.id !== `panel-${panelName}`);
-      });
-    });
+  railIcons.forEach(ic => {
+    ic.addEventListener('click', () => openPanel(ic.dataset.panel));
   });
+
+  overlay.addEventListener('click', closePanel);
 
   // 모바일: 레일 하단 위치 → 바텀시트 max-height 계산용
   if (isMobile()) {
+    sidebar.classList.add('editor__sidebar--hidden');
+    railIcons.forEach(ic => ic.classList.remove('sidebar-rail__icon--active'));
+    activePanel = null;
+
     const rail = container.querySelector('#sidebar-rail');
     if (rail) {
       const updateRailTop = () => {
@@ -764,13 +763,15 @@ function setupViewerSidebar(container) {
       updateRailTop();
       window.addEventListener('resize', updateRailTop);
     }
-    document.addEventListener('click', (e) => {
-      if (!isMobile() || !isSidebarOpen()) return;
-      if (sidebar.contains(e.target)) return;
-      if (e.target.closest('.sidebar-rail')) return;
-      closeSidebar();
-    });
   }
+
+  window.addEventListener('resize', () => {
+    if (window.innerWidth > 768) {
+      overlay.classList.remove('sidebar-overlay--visible');
+    } else {
+      closePanel();
+    }
+  });
 }
 
 function renderViewerDancerList(container) {
