@@ -59,7 +59,7 @@ export async function renderViewer(container, shareId) {
         <div class="stage-zoom-badge" id="stage-zoom-badge"></div>
       </div>
 
-      <div class="editor__sidebar" id="sidebar">
+      <div class="editor__sidebar${isMobile ? ' editor__sidebar--hidden' : ''}" id="sidebar">
         <div class="sidebar__panel" id="panel-dancers">
           <div class="sidebar__panel-title">${t('dancersTitle')}</div>
           <div class="sidebar__scroll">
@@ -704,8 +704,33 @@ function updateTransitionConnectors(formationsEl) {
 
 function setupViewerSidebar(container) {
   const viewer = container.querySelector('.viewer');
+  const sidebar = container.querySelector('#sidebar');
   const railIcons = container.querySelectorAll('.sidebar-rail__icon');
   const panels = container.querySelectorAll('.sidebar__panel');
+  const isMobile = () => window.innerWidth <= 768;
+
+  function openSidebar() {
+    if (isMobile()) {
+      sidebar.classList.remove('editor__sidebar--hidden');
+    } else {
+      viewer.classList.add('viewer--sidebar-open');
+    }
+  }
+
+  function closeSidebar() {
+    if (isMobile()) {
+      sidebar.classList.add('editor__sidebar--hidden');
+    } else {
+      viewer.classList.remove('viewer--sidebar-open');
+    }
+  }
+
+  function isSidebarOpen() {
+    if (isMobile()) {
+      return !sidebar.classList.contains('editor__sidebar--hidden');
+    }
+    return viewer.classList.contains('viewer--sidebar-open');
+  }
 
   railIcons.forEach((icon) => {
     icon.addEventListener('click', () => {
@@ -714,12 +739,12 @@ function setupViewerSidebar(container) {
 
       if (isActive) {
         // 같은 아이콘 다시 누르면 사이드바 닫기/열기
-        viewer.classList.toggle('viewer--sidebar-open');
+        if (isSidebarOpen()) closeSidebar(); else openSidebar();
         return;
       }
 
       // 다른 패널 선택 — 사이드바 열기 + 패널 전환
-      viewer.classList.add('viewer--sidebar-open');
+      openSidebar();
       railIcons.forEach(ic => ic.classList.remove('sidebar-rail__icon--active'));
       icon.classList.add('sidebar-rail__icon--active');
       panels.forEach(p => {
@@ -727,6 +752,25 @@ function setupViewerSidebar(container) {
       });
     });
   });
+
+  // 모바일: 레일 하단 위치 → 바텀시트 max-height 계산용
+  if (isMobile()) {
+    const rail = container.querySelector('#sidebar-rail');
+    if (rail) {
+      const updateRailTop = () => {
+        const rect = rail.getBoundingClientRect();
+        sidebar.style.setProperty('--mobile-rail-top', `${rect.bottom}px`);
+      };
+      updateRailTop();
+      window.addEventListener('resize', updateRailTop);
+    }
+    document.addEventListener('click', (e) => {
+      if (!isMobile() || !isSidebarOpen()) return;
+      if (sidebar.contains(e.target)) return;
+      if (e.target.closest('.sidebar-rail')) return;
+      closeSidebar();
+    });
+  }
 }
 
 function renderViewerDancerList(container) {
