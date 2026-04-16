@@ -1,4 +1,5 @@
 import { NoteStore } from '../store/NoteStore.js';
+import { db } from '../store/db.js';
 import { StageRenderer } from '../renderer/StageRenderer.js';
 import { PlaybackEngine } from '../engine/PlaybackEngine.js';
 import { VideoExporter } from '../engine/VideoExporter.js';
@@ -15,6 +16,9 @@ import {
 import { t, getLang, setLang, getAvailableLangs } from '../utils/i18n.js';
 import { buildHelpPanelHTML, initEmbeddedChat } from '../components/ChatBot.js';
 import { generateShareURL } from '../utils/share.js';
+import { uploadNote, checkServerNewer, resolveOverwriteServer, resolveUseServer, resolveKeepBoth } from '../utils/cloudSync.js';
+import { getCurrentUser } from '../utils/auth.js';
+import { showConflictModal } from '../components/ConflictModal.js';
 
 let engine = null;
 let renderer = null;
@@ -35,6 +39,8 @@ let pixelsPerSec = PIXEL_PER_SEC;
 let _renderPresetThumbnails = null; // set by setupSidebar // mutable, for timeline zoom
 let _renderMarkerList = () => {};
 let _updateToolbarState = () => {};
+let copiedDancerPos = null;
+let _focusedArea = 'timeline'; // 'stage' | 'timeline'
 let fitStage = () => {};
 
 // Onboarding & Feature unlock system
@@ -149,6 +155,7 @@ export async function renderEditor(container, noteId) {
   setupSettings(container, noteId);
   setupMusicUpload(container, noteId);
   setupMarkers(container, noteId);
+  setupFocusArea(container);
   initEmbeddedChat(container, 'editor');
 
   // Feature unlock system
@@ -173,6 +180,11 @@ export async function renderEditor(container, noteId) {
   // Initialize undo history with current state
   clearHistory();
   saveSnapshot();
+
+  // 클라우드: 서버에 더 최신 버전이 있는지 확인
+  checkServerNewer(noteId).then(isNewer => {
+    if (isNewer) showToast(t('cloudNewerToast'), 4000);
+  }).catch(() => {});
 
   // Request persistent storage
   NoteStore.requestPersistence();
@@ -263,6 +275,10 @@ function buildEditorHTML(data) {
             </div>
           </div>
           <div class="sidebar__actions sidebar__actions--hidden" id="inspector-actions">
+            <div style="display:flex;gap:4px">
+              <button class="btn btn--ghost" id="inspector-copy-pos-btn" style="flex:1;font-size:12px">${t('inspectorCopyPos')}</button>
+              <button class="btn btn--ghost" id="inspector-paste-pos-btn" style="flex:1;font-size:12px">${t('inspectorPastePos')}</button>
+            </div>
             <button class="btn btn--ghost" id="inspector-preset-btn" style="width:100%;font-size:12px">${t('inspectorPresetBtn')}</button>
             <button class="btn btn--ghost" id="inspector-reset-waypoints-btn" style="width:100%;font-size:12px">${t('inspectorResetWaypoints')}</button>
           </div>
@@ -1972,6 +1988,10 @@ function updateInspector() {
   const isTransitionCtx = !!selectedTransition;
   const actionsEl = document.querySelector('#inspector-actions');
   if (actionsEl) actionsEl.classList.toggle('sidebar__actions--hidden', selected.length < 1);
+  const copyPosBtn = document.querySelector('#inspector-copy-pos-btn');
+  if (copyPosBtn) copyPosBtn.disabled = isTransitionCtx || selected.length !== 1;
+  const pastePosBtn = document.querySelector('#inspector-paste-pos-btn');
+  if (pastePosBtn) pastePosBtn.disabled = isTransitionCtx || selected.length < 1 || !copiedDancerPos;
   const presetBtn = document.querySelector('#inspector-preset-btn');
   if (presetBtn) presetBtn.disabled = isTransitionCtx || selected.length < 2;
   const waypointBtn = document.querySelector('#inspector-reset-waypoints-btn');
@@ -2236,6 +2256,68 @@ function setupInspector(container) {
       showToast(t('toastWaypointsResetBulk', { count }));
     }
   });
+
+  // Copy/Paste dancer position
+  container.querySelector('#inspector-copy-pos-btn').addEventListener('click', () => {
+    copyDancerPosition();
+  });
+  container.querySelector('#inspector-paste-pos-btn').addEventListener('click', () => {
+    pasteDancerPosition();
+  });
+}
+
+function copyDancerPosition() {
+  const selected = Array.from(renderer._selectedDancers);
+  if (selected.length !== 1) return;
+  const f = noteData.formations[selectedFormation];
+  if (!f) return;
+  const d = noteData.dancers[selected[0]];
+  if (!d) return;
+  const pos = f.positions.find(p => p.dancerId === d.id);
+  if (!pos) return;
+  copiedDancerPos = { x: pos.x, y: pos.y, angle: pos.angle || 0 };
+  showToast(t('toastDancerPosCopied'));
+  updateInspector();
+}
+
+function pasteDancerPosition() {
+  if (!copiedDancerPos) {
+    showToast(t('toastNoDancerPosCopy'));
+    return;
+  }
+  const selected = Array.from(renderer._selectedDancers);
+  if (selected.length < 1) return;
+  const f = noteData.formations[selectedFormation];
+  if (!f) return;
+  for (const idx of selected) {
+    const d = noteData.dancers[idx];
+    if (!d) continue;
+    const pos = f.positions.find(p => p.dancerId === d.id);
+    if (pos) {
+      pos.x = copiedDancerPos.x;
+      pos.y = copiedDancerPos.y;
+      pos.angle = copiedDancerPos.angle;
+    }
+  }
+  updateStage(); saveSnapshot();
+  showToast(t('toastDancerPosPasted'));
+}
+
+function setupFocusArea(container) {
+  const stageEl = container.querySelector('.stage-container');
+  const timelineEl = container.querySelector('.editor__timeline-wrap');
+
+  function setFocus(area) {
+    _focusedArea = area;
+    stageEl.classList.toggle('stage-container--focused', area === 'stage');
+    timelineEl.classList.toggle('editor__timeline-wrap--focused', area === 'timeline');
+  }
+
+  stageEl.addEventListener('pointerdown', () => setFocus('stage'));
+  timelineEl.addEventListener('pointerdown', () => setFocus('timeline'));
+
+  // 초기 상태
+  setFocus('timeline');
 }
 
 function renderDancerList(list) {
@@ -2318,6 +2400,7 @@ function setupToolbar(container) {
     }
   });
   let copiedPositions = null;
+  // copiedDancerPos is declared at module level
 
   _updateToolbarState = () => {
     const hasFormation = selectedFormation >= 0;
@@ -2470,16 +2553,24 @@ function setupToolbar(container) {
     }
   });
 
-  // Keyboard shortcuts for copy/paste
+  // Keyboard shortcuts for copy/paste (스테이지 포커스 → 댄서 위치, 타임라인 포커스 → 대형)
   document.addEventListener('keydown', (e) => {
     if (_onboardingActive) return;
     if (e.target.tagName === 'INPUT') return;
     if ((e.ctrlKey || e.metaKey) && e.code === 'KeyC') {
-      copyBtn.click();
+      if (_focusedArea === 'stage') {
+        copyDancerPosition();
+      } else {
+        copyBtn.click();
+      }
     }
     if ((e.ctrlKey || e.metaKey) && e.code === 'KeyV') {
       e.preventDefault();
-      pasteBtn.click();
+      if (_focusedArea === 'stage') {
+        pasteDancerPosition();
+      } else {
+        pasteBtn.click();
+      }
     }
   });
 
@@ -3060,6 +3151,58 @@ function setupHeader(container, noteId) {
     });
     unsaved = false;
     if (!silent) showToast(t('toastSaved'));
+
+    // 클라우드 동기화 (로그인 시)
+    syncToCloud(noteId, silent);
+  }
+
+  async function syncToCloud(noteId, silent) {
+    try {
+      const user = await getCurrentUser();
+      if (!user) return;
+
+      const localNote = await NoteStore.loadNote(noteId);
+      if (!localNote) return;
+
+      // 최초 동기화 안내
+      const raw = await db.notes.get(noteId);
+      if (!raw.cloudId && !sessionStorage.getItem(`cloud-notice-${noteId}`)) {
+        sessionStorage.setItem(`cloud-notice-${noteId}`, '1');
+        showToast(t('cloudFirstSync'), 4000);
+      }
+
+      const result = await uploadNote(noteId);
+      if (!result) return;
+
+      if (result.conflict) {
+        // 충돌 해결 모달
+        const jsonStr = await NoteStore.exportJSON(noteId);
+        const localNoteJson = JSON.parse(jsonStr);
+        const action = await showConflictModal({
+          serverNote: result.serverNote,
+          localNoteJson,
+          localEditedAt: raw.editedAt,
+        });
+
+        if (action === 'overwrite') {
+          await resolveOverwriteServer(noteId);
+          showToast(t('cloudUploaded'));
+        } else if (action === 'use-server') {
+          await resolveUseServer(noteId, result.serverNote);
+          // 에디터 새로고침
+          navigate(`/edit/${noteId}`);
+        } else if (action === 'keep-both') {
+          await resolveKeepBoth(noteId, result.serverNote);
+          showToast(t('cloudUploaded'));
+        }
+        // cancel → 아무것도 안 함
+      } else if (!silent) {
+        // 성공 시 별도 토스트 없음 (이미 '저장 완료' 표시됨)
+      }
+    } catch (err) {
+      console.warn('Cloud sync failed:', err);
+      if (!silent) showToast(t('cloudUploadFail'), 3000);
+    }
   }
 
   container.querySelector('#save-btn').addEventListener('click', () => saveToDB());

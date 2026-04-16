@@ -109,6 +109,12 @@ body {
   background: var(--accent-hover);
 }
 
+.btn--primary:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
 .btn--danger {
   background: transparent;
   color: var(--danger);
@@ -522,6 +528,12 @@ html:has(.editor) {
 
 .stage-zoom-badge:hover {
   background: rgba(0, 0, 0, 0.7);
+}
+
+.stage-container--focused {
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+  z-index: 1;
 }
 
 .stage-container--preview {
@@ -1239,6 +1251,11 @@ html:has(.editor) {
   flex-direction: column;
   border-top: 1px solid var(--border);
   background: var(--bg-secondary);
+}
+
+.editor__timeline-wrap--focused {
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
 }
 
 .timeline__formations {
@@ -3533,16 +3550,55 @@ html:has(.editor) {
 
 .market__filters {
   display: flex;
+  flex-direction: column;
+  padding: 12px 20px;
+  gap: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.market__filter-row {
+  display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 20px;
   gap: 12px;
-  border-bottom: 1px solid var(--border);
 }
 
 .market__filter-group {
   display: flex;
   gap: 6px;
+  overflow-x: auto;
+  flex-shrink: 1;
+  min-width: 0;
+}
+
+.market__filter-right {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.market__audience-btn {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  padding: 4px 8px;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  transition: border-color 0.15s;
+}
+
+.market__audience-btn:hover {
+  border-color: var(--accent);
+}
+
+.market__audience-icon {
+  display: inline-block;
+  transition: transform 0.2s;
+}
+
+.market__audience-icon--top {
+  transform: rotate(180deg);
 }
 
 .market__filter-chip {
@@ -3554,6 +3610,8 @@ html:has(.editor) {
   font-size: 13px;
   cursor: pointer;
   transition: all 0.15s;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .market__filter-chip:hover {
@@ -3694,19 +3752,46 @@ html:has(.editor) {
   z-index: 1000;
 }
 
-.market-modal__box,
+.market-modal__box {
+  background: var(--bg-card);
+  border-radius: 12px;
+  max-width: 560px;
+  width: 90%;
+  height: 70vh;
+  max-height: 600px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.market-modal__top {
+  flex-shrink: 0;
+  padding: 24px 24px 0;
+}
+
+.market-modal__body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 24px;
+  min-height: 0;
+}
+
+.market-modal__bottom {
+  flex-shrink: 0;
+  padding: 0 24px 24px;
+}
+
 .auth-modal__box {
   background: var(--bg-card);
   border-radius: 12px;
   padding: 24px;
-  max-width: 520px;
+  max-width: 560px;
   width: 90%;
-  max-height: 80vh;
   overflow-y: auto;
 }
 
 .market-modal__box--detail {
-  max-width: 600px;
+  max-width: 560px;
 }
 
 .market-modal__header {
@@ -3769,7 +3854,10 @@ html:has(.editor) {
   display: flex;
   gap: 8px;
   justify-content: flex-end;
-  margin-top: 16px;
+}
+
+.market-modal__actions--between {
+  justify-content: space-between;
 }
 
 /* Auth Modal */
@@ -3816,8 +3904,6 @@ html:has(.editor) {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  max-height: 300px;
-  overflow-y: auto;
 }
 
 .market-upload__note-item {
@@ -3846,13 +3932,185 @@ html:has(.editor) {
   color: var(--text-primary);
 }
 
+/* Step indicator */
+.market-modal__step-indicator {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.market-modal__step {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+}
+
+.market-modal__step--active {
+  background: var(--accent);
+  color: #fff;
+}
+
+/* Step 2: Gallery grid */
+
+.market-upload__gallery {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  padding: 4px;
+  margin-bottom: 8px;
+}
+
+/* Step 3: Thumbnail picker */
+.market-upload__thumb-picker {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 4px 0;
+  margin-bottom: 12px;
+}
+
+.market-upload__thumb-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  flex-shrink: 0;
+  border-radius: 8px;
+  padding: 4px;
+  border: 2px solid transparent;
+  transition: border-color 0.15s;
+}
+
+.market-upload__thumb-option:hover {
+  background: var(--hover-bg);
+}
+
+.market-upload__thumb-option--active {
+  border-color: var(--accent);
+}
+
+.market-upload__thumb-option canvas {
+  border-radius: 6px;
+  background: var(--stage-bg);
+}
+
+.market-upload__thumb-option span {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.market-upload__thumb-option--active span {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* Mood tag chips */
+.market-upload__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.market-upload__tag-chip {
+  padding: 4px 12px;
+  border-radius: 16px;
+  font-size: 13px;
+  border: 1px solid var(--border-strong);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.market-upload__tag-chip:hover {
+  border-color: var(--accent);
+  color: var(--text-primary);
+}
+
+.market-upload__tag-chip--active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+/* Info row (dancer count, formation count) */
+.market-upload__info-row {
+  display: flex;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.market-upload__info-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+  background: var(--bg-secondary);
+  padding: 4px 10px;
+  border-radius: 6px;
+}
+
+/* Card tags */
+.market-card__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 0 8px;
+}
+
+.market-card__tag {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+  color: var(--accent);
+}
+
+.market-upload__formation-wrap {
+  position: relative;
+  margin-bottom: 8px;
+}
+
+.market-upload__formation-wrap::before,
+.market-upload__formation-wrap::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 32px;
+  z-index: 2;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.market-upload__formation-wrap::before {
+  left: 0;
+  background: linear-gradient(to right, var(--bg-card), transparent);
+}
+
+.market-upload__formation-wrap::after {
+  right: 0;
+  background: linear-gradient(to left, var(--bg-card), transparent);
+}
+
+.market-upload__formation-wrap--fade-left::before { opacity: 1; }
+.market-upload__formation-wrap--fade-right::after { opacity: 1; }
+
 .market-upload__formation-list {
   display: flex;
   gap: 0;
   align-items: center;
   overflow-x: auto;
   padding: 8px 0;
-  margin-bottom: 8px;
 }
 
 .market-upload__hint {
@@ -3908,6 +4166,15 @@ html:has(.editor) {
   white-space: nowrap;
   z-index: 1;
   pointer-events: none;
+}
+
+.market-upload__gallery .market-upload__formation-item {
+  flex-shrink: initial;
+}
+
+.market-upload__gallery .market-upload__formation-item canvas {
+  width: 100%;
+  height: auto;
 }
 
 .market-upload__formation-item canvas {
@@ -3994,8 +4261,205 @@ html:has(.editor) {
     grid-template-columns: repeat(2, 1fr);
     gap: 10px;
   }
-  .market-modal__box,
+  .market-modal__box {
+    width: 95%;
+    padding: 16px;
+    height: 80vh;
+    max-height: none;
+  }
   .auth-modal__box {
+    width: 95%;
+    padding: 16px;
+  }
+  .market-upload__gallery {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* ── 클라우드 동기화 뱃지 ── */
+
+.note-card__sync {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+.note-card__sync--synced {
+  color: var(--accent);
+}
+
+.note-card__sync--unsynced {
+  color: #f0ad4e;
+}
+
+.note-card__sync-icon {
+  font-size: 13px;
+  line-height: 1;
+}
+
+/* ── 클라우드 노트 섹션 ── */
+
+.cloud-section {
+  margin-top: 24px;
+}
+
+.cloud-section__title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cloud-note-card {
+  background: var(--bg-card);
+  border-radius: 10px;
+  padding: 14px;
+  cursor: pointer;
+  border: 1px dashed var(--border-strong);
+  transition: border-color 0.15s;
+}
+
+.cloud-note-card:hover {
+  border-color: var(--accent);
+}
+
+.cloud-note-card__title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.cloud-note-card__meta {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+.cloud-note-card__download {
+  font-size: 13px;
+  color: var(--accent);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  font-weight: 600;
+}
+
+.cloud-note-card__download:hover {
+  text-decoration: underline;
+}
+
+/* ── 충돌 해결 모달 ── */
+
+.conflict-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1100;
+}
+
+.conflict-modal__box {
+  background: var(--bg-card);
+  border-radius: 12px;
+  padding: 24px;
+  max-width: 440px;
+  width: 90%;
+}
+
+.conflict-modal__title {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 16px;
+}
+
+.conflict-modal__compare {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.conflict-modal__version {
+  flex: 1;
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.conflict-modal__label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+}
+
+.conflict-modal__time {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.conflict-modal__info {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.conflict-modal__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.conflict-modal__btn {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  padding: 10px 14px;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s;
+}
+
+.conflict-modal__btn:hover {
+  border-color: var(--accent);
+}
+
+.conflict-modal__btn strong {
+  display: block;
+  font-size: 14px;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+}
+
+.conflict-modal__btn span {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.conflict-modal__cancel {
+  width: 100%;
+  text-align: center;
+}
+
+@media (max-width: 600px) {
+  .conflict-modal__compare {
+    flex-direction: column;
+  }
+  .conflict-modal__box {
     width: 95%;
     padding: 16px;
   }
