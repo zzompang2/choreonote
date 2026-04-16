@@ -13,6 +13,7 @@
     "vite-plugin-pwa": "^1.2.0"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.103.2",
     "dexie": "^4.4.2"
   }
 }

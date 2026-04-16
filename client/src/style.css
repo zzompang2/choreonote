@@ -1575,6 +1575,77 @@ html:has(.editor) {
   padding: 6px 8px;
 }
 
+/* --- Share Viewer --- */
+.viewer {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+.viewer__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.viewer__title {
+  font-size: 16px;
+  font-weight: 700;
+}
+.viewer__logo {
+  font-size: 13px;
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 700;
+}
+.viewer__body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+.viewer__stage {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: 12px;
+  min-height: 0;
+  position: relative;
+}
+.viewer__stage canvas {
+  display: block;
+}
+.viewer__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 20px;
+  flex-shrink: 0;
+}
+.viewer__toolbar-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+.viewer__toolbar-sep {
+  width: 1px;
+  height: 18px;
+  background: var(--border-strong);
+  margin: 0 4px;
+}
+.viewer__player-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 20px;
+  flex-shrink: 0;
+}
+
 /* --- Settings panel --- */
 .settings-panel {
   position: fixed;

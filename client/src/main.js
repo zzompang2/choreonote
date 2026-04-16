@@ -4,6 +4,7 @@ import { initTheme } from './utils/theme.js';
 import { renderLanding } from './pages/Landing.js';
 import { renderDashboard } from './pages/Dashboard.js';
 import { renderEditor } from './pages/Editor.js';
+import { renderViewer } from './pages/Viewer.js';
 import { registerSW } from 'virtual:pwa-register';
 
 initTheme();
@@ -13,6 +14,7 @@ const app = document.querySelector('#app');
 route('/', () => renderLanding(app));
 route('/dashboard', () => renderDashboard(app));
 route('/edit', (noteId) => renderEditor(app, noteId));
+route('/share', (shareId) => renderViewer(app, shareId));
 
 startRouter();
 

@@ -13,6 +13,7 @@ import {
   STAGE_WIDTH, STAGE_HEIGHT, CANVAS_WIDTH, CANVAS_HEIGHT, setStageSize,
 } from '../utils/constants.js';
 import { t, getLang, setLang, getAvailableLangs } from '../utils/i18n.js';
+import { generateShareURL } from '../utils/share.js';
 
 let engine = null;
 let renderer = null;
@@ -482,6 +483,7 @@ function buildEditorHTML(data) {
             <div class="settings-section">
               <div class="settings-label">${t('backupTitle')}</div>
               <div class="settings-row" style="flex-direction:column;gap:6px">
+                <button class="btn btn--ghost" id="settings-share-btn" style="width:100%;font-size:12px">${t('shareLink')}</button>
                 <button class="btn btn--ghost" id="settings-export-btn" style="width:100%;font-size:12px">${t('backupExport')}</button>
                 <button class="btn btn--ghost" id="settings-import-btn" style="width:100%;font-size:12px">${t('backupImport')}</button>
                 <input type="file" id="settings-import-file" accept=".json" style="display:none" />
@@ -3402,6 +3404,19 @@ function setupSettings(container, noteId) {
       const labels = { top: t('audienceTop'), bottom: t('audienceBottom'), none: t('audienceNone') };
       showToast(t('toastAudienceDir', { dir: labels[audienceDirection] }));
     });
+  });
+
+  // Share link
+  container.querySelector('#settings-share-btn').addEventListener('click', async () => {
+    try {
+      const url = await generateShareURL(noteId);
+      if (!url) return;
+      await navigator.clipboard.writeText(url);
+      showToast(t('toastShareCopied'));
+    } catch (err) {
+      console.error('Share failed:', err);
+      showToast(t('toastShareError'));
+    }
   });
 
   // Export JSON
