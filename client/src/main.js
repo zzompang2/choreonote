@@ -5,10 +5,15 @@ import { renderLanding } from './pages/Landing.js';
 import { renderDashboard } from './pages/Dashboard.js';
 import { renderEditor } from './pages/Editor.js';
 import { renderViewer } from './pages/Viewer.js';
+import { renderMarket } from './pages/Market.js';
 import { registerSW } from 'virtual:pwa-register';
 import { initChatBot } from './components/ChatBot.js';
+import { supabase } from './store/supabase.js';
 
 initTheme();
+
+// OAuth PKCE 리다이렉트 후 세션 복원
+supabase.auth.getSession();
 
 const app = document.querySelector('#app');
 
@@ -16,6 +21,7 @@ route('/', () => renderLanding(app));
 route('/dashboard', () => renderDashboard(app));
 route('/edit', (noteId) => renderEditor(app, noteId));
 route('/share', (shareId) => renderViewer(app, shareId));
+route('/market', () => renderMarket(app));
 
 startRouter();
 initChatBot();

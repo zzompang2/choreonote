@@ -1627,6 +1627,17 @@ html:has(.editor) {
   grid-row: 2;
   grid-column: 3;
 }
+.viewer-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  z-index: 199;
+}
+.viewer-overlay--visible {
+  display: block;
+  touch-action: none;
+}
 .viewer > .player-bar {
   grid-column: 1 / -1;
 }
@@ -2879,7 +2890,7 @@ html:has(.editor) {
     white-space: nowrap;
   }
 
-  /* [P2] 타임라인: 대열 박스가 스크롤바에 가려지지 않도록 */
+  /* [P2] 타임라인: 대형 박스가 스크롤바에 가려지지 않도록 */
   .editor__timeline {
     min-height: 90px;
   }
