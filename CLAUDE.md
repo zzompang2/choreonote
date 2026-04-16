@@ -28,6 +28,7 @@
 | 저장 | `store/NoteStore.js` | 노트 CRUD, 대형/댄서/포지션 관리 (Dexie 트랜잭션) |
 | | `store/db.js` | Dexie 스키마 (notes, dancers, formations, positions, musicFiles) |
 | | `store/supabase.js` | Supabase 클라이언트 초기화 (PKCE auth flow) |
+| | `store/cloud-notes.sql` | Supabase notes 테이블 DDL (참조용) |
 | 유틸 | `utils/constants.js` | 무대 크기, 그리드, 타임라인 상수 |
 | | `utils/history.js` | Undo/Redo 스택 (50단계, JSON 스냅샷) |
 | | `utils/formations.js` | 대형 프리셋, 보간 계산 |
@@ -38,11 +39,13 @@
 | | `utils/auth.js` | Google OAuth 인증 (로그인/로그아웃/requireAuth 모달) |
 | | `utils/market.js` | 대형 마켓 CRUD API (Supabase) |
 | | `utils/thumbnail.js` | 캔버스 썸네일 렌더링 (Dashboard/Market 공용) |
+| | `utils/cloudSync.js` | 클라우드 동기화 (업로드/다운로드/충돌감지/해결) |
 | 컴포넌트 | `components/ChatBot.js` | FAQ 챗봇 (FAB + 사이드바 임베드, 팁 배너, 자동완성) |
+| | `components/ConflictModal.js` | 클라우드 충돌 해결 모달 (덮어쓰기/서버교체/둘다유지) |
 | 스타일 | `style.css` | 전역 CSS (다크/라이트 변수 포함) |
 
 ## 데이터 모델 (IndexedDB)
-- **notes**: id, title, musicName, musicBlobId, duration, settings(JSON)
+- **notes**: id, title, musicName, musicBlobId, duration, settings(JSON), cloudId, cloudUpdatedAt
 - **dancers**: id, noteId, name, color, order, shape, size
 - **formations**: id, noteId, startTime, duration, order
 - **positions**: id, formationId, dancerId, x, y, angle, waypoints
@@ -51,6 +54,7 @@
 ## 데이터 모델 (Supabase)
 - **shares**: id(8자), title, note_json, view_count
 - **market_presets**: id(UUID), user_id, title, description, dancer_count, formation_count, preset_data(JSONB), download_count, created_at
+- **notes**: id(UUID), user_id, title, note_json(JSONB), music_name, created_at, updated_at (RLS: 본인만 접근)
 
 ## 좌표계
 - 무대 중앙이 (0, 0), 오른쪽 +x, 아래쪽 +y
