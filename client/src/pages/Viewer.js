@@ -8,6 +8,7 @@ import {
   setStageSize,
 } from '../utils/constants.js';
 import { t } from '../utils/i18n.js';
+import { buildHelpPanelHTML, initEmbeddedChat } from '../components/ChatBot.js';
 
 let engine, renderer, noteData, dancers, formations;
 let currentMs = 0;
@@ -94,11 +95,15 @@ export async function renderViewer(container, shareId) {
             </div>
           </div>
         </div>
+        <div class="sidebar__panel sidebar__panel--hidden" id="panel-help">
+          ${buildHelpPanelHTML('viewer')}
+        </div>
       </div>
 
       <div class="sidebar-rail" id="sidebar-rail">
         <button class="sidebar-rail__icon sidebar-rail__icon--active" data-panel="dancers" title="${t('railDancers')}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></button>
         <button class="sidebar-rail__icon" data-panel="settings" title="${t('railView')}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="2" y1="6" x2="22" y2="6"/><line x1="2" y1="18" x2="22" y2="18"/><line x1="6" y1="2" x2="6" y2="22"/><line x1="18" y1="2" x2="18" y2="22"/></svg></button>
+        <button class="sidebar-rail__icon" data-panel="help" title="${t('railHelp')}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></button>
       </div>
 
       <div class="player-bar">
@@ -266,6 +271,7 @@ export async function renderViewer(container, shareId) {
 
   // --- 재생 ---
   setupViewerPlayback(container, duration);
+  initEmbeddedChat(container, 'viewer');
 
   // --- 스페이스바 ---
   const onKeydown = (e) => {

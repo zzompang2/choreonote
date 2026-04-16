@@ -13,6 +13,7 @@ import {
   STAGE_WIDTH, STAGE_HEIGHT, CANVAS_WIDTH, CANVAS_HEIGHT, setStageSize,
 } from '../utils/constants.js';
 import { t, getLang, setLang, getAvailableLangs } from '../utils/i18n.js';
+import { buildHelpPanelHTML, initEmbeddedChat } from '../components/ChatBot.js';
 import { generateShareURL } from '../utils/share.js';
 
 let engine = null;
@@ -68,7 +69,7 @@ export async function renderEditor(container, noteId) {
 
   // Restore saved settings before building HTML / renderer
   setStageSize(noteData.note.stageWidth || 600, noteData.note.stageHeight || 400);
-  audienceDirection = noteData.note.audienceDirection || 'top';
+  audienceDirection = (noteData.note.audienceDirection === 'bottom') ? 'bottom' : 'top';
 
   container.innerHTML = buildEditorHTML(noteData);
 
@@ -148,6 +149,7 @@ export async function renderEditor(container, noteId) {
   setupSettings(container, noteId);
   setupMusicUpload(container, noteId);
   setupMarkers(container, noteId);
+  initEmbeddedChat(container, 'editor');
 
   // Feature unlock system
   setupFeatureUnlock(container);
@@ -354,7 +356,6 @@ function buildEditorHTML(data) {
               <div class="settings-options" id="view-audience-options">
                 <button class="settings-option${audienceDirection === 'top' ? ' settings-option--active' : ''}" data-audience="top">${t('audienceTop')}</button>
                 <button class="settings-option${audienceDirection === 'bottom' ? ' settings-option--active' : ''}" data-audience="bottom">${t('audienceBottom')}</button>
-                <button class="settings-option${audienceDirection === 'none' ? ' settings-option--active' : ''}" data-audience="none">${t('audienceNone')}</button>
               </div>
               <label class="toggle-row" style="margin-top:8px">
                 <span>${t('wingArea')}</span>
@@ -384,52 +385,7 @@ function buildEditorHTML(data) {
           </div>
         </div>
         <div class="sidebar__panel sidebar__panel--hidden" id="panel-help">
-          <div class="sidebar__panel-title">${t('helpTitle')}</div>
-          <div class="sidebar__scroll">
-            <div class="settings-section">
-              <div class="settings-label">${t('helpShortcuts')}</div>
-              <div class="help-shortcuts">
-                <div class="shortcut-row"><kbd>Space</kbd><span>${t('helpPlayPause')}</span></div>
-                <div class="shortcut-row"><kbd>←</kbd> <kbd>→</kbd><span>${t('helpSeek')}</span></div>
-                <div class="shortcut-row"><kbd>↑</kbd> <kbd>↓</kbd><span>${t('helpPrevNext')}</span></div>
-                <div class="shortcut-row"><kbd>N</kbd><span>${t('helpAddFormation')}</span></div>
-                <div class="shortcut-row"><kbd>S</kbd><span>${t('helpSnap')}</span></div>
-                <div class="shortcut-row"><kbd>+</kbd><span>${t('helpZoomIn')}</span></div>
-                <div class="shortcut-row"><kbd>−</kbd><span>${t('helpZoomOut')}</span></div>
-                <div class="shortcut-row"><kbd>Tab</kbd><span>${t('helpTabPanel')}</span></div>
-                <div class="shortcut-row"><kbd>Delete</kbd><span>${t('helpDeleteFormation')}</span></div>
-                <div class="shortcut-row"><kbd>Ctrl+Z</kbd><span>${t('helpUndo')}</span></div>
-                <div class="shortcut-row"><kbd>Ctrl+Shift+Z</kbd><span>${t('helpRedo')}</span></div>
-                <div class="shortcut-row"><kbd>Ctrl+A</kbd><span>${t('helpSelectAll')}</span></div>
-                <div class="shortcut-row"><kbd>Ctrl+C</kbd><span>${t('helpCopy')}</span></div>
-                <div class="shortcut-row"><kbd>Ctrl+V</kbd><span>${t('helpPaste')}</span></div>
-                <div class="shortcut-row"><kbd>3</kbd><span>${t('help3d')}</span></div>
-                <div class="shortcut-row"><kbd>Esc</kbd><span>${t('helpEsc')}</span></div>
-                <div class="shortcut-row"><kbd>Shift+클릭</kbd><span>${t('helpMultiSelect')}</span></div>
-                <div class="shortcut-row"><kbd>Shift+휠</kbd><span>${t('helpScroll')}</span></div>
-              </div>
-            </div>
-            <div class="settings-divider"></div>
-            <div class="settings-section">
-              <div class="settings-label">${t('helpStage')}</div>
-              <div class="help-tips">
-                <p>${t('helpStageDrag')}</p>
-                <p>${t('helpStageShift')}</p>
-                <p>${t('helpStageBox')}</p>
-                <p>${t('helpStageWheel')}</p>
-                <p>${t('helpStageWaypoint')}</p>
-              </div>
-            </div>
-            <div class="settings-divider"></div>
-            <div class="settings-section">
-              <div class="settings-label">${t('helpTimeline')}</div>
-              <div class="help-tips">
-                <p>${t('helpTimelineDrag')}</p>
-                <p>${t('helpTimelineGap')}</p>
-                <p>${t('helpTimelineWaypoint')}</p>
-              </div>
-            </div>
-          </div>
+          ${buildHelpPanelHTML('editor')}
         </div>
         <div class="sidebar__panel sidebar__panel--hidden" id="panel-settings">
           <div class="sidebar__panel-title">${t('settingsTitle')}</div>
@@ -1900,17 +1856,12 @@ function setupSidebar(container) {
   renderDancerList(list);
 
   addBtn.addEventListener('click', () => {
-    const colors = [
-      '#EF4444', '#3B82F6', '#22C55E', '#EAB308',
-      '#F97316', '#A855F7', '#EC4899', '#06B6D4',
-      '#1F2937', '#F1F5F9', '#92400E', '#6B7280',
-    ];
     const idx = noteData.dancers.length;
     const newDancer = {
       id: Date.now(),
       noteId: noteData.note.id,
       name: t('dancerDefault', { n: idx + 1 }),
-      color: colors[idx % colors.length],
+      color: _pickDancerColor(noteData.dancers),
       order: idx,
     };
     noteData.dancers.push(newDancer);
@@ -1963,6 +1914,33 @@ const PALETTE = [
   '#F1F5F9', '#92400E', '#6B7280',
 ];
 
+// 댄서 색상 자동 선택: 기존 댄서들의 색상 패턴을 감지
+function _pickDancerColor(dancers) {
+  if (dancers.length === 0) return PALETTE[0];
+
+  const colors = dancers.map(d => d.color);
+
+  // 전부 동일 → 같은 색 유지
+  if (colors.every(c => c === colors[0])) return colors[0];
+
+  // 마지막 연속 그룹 확인
+  let groupColor = colors[colors.length - 1];
+  let groupLen = 1;
+  for (let i = colors.length - 2; i >= 0; i--) {
+    if (colors[i] === groupColor) groupLen++;
+    else break;
+  }
+
+  // 유닛별 동일: 연속 2명 이상 같은 색 그룹이 있으면 마지막 그룹 색 유지
+  if (groupLen >= 2) return groupColor;
+
+  // 전부 다르게: 팔레트에서 미사용 색 선택
+  const used = new Set(colors);
+  const unused = PALETTE.filter(c => !used.has(c));
+  if (unused.length > 0) return unused[0];
+  return PALETTE[colors.length % PALETTE.length];
+}
+
 // --- Dancer Inspector ---
 const INSPECTOR_UNIT = 15; // fixed grid unit for coordinate display (min snap)
 
@@ -1992,8 +1970,33 @@ function updateInspector() {
   // Header
   if (selected.length === 1) {
     const d = noteData.dancers[selected[0]];
+    const idx = selected[0];
+    const hasPrev = idx > 0;
+    const hasNext = idx < noteData.dancers.length - 1;
     if (headerEl) {
-      headerEl.innerHTML = d ? `<div class="inspector-field" style="flex:1"><span class="inspector-field__label">${selected[0] + 1}</span><input class="inspector-header__name" id="inspector-name" value="${escapeAttr(d.name)}" /></div>` : '';
+      headerEl.innerHTML = d ? `<div class="inspector-nav">` +
+        `<button class="inspector-nav__btn${hasPrev ? '' : ' inspector-nav__btn--disabled'}" id="inspector-prev" title="${t('prevDancer')}">‹</button>` +
+        `<div class="inspector-field" style="flex:1"><span class="inspector-field__label">${idx + 1}</span><input class="inspector-header__name" id="inspector-name" value="${escapeAttr(d.name)}" /></div>` +
+        `<button class="inspector-nav__btn${hasNext ? '' : ' inspector-nav__btn--disabled'}" id="inspector-next" title="${t('nextDancer')}">›</button>` +
+        `</div>` : '';
+      const prevBtn = document.querySelector('#inspector-prev');
+      const nextBtn = document.querySelector('#inspector-next');
+      if (prevBtn) prevBtn.addEventListener('click', () => {
+        if (idx > 0) {
+          renderer._selectedDancers = new Set([idx - 1]);
+          updateStage();
+          const dl = document.querySelector('#dancer-list');
+          if (dl) renderDancerList(dl);
+        }
+      });
+      if (nextBtn) nextBtn.addEventListener('click', () => {
+        if (idx < noteData.dancers.length - 1) {
+          renderer._selectedDancers = new Set([idx + 1]);
+          updateStage();
+          const dl = document.querySelector('#dancer-list');
+          if (dl) renderDancerList(dl);
+        }
+      });
     }
   } else {
     if (headerEl) headerEl.innerHTML = `<span class="inspector-header__multi">${t('inspectorMulti', { count: selected.length })}</span>`;
@@ -2202,7 +2205,7 @@ function renderDancerList(list) {
     <div class="dancer-item${renderer._selectedDancers.has(i) ? ' dancer-item--selected' : ''}" data-index="${i}">
       <span class="dancer-item__number">${i + 1}</span>
       <div class="dancer-item__color" style="background:${d.color}"></div>
-      <input class="dancer-item__name" value="${escapeAttr(d.name)}" data-name="${i}" />
+      <span class="dancer-item__name">${escapeAttr(d.name)}</span>
       <button class="dancer-item__remove" data-remove="${i}">✕</button>
     </div>
   `).join('');
@@ -2210,10 +2213,14 @@ function renderDancerList(list) {
     ? `<div class="inspector-empty"><div class="inspector-empty__icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.4"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div><div class="inspector-empty__text">${t('hintAddDancers')}</div></div>` : '';
   list.innerHTML = dancerHtml + hintHtml;
 
-  list.querySelectorAll('[data-name]').forEach((input) => {
-    input.addEventListener('change', (e) => {
-      noteData.dancers[Number(e.target.dataset.name)].name = e.target.value;
-      updateStage(); saveSnapshot();
+  // 댄서 항목 클릭 → 해당 댄서 선택 + 댄서 편집 패널로 전환
+  list.querySelectorAll('.dancer-item[data-index]').forEach((item) => {
+    item.addEventListener('click', (e) => {
+      if (e.target.closest('[data-remove]')) return;
+      const idx = Number(item.dataset.index);
+      renderer._selectedDancers = new Set([idx]);
+      updateStage();
+      openPanel('inspector');
     });
   });
 
@@ -3062,7 +3069,7 @@ function setupHeader(container, noteId) {
     const is3D = renderer.is3D;
     const viewMode = is3D ? '3D' : '2D';
     const descParts = [viewMode];
-    if (audienceDirection !== 'none') descParts.push(t('exportAudience', { dir: audienceDirection === 'bottom' ? '↓' : '↑' }));
+    descParts.push(t('exportAudience', { dir: audienceDirection === 'bottom' ? '↓' : '↑' }));
     progressOverlay.innerHTML = `
       <div class="export-overlay__box">
         <div class="export-overlay__text">${t('exportProgress')}</div>
@@ -3107,7 +3114,7 @@ function setupHeader(container, noteId) {
         const title = noteData.note.title || 'choreonote';
         const date = new Date().toISOString().slice(0, 10);
         const suffix = [is3D ? '3D' : '2D'];
-        if (audienceDirection !== 'none') suffix.push(audienceDirection === 'bottom' ? '↓' : '↑');
+        suffix.push(audienceDirection === 'bottom' ? '↓' : '↑');
         a.download = `${title}_${suffix.join('_')}_${date}.${ext}`;
         a.click();
         URL.revokeObjectURL(url);
@@ -3401,7 +3408,7 @@ function setupSettings(container, noteId) {
         saveSnapshot();
       }
       updateStage();
-      const labels = { top: t('audienceTop'), bottom: t('audienceBottom'), none: t('audienceNone') };
+      const labels = { top: t('audienceTop'), bottom: t('audienceBottom') };
       showToast(t('toastAudienceDir', { dir: labels[audienceDirection] }));
     });
   });

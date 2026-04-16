@@ -6,6 +6,7 @@ import { renderDashboard } from './pages/Dashboard.js';
 import { renderEditor } from './pages/Editor.js';
 import { renderViewer } from './pages/Viewer.js';
 import { registerSW } from 'virtual:pwa-register';
+import { initChatBot } from './components/ChatBot.js';
 
 initTheme();
 
@@ -17,6 +18,7 @@ route('/edit', (noteId) => renderEditor(app, noteId));
 route('/share', (shareId) => renderViewer(app, shareId));
 
 startRouter();
+initChatBot();
 
 // PWA: 새 버전 감지 시 업데이트 알림
 const updateSW = registerSW({

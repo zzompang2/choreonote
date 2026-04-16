@@ -97,6 +97,8 @@ export const ko = {
   // Editor — Inspector panel
   inspectorTitle: '댄서 편집',
   inspectorEmpty: '스테이지에서 댄서를 선택하세요',
+  prevDancer: '이전 댄서',
+  nextDancer: '다음 댄서',
   inspectorCoord: '좌표',
   inspectorDir: '방향',
   inspectorColor: '색상',
@@ -192,7 +194,7 @@ export const ko = {
   audienceDir: '관객 방향',
   audienceTop: '위쪽',
   audienceBottom: '아래쪽',
-  audienceNone: '없음',
+
   wingArea: '퇴장 영역',
   smartGuideTitle: '스마트 가이드',
   smartGuideLabel: '드래그 시 정렬 가이드 표시',
@@ -315,4 +317,13 @@ export const ko = {
   tourComplete: '완료!',
   tourSkip: '건너뛰기',
   tourStep: '{current} / {total}',
+
+  // Chatbot
+  chatTitle: '도움말',
+  chatPlaceholder: '궁금한 점을 입력하세요',
+  chatWelcome: '안녕하세요! ChoreoNote 사용법을 도와드릴게요.',
+  chatContextHint: '현재 페이지: {page}',
+  chatNoResult: '관련 답변을 찾지 못했어요. 다른 키워드로 검색해보세요.',
+  chatDisambiguate: '어떤 걸 찾으시나요?',
+  chatSuggestionLabel: '자주 묻는 질문',
 };

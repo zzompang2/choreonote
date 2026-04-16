@@ -97,6 +97,8 @@ export const en = {
   // Editor — Inspector panel
   inspectorTitle: 'Edit Dancer',
   inspectorEmpty: 'Select a dancer on stage',
+  prevDancer: 'Previous dancer',
+  nextDancer: 'Next dancer',
   inspectorCoord: 'Position',
   inspectorDir: 'Direction',
   inspectorColor: 'Color',
@@ -192,7 +194,7 @@ export const en = {
   audienceDir: 'Audience',
   audienceTop: 'Top',
   audienceBottom: 'Bottom',
-  audienceNone: 'None',
+
   wingArea: 'Wing Area',
   smartGuideTitle: 'Smart Guide',
   smartGuideLabel: 'Show alignment guides when dragging',
@@ -315,4 +317,13 @@ export const en = {
   tourComplete: 'Done!',
   tourSkip: 'Skip',
   tourStep: '{current} / {total}',
+
+  // Chatbot
+  chatTitle: 'Help',
+  chatPlaceholder: 'Ask a question',
+  chatWelcome: 'Hi! I can help you use ChoreoNote.',
+  chatContextHint: 'Current page: {page}',
+  chatNoResult: 'No matching answer found. Try different keywords.',
+  chatDisambiguate: 'Which one are you looking for?',
+  chatSuggestionLabel: 'Frequently Asked',
 };
