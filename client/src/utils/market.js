@@ -13,15 +13,21 @@ const PAGE_SIZE = 20;
  * @param {number|null} opts.dancerCountMax - 인원수 필터 최대
  * @returns {{ data, totalCount, hasMore }}
  */
-export async function fetchPresets({ page = 0, sortBy = 'created_at', dancerCountMin = null, dancerCountMax = null } = {}) {
+export async function fetchPresets({ page = 0, sortBy = 'created_at', dancerCountMin = null, dancerCountMax = null, tags = [] } = {}) {
   let query = supabase
     .from(TABLE)
     .select('*', { count: 'exact' })
-    .order(sortBy, { ascending: false })
-    .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
+    .order(sortBy, { ascending: false });
 
   if (dancerCountMin != null) query = query.gte('dancer_count', dancerCountMin);
   if (dancerCountMax != null) query = query.lte('dancer_count', dancerCountMax);
+
+  // 태그 필터: preset_data JSONB 안의 tags 배열에 포함 여부
+  for (const tag of tags) {
+    query = query.contains('preset_data', { tags: [tag] });
+  }
+
+  query = query.range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
 
   const { data, error, count } = await query;
   if (error) throw new Error(error.message);
@@ -49,18 +55,16 @@ export async function fetchPresetById(id) {
  * 프리셋 업로드.
  * @param {Object} opts
  * @param {string} opts.title
- * @param {string} opts.description
  * @param {Object} opts.presetData - buildPresetData로 생성된 데이터
  */
-export async function uploadPreset({ title, description = '', presetData }) {
+export async function uploadPreset({ title, presetData }) {
   const user = await getCurrentUser();
   if (!user) throw new Error('로그인이 필요합니다');
 
   const { error } = await supabase.from(TABLE).insert({
     user_id: user.id,
     title,
-    description,
-    dancer_count: presetData.dancers.length,
+    dancer_count: presetData.dancerCount ?? presetData.dancers.length,
     formation_count: presetData.formations.length,
     preset_data: presetData,
   });
@@ -103,6 +107,18 @@ export function buildPresetData(noteData, selectedFormationIds) {
   const filteredDancers = dancers.filter(d => usedDancerIds.has(d.id));
   const dancerIndexMap = new Map(filteredDancers.map((d, i) => [d.id, i]));
 
+  // 무대 위에 한 번이라도 등장하는 댄서만 카운트 (퇴장 영역 제외)
+  const halfW = (note.stageWidth || 600) / 2;
+  const halfH = (note.stageHeight || 400) / 2;
+  const onStageDancerIds = new Set();
+  for (const f of selected) {
+    for (const p of f.positions) {
+      if (Math.abs(p.x) <= halfW && Math.abs(p.y) <= halfH) {
+        onStageDancerIds.add(p.dancerId);
+      }
+    }
+  }
+
   return {
     version: 2,
     note: {
@@ -115,6 +131,7 @@ export function buildPresetData(noteData, selectedFormationIds) {
       showWings: note.showWings,
     },
     dancers: filteredDancers.map(d => ({ name: d.name, color: d.color })),
+    dancerCount: onStageDancerIds.size,
     formations: selected.map((f, i) => ({
       startTime: i === 0 ? 0 : f.startTime - selected[0].startTime,
       duration: f.duration,

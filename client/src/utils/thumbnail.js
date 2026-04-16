@@ -4,7 +4,7 @@ import { DANCER_RADIUS } from './constants.js';
  * 대형 데이터를 캔버스에 썸네일로 렌더링.
  * Dashboard 노트 카드, 마켓 프리셋 카드 등에서 공통 사용.
  */
-export function renderFormationThumbnail(canvas, { dancers, positions, stageWidth, stageHeight, dancerShape, dancerScale, showWings }) {
+export function renderFormationThumbnail(canvas, { dancers, positions, stageWidth, stageHeight, dancerShape, dancerScale, showWings, hideOffstage }) {
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
   const w = canvas.width;
@@ -56,6 +56,7 @@ export function renderFormationThumbnail(canvas, { dancers, positions, stageWidt
     const cx = stageX + stageW / 2 + pos.x * scale;
     const cy = stageY + stageH / 2 + pos.y * scale;
     const isOffstage = Math.abs(pos.x) > halfW || Math.abs(pos.y) > halfH;
+    if (hideOffstage && isOffstage) continue;
     ctx.globalAlpha = isOffstage ? 0.4 : 1.0;
 
     const angle = (pos.angle || 0) * Math.PI / 180;

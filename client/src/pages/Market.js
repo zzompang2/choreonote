@@ -8,11 +8,29 @@ import { NoteStore } from '../store/NoteStore.js';
 
 const PAGE_SIZE = 20;
 
+// 느낌 태그 정의
+const MOOD_TAGS = [
+  'sharp', 'soft', 'symmetric', 'dynamic',
+  'grand', 'dense', 'scatter', 'cute',
+];
+
+// 제목 예시 문구
+const TITLE_EXAMPLES = [
+  'marketTitleEx1', 'marketTitleEx2', 'marketTitleEx3',
+  'marketTitleEx4', 'marketTitleEx5', 'marketTitleEx6',
+  'marketTitleEx7', 'marketTitleEx8',
+];
+
 // 인원수 필터 정의
 const DANCER_FILTERS = [
   { label: () => t('marketFilterAll'), min: null, max: null },
-  { label: () => t('marketFilter2to4'), min: 2, max: 4 },
-  { label: () => t('marketFilter5to8'), min: 5, max: 8 },
+  { label: () => '2', min: 2, max: 2 },
+  { label: () => '3', min: 3, max: 3 },
+  { label: () => '4', min: 4, max: 4 },
+  { label: () => '5', min: 5, max: 5 },
+  { label: () => '6', min: 6, max: 6 },
+  { label: () => '7', min: 7, max: 7 },
+  { label: () => '8', min: 8, max: 8 },
   { label: () => t('marketFilter9plus'), min: 9, max: null },
 ];
 
@@ -25,6 +43,8 @@ export async function renderMarket(container) {
   let currentPage = 0;
   let sortBy = 'created_at';
   let filterIndex = 0;
+  let viewAudience = 'bottom';
+  let filterTags = []; // 선택된 느낌 태그
   let currentUser = await getCurrentUser();
 
   async function loadAndRender() {
@@ -34,6 +54,7 @@ export async function renderMarket(container) {
       sortBy,
       dancerCountMin: filter.min,
       dancerCountMax: filter.max,
+      tags: filterTags,
     });
     renderPage(result);
   }
@@ -56,15 +77,27 @@ export async function renderMarket(container) {
       </div>
 
       <div class="market__filters">
-        <div class="market__filter-group">
-          ${DANCER_FILTERS.map((f, i) => `
-            <button class="market__filter-chip${i === filterIndex ? ' market__filter-chip--active' : ''}" data-filter="${i}">${f.label()}</button>
+        <div class="market__filter-row">
+          <div class="market__filter-group">
+            ${DANCER_FILTERS.map((f, i) => `
+              <button class="market__filter-chip${i === filterIndex ? ' market__filter-chip--active' : ''}" data-filter="${i}">${f.label()}</button>
+            `).join('')}
+          </div>
+          <div class="market__filter-right">
+            <button class="market__audience-btn" id="market-audience" title="${t('marketAudienceToggle')}">
+              <span class="market__audience-icon${viewAudience === 'top' ? ' market__audience-icon--top' : ''}">👥</span>
+            </button>
+            <select class="market__sort" id="market-sort">
+              <option value="created_at"${sortBy === 'created_at' ? ' selected' : ''}>${t('marketSortNewest')}</option>
+              <option value="download_count"${sortBy === 'download_count' ? ' selected' : ''}>${t('marketSortPopular')}</option>
+            </select>
+          </div>
+        </div>
+        <div class="market__filter-group market__tag-filters">
+          ${MOOD_TAGS.map(tag => `
+            <button class="market__filter-chip${filterTags.includes(tag) ? ' market__filter-chip--active' : ''}" data-tag="${tag}">${t('marketTag_' + tag)}</button>
           `).join('')}
         </div>
-        <select class="market__sort" id="market-sort">
-          <option value="created_at"${sortBy === 'created_at' ? ' selected' : ''}>${t('marketSortNewest')}</option>
-          <option value="download_count"${sortBy === 'download_count' ? ' selected' : ''}>${t('marketSortPopular')}</option>
-        </select>
       </div>
 
       <div class="market__body">
@@ -101,15 +134,31 @@ export async function renderMarket(container) {
       });
     }
 
+    div.querySelector('#market-audience').addEventListener('click', () => {
+      viewAudience = viewAudience === 'bottom' ? 'top' : 'bottom';
+      loadAndRender();
+    });
+
     div.querySelector('#market-sort').addEventListener('change', (e) => {
       sortBy = e.target.value;
       currentPage = 0;
       loadAndRender();
     });
 
-    div.querySelectorAll('.market__filter-chip').forEach(btn => {
+    div.querySelectorAll('.market__filter-chip[data-filter]').forEach(btn => {
       btn.addEventListener('click', () => {
         filterIndex = Number(btn.dataset.filter);
+        currentPage = 0;
+        loadAndRender();
+      });
+    });
+
+    div.querySelectorAll('.market__filter-chip[data-tag]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const tag = btn.dataset.tag;
+        const idx = filterTags.indexOf(tag);
+        if (idx >= 0) filterTags.splice(idx, 1);
+        else filterTags.push(tag);
         currentPage = 0;
         loadAndRender();
       });
@@ -131,12 +180,13 @@ export async function renderMarket(container) {
     // 캔버스 썸네일 렌더링
     for (const preset of data) {
       const canvas = div.querySelector(`canvas[data-preset-thumb="${preset.id}"]`);
-      renderPresetThumbnail(canvas, preset.preset_data);
+      renderPresetThumbnail(canvas, preset.preset_data, viewAudience);
     }
   }
 
   function renderCard(preset) {
     const isOwner = currentUser && preset.user_id === currentUser.id;
+    const tags = preset.preset_data?.tags || [];
     return `
       <div class="market-card" data-id="${preset.id}">
         ${isOwner ? `<button class="market-card__delete" data-delete="${preset.id}" title="${t('delete')}">✕</button>` : ''}
@@ -144,6 +194,7 @@ export async function renderMarket(container) {
           <canvas data-preset-thumb="${preset.id}" width="200" height="134"></canvas>
         </div>
         <div class="market-card__title">${escapeHtml(preset.title)}</div>
+        ${tags.length > 0 ? `<div class="market-card__tags">${tags.map(tag => `<span class="market-card__tag">${t('marketTag_' + tag)}</span>`).join('')}</div>` : ''}
         <div class="market-card__meta">
           ${t('marketDancerCount', { count: preset.dancer_count })} · ${t('marketFormationCount', { count: preset.formation_count })} · ${t('marketDownloadCount', { count: preset.download_count || 0 })}
         </div>
@@ -157,22 +208,29 @@ export async function renderMarket(container) {
     const overlay = document.createElement('div');
     overlay.className = 'market-modal';
 
+    const tags = pd.tags || [];
     overlay.innerHTML = `
       <div class="market-modal__box market-modal__box--detail">
-        <div class="market-modal__header">
-          <h2>${escapeHtml(preset.title)}</h2>
-          <button class="market-modal__close">✕</button>
+        <div class="market-modal__top">
+          <div class="market-modal__header">
+            <h2>${escapeHtml(preset.title)}</h2>
+            <button class="market-modal__close">✕</button>
+          </div>
+          ${tags.length > 0 ? `<div class="market-card__tags" style="margin-bottom:8px">${tags.map(tag => `<span class="market-card__tag">${t('marketTag_' + tag)}</span>`).join('')}</div>` : ''}
+          <div class="market-modal__meta">
+            ${t('marketDancerCount', { count: preset.dancer_count })} · ${t('marketFormationCount', { count: preset.formation_count })} · ${t('marketDownloadCount', { count: preset.download_count || 0 })}
+          </div>
         </div>
-        ${preset.description ? `<p class="market-modal__desc">${escapeHtml(preset.description)}</p>` : ''}
-        <div class="market-modal__meta">
-          ${t('marketDancerCount', { count: preset.dancer_count })} · ${t('marketFormationCount', { count: preset.formation_count })} · ${t('marketDownloadCount', { count: preset.download_count || 0 })}
+        <div class="market-modal__body">
+          <div class="market-modal__previews">
+            ${pd.formations.map((_, i) => `<canvas data-detail-thumb="${i}" width="160" height="107"></canvas>`).join('')}
+          </div>
         </div>
-        <div class="market-modal__previews">
-          ${pd.formations.map((_, i) => `<canvas data-detail-thumb="${i}" width="160" height="107"></canvas>`).join('')}
-        </div>
-        <div class="market-modal__actions">
-          <button class="btn btn--primary" id="modal-import-btn">${t('marketImportAsNote')}</button>
-          <button class="btn btn--ghost" id="modal-cancel-btn">${t('cancel')}</button>
+        <div class="market-modal__bottom">
+          <div class="market-modal__actions">
+            <button class="btn btn--primary" id="modal-import-btn">${t('marketImportAsNote')}</button>
+            <button class="btn btn--ghost" id="modal-cancel-btn">${t('cancel')}</button>
+          </div>
         </div>
       </div>
     `;
@@ -202,12 +260,16 @@ export async function renderMarket(container) {
     document.body.appendChild(overlay);
 
     // 각 대형 미리보기 렌더링
+    const srcAudience = pd.note.audienceDirection || 'bottom';
+    const flip = viewAudience !== srcAudience;
     const dancers = pd.dancers.map((d, i) => ({ id: i, name: d.name, color: d.color }));
     pd.formations.forEach((f, i) => {
       const canvas = overlay.querySelector(`canvas[data-detail-thumb="${i}"]`);
       const positions = f.positions.map(p => ({
         dancerId: p.dancerIndex,
-        x: p.x, y: p.y, angle: p.angle || 0,
+        x: flip ? -p.x : p.x,
+        y: flip ? -p.y : p.y,
+        angle: flip ? (p.angle || 0) + 180 : (p.angle || 0),
       }));
       renderFormationThumbnail(canvas, {
         dancers, positions,
@@ -216,6 +278,7 @@ export async function renderMarket(container) {
         dancerShape: pd.note.dancerShape || 'pentagon',
         dancerScale: pd.note.dancerScale || 1.0,
         showWings: pd.note.showWings || false,
+        hideOffstage: true,
       });
     });
   }
@@ -235,27 +298,37 @@ export async function renderMarket(container) {
     const overlay = document.createElement('div');
     overlay.className = 'market-modal';
 
-    let step = 1; // 1: 노트 선택, 2: 대형 선택 + 정보 입력
+    let step = 1; // 1: 노트 선택, 2: 대형 선택, 3: 정보 입력
     let selectedNoteId = null;
     let noteData = null;
+    let selectedFormations = []; // 스텝2에서 선택된 대형 배열
 
     function renderStep1() {
       overlay.innerHTML = `
         <div class="market-modal__box">
-          <div class="market-modal__header">
-            <h2>${t('marketUploadTitle')}</h2>
-            <button class="market-modal__close">✕</button>
+          <div class="market-modal__top">
+            <div class="market-modal__header">
+              <h2>${t('marketUploadTitle')}</h2>
+              <button class="market-modal__close">✕</button>
+            </div>
+            <div class="market-modal__step-indicator">
+              <span class="market-modal__step market-modal__step--active">1</span>
+              <span class="market-modal__step">2</span>
+              <span class="market-modal__step">3</span>
+            </div>
+            <h3 class="market-modal__subtitle">${t('marketSelectNote')}</h3>
           </div>
-          <h3 class="market-modal__subtitle">${t('marketSelectNote')}</h3>
-          <div class="market-upload__note-list">
-            ${notes.map(n => `
-              <div class="market-upload__note-item" data-note-id="${n.id}">
-                <canvas data-upload-thumb="${n.id}" width="120" height="80"></canvas>
-                <div>
-                  <div class="market-upload__note-title">${escapeHtml(n.title)}</div>
+          <div class="market-modal__body">
+            <div class="market-upload__note-list">
+              ${notes.map(n => `
+                <div class="market-upload__note-item" data-note-id="${n.id}">
+                  <canvas data-upload-thumb="${n.id}" width="120" height="80"></canvas>
+                  <div>
+                    <div class="market-upload__note-title">${escapeHtml(n.title)}</div>
+                  </div>
                 </div>
-              </div>
-            `).join('')}
+              `).join('')}
+            </div>
           </div>
         </div>
       `;
@@ -284,11 +357,11 @@ export async function renderMarket(container) {
 
     const MAX_UPLOAD_FORMATIONS = 5;
 
+    // --- 스텝 2: 대형 선택 (그리드 갤러리) ---
     function renderStep2() {
       const formations = noteData.formations.sort((a, b) => a.order - b.order);
       const dancers = noteData.dancers;
 
-      // 범위 선택 상태: startIdx, endIdx (null이면 미선택)
       let rangeStart = null;
       let rangeEnd = null;
 
@@ -301,30 +374,36 @@ export async function renderMarket(container) {
 
       function updateSelectionUI(hoverIdx) {
         const items = overlay.querySelectorAll('.market-upload__formation-item');
-        const connectors = overlay.querySelectorAll('.market-upload__connector');
-        const lo = rangeStart !== null ? Math.min(rangeStart, rangeEnd ?? hoverIdx ?? rangeStart) : -1;
-        const hi = rangeStart !== null ? Math.max(rangeStart, rangeEnd ?? hoverIdx ?? rangeStart) : -1;
-        const isPreview = rangeStart !== null && rangeEnd === null && hoverIdx != null && hoverIdx !== rangeStart;
-        const overMax = hi - lo + 1 > MAX_UPLOAD_FORMATIONS;
+        const lo = rangeStart !== null ? Math.min(rangeStart, rangeEnd ?? rangeStart) : -1;
+        const hi = rangeStart !== null ? Math.max(rangeStart, rangeEnd ?? rangeStart) : -1;
+        const previewLo = (hoverIdx != null && rangeEnd === null && rangeStart !== null)
+          ? Math.min(rangeStart, hoverIdx) : lo;
+        const previewHi = (hoverIdx != null && rangeEnd === null && rangeStart !== null)
+          ? Math.max(rangeStart, hoverIdx) : hi;
+        const isPreview = hoverIdx != null && rangeEnd === null && hoverIdx !== rangeStart;
+        const overMax = isPreview && (previewHi - previewLo + 1 > MAX_UPLOAD_FORMATIONS);
 
         items.forEach((item, i) => {
-          const inRange = i >= lo && i <= hi;
-          item.classList.toggle('market-upload__formation-item--selected', inRange && !overMax);
-          item.classList.toggle('market-upload__formation-item--preview', inRange && isPreview && !overMax);
-          item.classList.toggle('market-upload__formation-item--over-max', inRange && overMax);
-          // 뱃지 업데이트
+          const inConfirmed = i >= lo && i <= hi;
+          const inPreview = i >= previewLo && i <= previewHi;
+          item.classList.toggle('market-upload__formation-item--selected', isPreview ? (inPreview && !overMax) : inConfirmed);
+          item.classList.toggle('market-upload__formation-item--preview', isPreview && inPreview && !overMax);
+          item.classList.toggle('market-upload__formation-item--over-max', isPreview && inPreview && overMax);
           const badge = item.querySelector('.market-upload__badge');
           if (badge) {
-            if (!inRange || overMax) {
+            const effLo = isPreview ? previewLo : lo;
+            const effHi = isPreview ? previewHi : hi;
+            const inEff = i >= effLo && i <= effHi;
+            if (!inEff || (isPreview && overMax)) {
               badge.textContent = '';
               badge.style.display = 'none';
-            } else if (lo === hi && i === lo) {
-              badge.textContent = rangeEnd === null ? t('marketBadgeStart') : '';
-              badge.style.display = rangeEnd === null ? '' : 'none';
-            } else if (i === lo) {
+            } else if (effLo === effHi) {
+              badge.textContent = '✓';
+              badge.style.display = '';
+            } else if (i === effLo) {
               badge.textContent = t('marketBadgeStart');
               badge.style.display = '';
-            } else if (i === hi) {
+            } else if (i === effHi) {
               badge.textContent = t('marketBadgeEnd');
               badge.style.display = '';
             } else {
@@ -333,78 +412,76 @@ export async function renderMarket(container) {
             }
           }
         });
-        // 커넥터 하이라이트
-        connectors.forEach((conn, i) => {
-          // 커넥터 i는 아이템 i와 i+1 사이
-          const active = i >= lo && i < hi && !overMax;
-          conn.classList.toggle('market-upload__connector--active', active);
-          conn.classList.toggle('market-upload__connector--preview', active && isPreview);
-        });
-        // 선택 개수 표시
+
         const selected = getSelectedRange();
         const countEl = overlay.querySelector('.market-upload__selection-count');
         if (countEl) {
-          if (rangeStart !== null && rangeEnd === null) {
-            countEl.textContent = t('marketSelectEnd');
-          } else if (selected.length > 0) {
-            countEl.textContent = t('marketSelectionCount', { count: selected.length, max: MAX_UPLOAD_FORMATIONS });
-          } else {
-            countEl.textContent = '';
-          }
+          countEl.textContent = selected.length > 0
+            ? t('marketSelectionCount', { count: selected.length, max: MAX_UPLOAD_FORMATIONS })
+            : '';
         }
+        // 다음 버튼 활성화
+        const nextBtn = overlay.querySelector('#step2-next-btn');
+        if (nextBtn) nextBtn.disabled = selected.length === 0;
       }
 
       overlay.innerHTML = `
         <div class="market-modal__box">
-          <div class="market-modal__header">
-            <h2>${t('marketUploadTitle')}</h2>
-            <button class="market-modal__close">✕</button>
+          <div class="market-modal__top">
+            <div class="market-modal__header">
+              <h2>${t('marketUploadTitle')}</h2>
+              <button class="market-modal__close">✕</button>
+            </div>
+            <div class="market-modal__step-indicator">
+              <span class="market-modal__step">1</span>
+              <span class="market-modal__step market-modal__step--active">2</span>
+              <span class="market-modal__step">3</span>
+            </div>
+            <h3 class="market-modal__subtitle">${t('marketSelectFormations')}</h3>
+            <p class="market-upload__hint">${t('marketSelectHint', { max: MAX_UPLOAD_FORMATIONS })}</p>
           </div>
-
-          <h3 class="market-modal__subtitle">${t('marketSelectFormations')}</h3>
-          <p class="market-upload__hint">${t('marketSelectHint', { max: MAX_UPLOAD_FORMATIONS })}</p>
-          <div class="market-upload__formation-list">
-            ${formations.map((f, i) => `
-              <div class="market-upload__formation-item" data-idx="${i}">
-                <span class="market-upload__badge" style="display:none"></span>
-                <canvas data-formation-thumb="${f.id}" width="100" height="67"></canvas>
-                <span>${i + 1}</span>
-              </div>
-              ${i < formations.length - 1 ? '<div class="market-upload__connector">→</div>' : ''}
-            `).join('')}
+          <div class="market-modal__body">
+            <div class="market-upload__gallery">
+              ${formations.map((f, i) => `
+                <div class="market-upload__formation-item" data-idx="${i}">
+                  <span class="market-upload__badge" style="display:none"></span>
+                  <canvas data-formation-thumb="${f.id}" width="140" height="94"></canvas>
+                  <span>${i + 1}</span>
+                </div>
+              `).join('')}
+            </div>
+            <div class="market-upload__selection-count"></div>
           </div>
-          <div class="market-upload__selection-count"></div>
-
-          <div class="market-upload__form">
-            <label class="market-upload__label">
-              ${t('marketPresetTitle')}
-              <input type="text" id="upload-title" class="market-upload__input" value="${escapeHtml(noteData.note.title)}" />
-            </label>
-            <label class="market-upload__label">
-              ${t('marketPresetDesc')}
-              <textarea id="upload-desc" class="market-upload__input market-upload__textarea" rows="2"></textarea>
-            </label>
-          </div>
-
-          <div class="market-modal__actions">
-            <button class="btn btn--primary" id="upload-submit-btn">${t('marketUpload')}</button>
-            <button class="btn btn--ghost" id="upload-cancel-btn">${t('cancel')}</button>
+          <div class="market-modal__bottom">
+            <div class="market-modal__actions market-modal__actions--between">
+              <button class="btn btn--ghost" id="step2-back-btn">${t('marketPrev')}</button>
+              <button class="btn btn--primary" id="step2-next-btn" disabled>${t('marketNext')}</button>
+            </div>
           </div>
         </div>
       `;
 
       overlay.querySelector('.market-modal__close').addEventListener('click', () => overlay.remove());
-      overlay.querySelector('#upload-cancel-btn').addEventListener('click', () => overlay.remove());
+      overlay.querySelector('#step2-back-btn').addEventListener('click', () => renderStep1());
       overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
 
-      // 대형 클릭 → 범위 선택, hover → 미리보기
+      overlay.querySelector('#step2-next-btn').addEventListener('click', () => {
+        selectedFormations = getSelectedRange();
+        step = 3;
+        renderStep3();
+      });
+
+      // 대형 클릭 → 범위 선택
       overlay.querySelectorAll('.market-upload__formation-item').forEach(item => {
         item.addEventListener('click', () => {
           const idx = Number(item.dataset.idx);
           if (rangeStart === null) {
             rangeStart = idx;
             rangeEnd = null;
-          } else if (rangeEnd === null && idx !== rangeStart) {
+          } else if (rangeEnd === null && idx === rangeStart) {
+            rangeStart = null;
+            rangeEnd = null;
+          } else if (rangeEnd === null) {
             const lo = Math.min(rangeStart, idx);
             const hi = Math.max(rangeStart, idx);
             if (hi - lo + 1 > MAX_UPLOAD_FORMATIONS) {
@@ -431,7 +508,7 @@ export async function renderMarket(container) {
         });
       });
 
-      // 대형 썸네일
+      // 대형 썸네일 렌더링
       for (const f of formations) {
         const canvas = overlay.querySelector(`canvas[data-formation-thumb="${f.id}"]`);
         const positions = f.positions.map(p => ({
@@ -446,29 +523,149 @@ export async function renderMarket(container) {
           dancerShape: noteData.note.dancerShape || 'pentagon',
           dancerScale: noteData.note.dancerScale || 1.0,
           showWings: noteData.note.showWings || false,
+          hideOffstage: true,
         });
       }
+    }
 
-      // 업로드 실행
-      overlay.querySelector('#upload-submit-btn').addEventListener('click', async () => {
-        const selected = getSelectedRange();
-        if (selected.length === 0) {
-          showToast(t('marketSelectFormations'));
+    // --- 스텝 3: 썸네일·제목·태그 ---
+    function renderStep3() {
+      const dancers = noteData.dancers;
+      let thumbnailIdx = 0; // 대표 썸네일 인덱스 (selectedFormations 내)
+      const selectedTags = new Set();
+
+      // 인원수 자동 계산 (무대 위 댄서만)
+      const halfW = (noteData.note.stageWidth || 600) / 2;
+      const halfH = (noteData.note.stageHeight || 400) / 2;
+      const onStageIds = new Set();
+      for (const f of selectedFormations) {
+        for (const p of f.positions) {
+          if (Math.abs(p.x) <= halfW && Math.abs(p.y) <= halfH) onStageIds.add(p.dancerId);
+        }
+      }
+
+      const placeholderTitle = t(TITLE_EXAMPLES[Math.floor(Math.random() * TITLE_EXAMPLES.length)]);
+
+      overlay.innerHTML = `
+        <div class="market-modal__box">
+          <div class="market-modal__top">
+            <div class="market-modal__header">
+              <h2>${t('marketUploadTitle')}</h2>
+              <button class="market-modal__close">✕</button>
+            </div>
+            <div class="market-modal__step-indicator">
+              <span class="market-modal__step">1</span>
+              <span class="market-modal__step">2</span>
+              <span class="market-modal__step market-modal__step--active">3</span>
+            </div>
+          </div>
+          <div class="market-modal__body">
+            <h3 class="market-modal__subtitle">${t('marketSelectThumbnail')}</h3>
+            <div class="market-upload__thumb-picker">
+              ${selectedFormations.map((f, i) => `
+                <div class="market-upload__thumb-option${i === 0 ? ' market-upload__thumb-option--active' : ''}" data-thumb-idx="${i}">
+                  <canvas data-step3-thumb="${i}" width="100" height="67"></canvas>
+                  ${selectedFormations.length > 1 ? `<span>${t('marketFormationN', { n: i + 1 })}</span>` : ''}
+                </div>
+              `).join('')}
+            </div>
+
+            <div class="market-upload__form">
+              <label class="market-upload__label">
+                ${t('marketPresetTitle')}
+                <input type="text" id="upload-title" class="market-upload__input" placeholder="${escapeHtml(placeholderTitle)}" />
+              </label>
+
+              <div class="market-upload__label">
+                ${t('marketMoodTags')}
+                <div class="market-upload__tags">
+                  ${MOOD_TAGS.map(tag => `
+                    <button type="button" class="market-upload__tag-chip" data-tag="${tag}">${t('marketTag_' + tag)}</button>
+                  `).join('')}
+                </div>
+              </div>
+
+              <div class="market-upload__info-row">
+                <span class="market-upload__info-label">${t('marketDancerCount', { count: onStageIds.size })}</span>
+                <span class="market-upload__info-label">${t('marketFormationCount', { count: selectedFormations.length })}</span>
+              </div>
+            </div>
+          </div>
+          <div class="market-modal__bottom">
+            <div class="market-modal__actions market-modal__actions--between">
+              <button class="btn btn--ghost" id="step3-back-btn">${t('marketPrev')}</button>
+              <button class="btn btn--primary" id="step3-upload-btn">${t('marketUpload')}</button>
+            </div>
+          </div>
+        </div>
+      `;
+
+      overlay.querySelector('.market-modal__close').addEventListener('click', () => overlay.remove());
+      overlay.querySelector('#step3-back-btn').addEventListener('click', () => { step = 2; renderStep2(); });
+      overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+
+      // 대표 썸네일 선택
+      overlay.querySelectorAll('.market-upload__thumb-option').forEach(opt => {
+        opt.addEventListener('click', () => {
+          thumbnailIdx = Number(opt.dataset.thumbIdx);
+          overlay.querySelectorAll('.market-upload__thumb-option').forEach(o =>
+            o.classList.toggle('market-upload__thumb-option--active', o === opt));
+        });
+      });
+
+      // 느낌 태그 토글
+      overlay.querySelectorAll('.market-upload__tag-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+          const tag = chip.dataset.tag;
+          if (selectedTags.has(tag)) {
+            selectedTags.delete(tag);
+            chip.classList.remove('market-upload__tag-chip--active');
+          } else {
+            selectedTags.add(tag);
+            chip.classList.add('market-upload__tag-chip--active');
+          }
+        });
+      });
+
+      // 썸네일 렌더링
+      selectedFormations.forEach((f, i) => {
+        const canvas = overlay.querySelector(`canvas[data-step3-thumb="${i}"]`);
+        if (!canvas) return;
+        const positions = f.positions.map(p => ({
+          dancerId: p.dancerId,
+          x: p.x, y: p.y, angle: p.angle || 0,
+        }));
+        renderFormationThumbnail(canvas, {
+          dancers,
+          positions,
+          stageWidth: noteData.note.stageWidth || 600,
+          stageHeight: noteData.note.stageHeight || 400,
+          dancerShape: noteData.note.dancerShape || 'pentagon',
+          dancerScale: noteData.note.dancerScale || 1.0,
+          showWings: noteData.note.showWings || false,
+          hideOffstage: true,
+        });
+      });
+
+      // 업로드
+      overlay.querySelector('#step3-upload-btn').addEventListener('click', async () => {
+        if (selectedTags.size === 0) {
+          showToast(t('marketTagRequired'));
           return;
         }
 
-        const selectedIds = selected.map(f => f.id);
         const title = overlay.querySelector('#upload-title').value.trim();
         if (!title) {
           overlay.querySelector('#upload-title').focus();
           return;
         }
 
-        const description = overlay.querySelector('#upload-desc').value.trim();
-
         try {
+          const selectedIds = selectedFormations.map(f => f.id);
           const presetData = buildPresetData(noteData, selectedIds);
-          await uploadPreset({ title, description, presetData });
+          presetData.tags = [...selectedTags];
+          presetData.thumbnailIndex = thumbnailIdx;
+          await uploadPreset({ title, presetData });
           overlay.remove();
           showToast(t('marketUploadSuccess'));
           currentPage = 0;
@@ -504,16 +701,22 @@ export async function renderMarket(container) {
 
 // --- 유틸 ---
 
-function renderPresetThumbnail(canvas, presetData) {
+function renderPresetThumbnail(canvas, presetData, targetAudience) {
   if (!canvas || !presetData) return;
   const pd = presetData;
-  const firstFormation = pd.formations[0];
+  const thumbIdx = pd.thumbnailIndex || 0;
+  const firstFormation = pd.formations[thumbIdx] || pd.formations[0];
   if (!firstFormation) return;
+
+  const srcAudience = pd.note.audienceDirection || 'bottom';
+  const flip = targetAudience && targetAudience !== srcAudience;
 
   const dancers = pd.dancers.map((d, i) => ({ id: i, name: d.name, color: d.color }));
   const positions = firstFormation.positions.map(p => ({
     dancerId: p.dancerIndex,
-    x: p.x, y: p.y, angle: p.angle || 0,
+    x: flip ? -p.x : p.x,
+    y: flip ? -p.y : p.y,
+    angle: flip ? (p.angle || 0) + 180 : (p.angle || 0),
   }));
 
   renderFormationThumbnail(canvas, {
@@ -523,6 +726,7 @@ function renderPresetThumbnail(canvas, presetData) {
     dancerShape: pd.note.dancerShape || 'pentagon',
     dancerScale: pd.note.dancerScale || 1.0,
     showWings: pd.note.showWings || false,
+    hideOffstage: true,
   });
 }
 
