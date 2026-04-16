@@ -1577,19 +1577,27 @@ html:has(.editor) {
 
 /* --- Share Viewer --- */
 .viewer {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 1fr 0px 48px;
+  grid-template-rows: auto 1fr auto auto;
   height: 100vh;
+  height: 100dvh;
+  gap: 0;
+  overflow: hidden;
   background: var(--bg-primary);
   color: var(--text-primary);
+  transition: grid-template-columns 0.25s ease;
+}
+.viewer--sidebar-open {
+  grid-template-columns: 1fr 220px 48px;
 }
 .viewer__header {
+  grid-column: 1 / -1;
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 12px 20px;
   border-bottom: 1px solid var(--border);
-  flex-shrink: 0;
 }
 .viewer__title {
   font-size: 16px;
@@ -1601,49 +1609,41 @@ html:has(.editor) {
   text-decoration: none;
   font-weight: 700;
 }
-.viewer__body {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-height: 0;
-}
 .viewer__stage {
-  flex: 1;
+  grid-row: 2;
+  grid-column: 1;
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
   padding: 12px;
   min-height: 0;
+  min-width: 0;
   position: relative;
 }
 .viewer__stage canvas {
   display: block;
 }
-.viewer__toolbar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 20px;
-  flex-shrink: 0;
+.viewer > .editor__sidebar {
+  grid-row: 2;
+  grid-column: 2;
 }
-.viewer__toolbar-label {
-  font-size: 12px;
-  color: var(--text-secondary);
+.viewer > .sidebar-rail {
+  grid-row: 2;
+  grid-column: 3;
+}
+.viewer > .player-bar {
+  grid-column: 1 / -1;
+}
+.viewer > .editor__timeline-wrap {
+  grid-column: 1 / -1;
+}
+.dancer-item__name-label {
+  font-size: 13px;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
-}
-.viewer__toolbar-sep {
-  width: 1px;
-  height: 18px;
-  background: var(--border-strong);
-  margin: 0 4px;
-}
-.viewer__player-bar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 20px;
-  flex-shrink: 0;
 }
 
 /* --- Settings panel --- */
@@ -2778,7 +2778,15 @@ html:has(.editor) {
     padding-bottom: env(safe-area-inset-bottom, 4px);
   }
   .timeline__zoom {
-    display: none;
+    gap: 2px;
+  }
+  .timeline__zoom-btn {
+    width: 26px;
+    height: 26px;
+    font-size: 12px;
+  }
+  .timeline__zoom-label {
+    font-size: 11px;
   }
 
   /* Sidebar as bottom sheet */
