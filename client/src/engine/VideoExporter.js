@@ -70,7 +70,7 @@ export class VideoExporter {
       // Export canvas: include wings if showWings is on, otherwise add audience margin
       const audienceMargin = 65; // stageGap(24) + 2 rows of seats(18+5+18)
       const dir = audienceDirection || 'top';
-      const hasAudience = !showWings && dir !== 'none';
+      const hasAudience = !showWings;
       const baseW = showWings ? CANVAS_WIDTH : STAGE_WIDTH;
       const baseH = showWings ? CANVAS_HEIGHT : (STAGE_HEIGHT + (hasAudience ? audienceMargin : 0));
       const exportWidth = 1280;

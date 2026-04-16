@@ -129,8 +129,7 @@ export class StageRenderer {
     ctx.lineTo(ox + STAGE_WIDTH, oy + HALF_H);
     ctx.stroke();
 
-    // Audience indicator: rows of seat rectangles (skip if 'none')
-    if (this.audienceDirection === 'none') { ctx.restore(); return; }
+    // Audience indicator: rows of seat rectangles
     const isTop = this.audienceDirection === 'top';
     const seatW = 32;
     const seatH = 18;
@@ -235,7 +234,7 @@ export class StageRenderer {
     ctx.stroke();
 
     // Audience seats (projected)
-    if (this.audienceDirection !== 'none') {
+    {
       const isTop = this.audienceDirection === 'top';
       const seatW = 32, seatH = 18, seatGap = 5, stageGap = 24;
       const cols = Math.floor((STAGE_WIDTH - seatGap) / (seatW + seatGap));
