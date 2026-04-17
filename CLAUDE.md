@@ -37,17 +37,17 @@
 | | `utils/theme.js` | 다크/라이트 모드 |
 | | `utils/toast.js` | 토스트 알림 |
 | | `utils/share.js` | 공유 링크 생성/조회 (Supabase) |
-| | `utils/auth.js` | Google OAuth 인증 (로그인/로그아웃/requireAuth 모달) |
+| | `utils/auth.js` | Google OAuth + 전역 `initAuthHandler` (SIGNED_IN→자동 다운로드, SIGNED_OUT→플래그 분기), 세션 만료 배너 API |
 | | `utils/market.js` | 대형 마켓 CRUD API (Supabase) |
 | | `utils/thumbnail.js` | 캔버스 썸네일 렌더링 (Dashboard/Market 공용) |
-| | `utils/cloudSync.js` | 클라우드 동기화 (업로드/다운로드/충돌감지/해결) |
+| | `utils/cloudSync.js` | 폴더 모델 API (`uploadOnSave`/`downloadAllOnLogin`/`moveNoteToCloud`/`moveNoteToLocal`) + 충돌 감지/해결 |
 | 컴포넌트 | `components/AppLayout.js` | 공용 셸 (220px 사이드바 + 모바일 drawer) — Dashboard/Market/Trash에서 사용, 에디터·랜딩·공유뷰어는 풀스크린 |
 | | `components/ChatBot.js` | FAQ 챗봇 (FAB + 사이드바 임베드, 팁 배너, 자동완성) |
 | | `components/ConflictModal.js` | 클라우드 충돌 해결 모달 (덮어쓰기/서버교체/둘다유지) |
 | 스타일 | `style.css` | 전역 CSS (다크/라이트 변수 포함) |
 
 ## 데이터 모델 (IndexedDB, v3)
-- **notes**: id, title, musicName, musicBlobId, duration, settings(JSON), cloudId, cloudUpdatedAt, **location**(`'local'`|`'cloud'`)
+- **notes**: id, title, musicName, musicBlobId, duration, settings(JSON), cloudId, cloudUpdatedAt, **location**(`'local'`|`'cloud'`), cloudUploadPending(업로드 실패 시 true, 성공 시 자동 해제)
 - **dancers**: id, noteId, name, color, order, shape, size
 - **formations**: id, noteId, startTime, duration, order
 - **positions**: id, formationId, dancerId, x, y, angle, waypoints

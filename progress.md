@@ -17,7 +17,7 @@
   - `auth.js`: `initAuthHandler` — 명시적 로그아웃/세션 만료 분기, `SIGNED_IN` 시 pending 플래그 기반 자동 동기화, `wasSessionExpired()` 배너 상태
   - `cloudSync`: `uploadNote` → `uploadOnSave` 이름 변경, `moveNoteToCloud/Local`, `downloadAllOnLogin`
   - `Editor`: 저장 시 `location==='cloud'`만 자동 업로드
-  - `Dashboard`: 💻 내 기기 / ☁ 클라우드 두 섹션 그리드, 빈 섹션 힌트, 카드 ⋯ 메뉴(이동/삭제 통합, 히트 영역 썸네일 오른쪽 상단까지 확장), 세션 만료 배너, `app:cloud-notes-updated` 이벤트 재렌더
+  - `Dashboard`: 💻 내 기기 / ☁ 클라우드 두 섹션 그리드, 빈 섹션 힌트, 카드 ⋯ 메뉴(이동/삭제 통합, 히트 영역 확장, 리스트뷰에선 카드 오른쪽 중앙에 anchor), 세션 만료 배너, `app:cloud-notes-updated` 이벤트 재렌더
   - 업로드 실패 `↺` 배지: `uploadOnSave`/`moveNoteToCloud` 실패 시 `cloudUploadPending` 플래그 세움, 다음 성공 시 자동 해제. 카드 썸네일 좌상단에 주황색 오버레이
 - **사이드바 레이아웃 도입**
   - `components/AppLayout.js` — 220px 고정 사이드바 + 모바일(≤840px) 햄버거 drawer
