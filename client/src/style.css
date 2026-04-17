@@ -34,6 +34,8 @@ html, body {
   --stage-wing: #0a0a15;
   --border: rgba(255,255,255,0.06);
   --border-strong: rgba(255,255,255,0.1);
+  --paper: #1f1c16;
+  --paper-line: rgba(255,200,120,0.09);
 }
 
 :root.light {
@@ -49,6 +51,8 @@ html, body {
   --stage-wing: #c8c8d0;
   --border: rgba(0,0,0,0.08);
   --border-strong: rgba(0,0,0,0.15);
+  --paper: #fbf6e9;
+  --paper-line: rgba(120,80,40,0.10);
 }
 
 body {
@@ -475,33 +479,61 @@ body {
 
 .collection-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 16px;
-  padding: 16px 20px;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 18px 16px;
+  padding: 20px 20px 24px;
 }
 
 .collection-card {
-  background: var(--bg-secondary);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  overflow: hidden;
+  position: relative;
+  padding: 10px 10px 0;
+  border-radius: 2px;
   cursor: pointer;
-  transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
+  box-shadow:
+    0 1px 1px rgba(0,0,0,0.12),
+    2px 4px 10px rgba(0,0,0,0.18);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
-
+.collection-card::after {
+  content: "";
+  position: absolute;
+  right: 2px; bottom: -6px;
+  width: 40%; height: 10px;
+  background: rgba(0,0,0,0.22);
+  filter: blur(6px);
+  transform: skewX(-20deg);
+  z-index: -1;
+  pointer-events: none;
+}
+.collection-card:nth-child(5n+1) { background: #3d3722; transform: rotate(-0.8deg); }
+.collection-card:nth-child(5n+2) { background: #3d2a36; transform: rotate(0.6deg); }
+.collection-card:nth-child(5n+3) { background: #1f3d2c; transform: rotate(-0.3deg); }
+.collection-card:nth-child(5n+4) { background: #2a2846; transform: rotate(1deg); }
+.collection-card:nth-child(5n)   { background: #3d2e1e; transform: rotate(-0.6deg); }
+:root.light .collection-card:nth-child(5n+1) { background: #fef3c7; }
+:root.light .collection-card:nth-child(5n+2) { background: #fbcfe8; }
+:root.light .collection-card:nth-child(5n+3) { background: #bbf7d0; }
+:root.light .collection-card:nth-child(5n+4) { background: #ddd6fe; }
+:root.light .collection-card:nth-child(5n)   { background: #fed7aa; }
 .collection-card:hover {
-  transform: translateY(-2px);
-  border-color: var(--accent);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transform: translateY(-3px) rotate(0);
+  box-shadow:
+    0 2px 2px rgba(0,0,0,0.12),
+    4px 8px 18px rgba(0,0,0,0.28);
+  z-index: 1;
 }
 
 .collection-card__thumbnail {
   background: var(--stage-bg);
+  border: 1px solid rgba(0,0,0,0.10);
+  border-radius: 1px;
   display: flex;
   align-items: center;
   justify-content: center;
   aspect-ratio: 3 / 2;
+  overflow: hidden;
 }
+:root:not(.light) .collection-card__thumbnail { border-color: rgba(0,0,0,0.25); }
 
 .collection-card__thumbnail canvas {
   max-width: 100%;
@@ -510,22 +542,27 @@ body {
 }
 
 .collection-card__body {
-  padding: 10px 12px;
+  padding: 9px 4px 12px;
+  text-align: center;
 }
 
 .collection-card__title {
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
+  color: rgba(255,255,255,0.88);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  letter-spacing: -0.005em;
 }
+:root.light .collection-card__title { color: rgba(0,0,0,0.82); }
 
 .collection-card__meta {
   font-size: 11px;
-  color: var(--text-secondary);
-  margin-top: 4px;
+  color: rgba(255,255,255,0.55);
+  margin-top: 3px;
 }
+:root.light .collection-card__meta { color: rgba(0,0,0,0.55); }
 
 .dashboard__subtitle {
   font-size: 12px;
@@ -629,6 +666,10 @@ body {
   align-items: center;
 }
 
+.note-grid--list .note-card:hover {
+  transform: translateY(-2px);
+}
+
 .note-grid--list .note-card__thumbnail {
   width: 120px;
   flex-shrink: 0;
@@ -716,20 +757,45 @@ body {
 }
 
 .note-card {
-  background: var(--bg-card);
-  border-radius: 14px;
+  background: var(--paper);
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0 23px,
+    var(--paper-line) 23px 24px
+  );
+  border-radius: 3px;
   padding: 0;
   cursor: pointer;
-  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
   position: relative;
   overflow: hidden;
   border: 1px solid var(--border);
+  box-shadow: 0 1px 0 rgba(0,0,0,0.04), 0 2px 6px rgba(0,0,0,0.10);
 }
 
 .note-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 12px 28px rgba(0,0,0,0.25);
-  border-color: var(--border-strong);
+  transform: translateY(-2px) rotate(-0.2deg);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+}
+
+.note-card::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 0 14px 14px 0;
+  border-color: transparent var(--bg-primary) transparent transparent;
+  filter: drop-shadow(-1px 1px 1.5px rgba(0,0,0,0.18));
+  transition: opacity 0.15s ease;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.note-card:hover::after {
+  opacity: 0;
 }
 
 .note-card__thumbnail {
@@ -2650,6 +2716,7 @@ html:has(.editor) {
 }
 
 .inspector-palette__custom {
+  position: relative;
   background: var(--border);
   display: flex;
   align-items: center;
@@ -2657,6 +2724,7 @@ html:has(.editor) {
   font-size: 14px;
   color: var(--text-secondary);
   border: 2px dashed var(--border-strong);
+  overflow: hidden;
 }
 
 .inspector-palette__custom.inspector-palette__swatch--active {
@@ -2666,6 +2734,26 @@ html:has(.editor) {
 
 .inspector-palette__custom:hover {
   color: var(--text-primary);
+}
+
+.inspector-palette__custom-text {
+  pointer-events: none;
+  position: relative;
+  z-index: 1;
+}
+
+.inspector-palette__color-input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  border: none;
+  padding: 0;
+  background: transparent;
+  appearance: none;
+  -webkit-appearance: none;
 }
 
 /* --- Preset popup --- */
@@ -4279,8 +4367,9 @@ html:has(.editor) {
 
 .market__grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 18px 16px;
+  padding-top: 4px;
 }
 
 .market__empty {
@@ -4313,32 +4402,59 @@ html:has(.editor) {
   color: var(--text-secondary);
 }
 
-/* Market Card */
+/* Market Card — 포스트잇 (브레인스토밍 보드 메타포) */
 .market-card {
   position: relative;
-  background: var(--bg-card);
-  border-radius: 10px;
-  overflow: hidden;
+  padding: 10px 10px 2px;
+  border-radius: 2px;
   cursor: pointer;
-  transition: transform 0.15s, box-shadow 0.15s;
+  box-shadow:
+    0 1px 1px rgba(0,0,0,0.12),
+    2px 4px 10px rgba(0,0,0,0.18);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
-
+.market-card::after {
+  content: "";
+  position: absolute;
+  right: 2px; bottom: -6px;
+  width: 40%; height: 10px;
+  background: rgba(0,0,0,0.22);
+  filter: blur(6px);
+  transform: skewX(-20deg);
+  z-index: -1;
+  pointer-events: none;
+}
+/* 다크모드 무채톤 파스텔 (기본) */
+.market-card:nth-child(5n+1) { background: #3d3722; transform: rotate(-0.8deg); }
+.market-card:nth-child(5n+2) { background: #3d2a36; transform: rotate(0.6deg); }
+.market-card:nth-child(5n+3) { background: #1f3d2c; transform: rotate(-0.3deg); }
+.market-card:nth-child(5n+4) { background: #2a2846; transform: rotate(1deg); }
+.market-card:nth-child(5n)   { background: #3d2e1e; transform: rotate(-0.6deg); }
+/* 라이트모드 파스텔 */
+:root.light .market-card:nth-child(5n+1) { background: #fef3c7; }
+:root.light .market-card:nth-child(5n+2) { background: #fbcfe8; }
+:root.light .market-card:nth-child(5n+3) { background: #bbf7d0; }
+:root.light .market-card:nth-child(5n+4) { background: #ddd6fe; }
+:root.light .market-card:nth-child(5n)   { background: #fed7aa; }
 .market-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+  transform: translateY(-3px) rotate(0);
+  box-shadow:
+    0 2px 2px rgba(0,0,0,0.12),
+    4px 8px 18px rgba(0,0,0,0.28);
+  z-index: 1;
 }
 
 .market-card__delete {
   position: absolute;
-  top: 6px;
-  right: 6px;
-  background: rgba(0,0,0,0.5);
+  top: 4px;
+  right: 4px;
+  background: rgba(0,0,0,0.55);
   color: #fff;
   border: none;
   border-radius: 50%;
-  width: 24px;
-  height: 24px;
-  font-size: 12px;
+  width: 22px;
+  height: 22px;
+  font-size: 11px;
   cursor: pointer;
   opacity: 0;
   transition: opacity 0.15s;
@@ -4348,13 +4464,15 @@ html:has(.editor) {
   justify-content: center;
 }
 
-.market-card:hover .market-card__delete {
-  opacity: 1;
-}
+.market-card:hover .market-card__delete { opacity: 1; }
 
 .market-card__thumbnail {
   background: var(--stage-bg);
+  border: 1px solid rgba(0,0,0,0.10);
+  border-radius: 1px;
+  line-height: 0;
 }
+:root:not(.light) .market-card__thumbnail { border-color: rgba(0,0,0,0.25); }
 
 .market-card__thumbnail canvas {
   display: block;
@@ -4363,20 +4481,25 @@ html:has(.editor) {
 }
 
 .market-card__title {
-  padding: 8px 10px 2px;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-primary);
+  padding: 9px 4px 2px;
+  font-size: 13px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.88);
+  text-align: center;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  letter-spacing: -0.005em;
 }
+:root.light .market-card__title { color: rgba(0,0,0,0.82); }
 
 .market-card__meta {
-  padding: 2px 10px 10px;
-  font-size: 12px;
-  color: var(--text-secondary);
+  padding: 2px 4px 10px;
+  font-size: 11px;
+  color: rgba(255,255,255,0.55);
+  text-align: center;
 }
+:root.light .market-card__meta { color: rgba(0,0,0,0.55); }
 
 /* Market Modal (상세/업로드/인증) */
 .market-modal,
@@ -4848,16 +4971,22 @@ html:has(.editor) {
 .market-card__tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
-  padding: 0 8px;
+  gap: 3px;
+  padding: 0 4px;
+  justify-content: center;
 }
 
 .market-card__tag {
-  font-size: 11px;
-  padding: 2px 8px;
+  font-size: 10px;
+  padding: 1px 7px;
   border-radius: 10px;
-  background: color-mix(in srgb, var(--accent) 15%, transparent);
-  color: var(--accent);
+  background: rgba(0,0,0,0.12);
+  color: rgba(0,0,0,0.7);
+  line-height: 1.5;
+}
+:root:not(.light) .market-card__tag {
+  background: rgba(255,255,255,0.10);
+  color: rgba(255,255,255,0.75);
 }
 
 .market-upload__formation-wrap {

@@ -287,7 +287,6 @@ function buildEditorHTML(data) {
             <div class="settings-section">
               <div class="settings-label">${t('inspectorColor')}</div>
               <div class="inspector-palette" id="inspector-palette"></div>
-              <input type="color" id="inspector-color" style="display:none" />
             </div>
           </div>
           <div class="sidebar__actions sidebar__actions--hidden" id="inspector-actions">
@@ -2333,9 +2332,10 @@ function updateInspector() {
     const allSameColor = colors.length > 0 && colors.every(c => c === colors[0]);
     const isCustom = allSameColor && !PALETTE.includes(colors[0]);
     const customBg = isCustom ? colors[0] : '';
+    const initialColor = allSameColor ? colors[0] : '#888888';
     paletteEl.innerHTML = PALETTE.map(c =>
       `<div class="inspector-palette__swatch${allSameColor && c === colors[0] ? ' inspector-palette__swatch--active' : ''}" data-swatch="${c}" style="background:${c}"></div>`
-    ).join('') + `<div class="inspector-palette__swatch inspector-palette__custom${isCustom ? ' inspector-palette__swatch--active' : ''}" data-custom="true" title="${t('custom')}"${customBg ? ` style="background:${customBg}"` : ''}>+</div>`;
+    ).join('') + `<label class="inspector-palette__swatch inspector-palette__custom${isCustom ? ' inspector-palette__swatch--active' : ''}" data-custom="true" title="${t('custom')}"${customBg ? ` style="background:${customBg}"` : ''}><span class="inspector-palette__custom-text">+</span><input type="color" class="inspector-palette__color-input" value="${initialColor}" /></label>`;
 
     paletteEl.querySelectorAll('[data-swatch]').forEach(swatch => {
       swatch.addEventListener('click', () => {
@@ -2348,12 +2348,18 @@ function updateInspector() {
       });
     });
 
-    paletteEl.querySelector('[data-custom]')?.addEventListener('click', () => {
-      const colorInput = document.querySelector('#inspector-color');
-      if (!colorInput) return;
-      colorInput.value = allSameColor ? colors[0] : '#888888';
-      colorInput.click();
-    });
+    // 모바일에서 네이티브 컬러 피커는 실제 탭 대상이 input이어야 열림 → input을 + 버튼 안에 투명 오버레이로 배치
+    const customInput = paletteEl.querySelector('.inspector-palette__color-input');
+    if (customInput) {
+      customInput.addEventListener('input', (e) => {
+        for (const idx of renderer._selectedDancers) {
+          noteData.dancers[idx].color = e.target.value;
+        }
+        renderDancerList(document.querySelector('#dancer-list'));
+        updateStage();
+      });
+      customInput.addEventListener('change', () => saveSnapshot());
+    }
   }
 }
 
@@ -2441,19 +2447,6 @@ function setupInspector(container) {
     noteData.dancers[selected[0]].name = e.target.value;
     renderDancerList(document.querySelector('#dancer-list'));
     updateStage(); saveSnapshot();
-  });
-
-  // Hidden color input (triggered by custom button)
-  const colorInput = container.querySelector('#inspector-color');
-  colorInput.addEventListener('input', (e) => {
-    for (const idx of renderer._selectedDancers) {
-      noteData.dancers[idx].color = e.target.value;
-    }
-    renderDancerList(document.querySelector('#dancer-list'));
-    updateStage();
-  });
-  colorInput.addEventListener('change', () => {
-    saveSnapshot();
   });
 
   // Waypoint reset button for selected dancers in transition

@@ -65,6 +65,11 @@ export class PlaybackEngine {
       this.gainNode.connect(this.audioContext.destination);
     }
 
+    // iOS Safari는 AudioContext가 suspended 상태로 시작. 재생 버튼 탭(사용자 제스처) 안에서 resume 해야 소리 나옴
+    if (this.audioContext.state === 'suspended') {
+      this.audioContext.resume();
+    }
+
     const offset = fromMs !== null ? fromMs / 1000 : this._startOffset;
     this._startOffset = offset;
 

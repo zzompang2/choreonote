@@ -1,8 +1,20 @@
 # 진행 상황
 
-## 현재 상태: 대형 갤러리 컬렉션 도입 완료 · 실기기 검증 + 마켓 카드 차별화 대기
+## 현재 상태: 노트=공책 종이 · 갤러리/컬렉션=포스트잇 (브레인스토밍 보드) 시각 언어 확정
 
-### 최근 완료 (2026-04-17 evening)
+### 최근 완료 (2026-04-18)
+- **갤러리/컬렉션 카드 — 포스트잇 스타일** — 5색 파스텔 로테이션(`nth-child`), 카드마다 미세한 다른 각도(±1deg 이내) 기울어짐, hover시 반듯해지며 `translateY -3px` 들림, 우하단 비대칭 blur 그림자로 "종이 들린" 느낌. 다크=무채톤 파스텔, 라이트=밝은 파스텔. 제목 센터 정렬, 태그 칩도 subtle하게 중앙 배치
+- **노트 카드 "공책" 리디자인** — 크림톤 종이 배경(`--paper`) + 가로 괘선(repeating-linear-gradient) + 3px 라운드 + 우상단 dog-ear(14px, hover시 fade-out) + hover `translateY -2px + rotate -0.2deg`. 리스트 뷰는 rotate 제거
+- **썸네일 스테이지 격자** — 4x4 서브그리드 + 센터 크로스 (다크/라이트 자동 분기). `utils/thumbnail.js` 의 `drawStageGrid` 헬퍼
+- **모바일 버그픽스 2건** — (1) 노래 재생 — `PlaybackEngine.play()`에 `audioContext.resume()` 추가 (iOS Safari suspended 상태 해제). (2) 댄서 색상 + 버튼 — 숨겨진 input에 `colorInput.click()` 프로그래매틱 호출 제거, 대신 `<label>` 안에 컬러 input을 투명 오버레이로 배치 (iOS/Android 네이티브 피커 open 필요조건 = 실제 탭 대상이 input)
+
+### 시각 언어 결정 (2026-04-18)
+- **노트 = 공책 종이 한 장**: 내가 정리한 작업물. 썸네일 + 괘선 + dog-ear
+- **갤러리/컬렉션 = 포스트잇**: 브레인스토밍 보드에서 가져온 영감 한 컷. 파스텔 5색, 기울어진 각도
+- 두 카드는 "기록 생태계 속 다른 도구" (공책 vs 포스트잇) — 재질·색·모양 모두 대비되게 확실히 구분
+- 대안 검토 후 폐기: 찢어진 종이(과함), 스프링노트 커버(썸네일 죽음), 책장 꽂힌 책(지나친 장식), 카세트/백스테이지/스니커박스(브랜드 페르소나 미정 상태에서 선택 불가). 브랜드 확정은 실사용자 피드백 후로 연기
+
+### 이전 완료 (2026-04-17 evening)
 - **컬렉션 기능 도입** (`c4ebfdd`)
   - Supabase `user_baskets` (preset_id 참조 모델, RLS, ON DELETE CASCADE) — 원본 preset 삭제 시 자동 정리
   - `utils/basket.js` — addToBasket / removeFromBasket / fetchBasket / isInBasket
@@ -30,7 +42,7 @@
   - **마켓 데이터 클리어**: 기존 마켓은 모두 테스트 데이터라 `TRUNCATE market_presets CASCADE`로 새 출발
 
 ## 다음 할 일
-- [ ] **컬렉션 실기기 검증** (최우선)
+- [ ] **컬렉션 실기기 검증**
   - 마켓 모달 → "내 컬렉션에 저장" 토스트 / 중복 시 "이미 있어요"
   - 갤러리 [내 컬렉션] 탭: 비로그인 안내 / 빈 컬렉션 / 카드 그리드 + 관객방향 flip / 클라이언트 인원수·태그 필터
   - 컬렉션 카드 클릭 → `mode='basket'` 모달 → "컬렉션에서 제거" → onAction 재렌더

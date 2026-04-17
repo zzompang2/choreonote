@@ -21,6 +21,7 @@ export function renderFormationThumbnail(canvas, { dancers, positions, stageWidt
     ctx.fillStyle = stageBg;
     const pad = 6;
     ctx.fillRect(pad, pad, w - pad * 2, h - pad * 2);
+    drawStageGrid(ctx, pad, pad, w - pad * 2, h - pad * 2);
     return;
   }
 
@@ -52,6 +53,8 @@ export function renderFormationThumbnail(canvas, { dancers, positions, stageWidt
 
   ctx.fillStyle = stageBg;
   ctx.fillRect(stageX, stageY, stageW, stageH);
+
+  drawStageGrid(ctx, stageX, stageY, stageW, stageH);
 
   ctx.strokeStyle = 'rgba(255,255,255,0.15)';
   ctx.lineWidth = 0.5;
@@ -95,6 +98,35 @@ export function renderFormationThumbnail(canvas, { dancers, positions, stageWidt
     ctx.fill();
   }
   ctx.globalAlpha = 1.0;
+}
+
+function drawStageGrid(ctx, x, y, w, h) {
+  const isLight = document.documentElement.classList.contains('light');
+  const minor = isLight ? 'rgba(0,0,0,0.10)' : 'rgba(255,255,255,0.08)';
+  const major = isLight ? 'rgba(0,0,0,0.18)' : 'rgba(255,255,255,0.16)';
+  ctx.save();
+  ctx.strokeStyle = minor;
+  ctx.lineWidth = 0.5;
+  ctx.beginPath();
+  for (let i = 1; i < 4; i++) {
+    const gx = x + (w * i) / 4;
+    ctx.moveTo(gx, y);
+    ctx.lineTo(gx, y + h);
+  }
+  for (let j = 1; j < 4; j++) {
+    const gy = y + (h * j) / 4;
+    ctx.moveTo(x, gy);
+    ctx.lineTo(x + w, gy);
+  }
+  ctx.stroke();
+  ctx.strokeStyle = major;
+  ctx.beginPath();
+  ctx.moveTo(x + w / 2, y);
+  ctx.lineTo(x + w / 2, y + h);
+  ctx.moveTo(x, y + h / 2);
+  ctx.lineTo(x + w, y + h / 2);
+  ctx.stroke();
+  ctx.restore();
 }
 
 export function drawThumbnailShape(ctx, cx, cy, r, rotation, shape) {
