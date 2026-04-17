@@ -21,7 +21,7 @@
 | | `pages/Dashboard.js` | 노트 목록, 생성/삭제/정렬/가져오기 (AppLayout 사용) |
 | | `pages/Landing.js` | 랜딩 페이지 |
 | | `pages/Viewer.js` | 공유 재생 전용 뷰어 (읽기 전용, Supabase 조회) |
-| | `pages/Market.js` | 대형 마켓 — 목록/상세/업로드 (Google OAuth 인증, AppLayout 사용) |
+| | `pages/Market.js` | 대형 갤러리 — `[전체][내 컬렉션]` 탭, 필터(인원수·태그·관객방향), 업로드 (Google OAuth, AppLayout 사용) |
 | | `pages/Trash.js` | 휴지통 — 삭제된 노트 복원/영구삭제 (독립 라우트, AppLayout 사용) |
 | 렌더링 | `renderer/StageRenderer.js` | Canvas 무대 렌더링 (댄서, 그리드, 경로, 2D/3D) |
 | 엔진 | `engine/PlaybackEngine.js` | Web Audio 재생, 시간 동기화, 선형 보간 |
@@ -30,6 +30,7 @@
 | | `store/db.js` | Dexie 스키마 v3 (notes에 `location` 필드 — `'local'` \| `'cloud'`) |
 | | `store/supabase.js` | Supabase 클라이언트 초기화 (PKCE auth flow) |
 | | `store/cloud-notes.sql` | Supabase notes 테이블 DDL (참조용) |
+| | `store/user-baskets.sql` | Supabase user_baskets 테이블 DDL (컬렉션, preset_id 참조 + RLS) |
 | 유틸 | `utils/constants.js` | 무대 크기, 그리드, 타임라인 상수 |
 | | `utils/history.js` | Undo/Redo 스택 (50단계, JSON 스냅샷) |
 | | `utils/formations.js` | 대형 프리셋, 보간 계산 |
@@ -38,12 +39,14 @@
 | | `utils/toast.js` | 토스트 알림 |
 | | `utils/share.js` | 공유 링크 생성/조회 (Supabase) |
 | | `utils/auth.js` | Google OAuth + 전역 `initAuthHandler` (SIGNED_IN→`rerouteCurrent`+자동 다운로드, SIGNED_OUT→플래그 분기), `getCurrentUser` 500ms timeout(세션 지연 시 null 반환), 세션 만료 배너 API |
-| | `utils/market.js` | 대형 마켓 CRUD API (Supabase) |
+| | `utils/market.js` | 대형 갤러리 preset CRUD API (Supabase) |
+| | `utils/basket.js` | 컬렉션 CRUD API — `addToBasket`/`removeFromBasket`/`fetchBasket`/`isInBasket` (user_baskets) |
 | | `utils/thumbnail.js` | 캔버스 썸네일 렌더링 (Dashboard/Market 공용) |
 | | `utils/cloudSync.js` | 폴더 모델 API (`uploadOnSave`/`downloadAllOnLogin`/`moveNoteToCloud`/`moveNoteToLocal`) + 충돌 감지/해결 |
 | 컴포넌트 | `components/AppLayout.js` | 공용 셸 (220px 사이드바 + 모바일 drawer) — Dashboard/Market/Trash에서 사용, 에디터·랜딩·공유뷰어는 풀스크린 |
 | | `components/ChatBot.js` | FAQ 챗봇 (FAB + 사이드바 임베드, 팁 배너, 자동완성) |
 | | `components/ConflictModal.js` | 클라우드 충돌 해결 모달 (덮어쓰기/서버교체/둘다유지) |
+| | `components/PresetDetailModal.js` | 갤러리 preset 상세 모달 (애니메이션 미리보기 + 액션) — `mode: 'market'` (저장) / `'basket'` (제거) 분기 |
 | 스타일 | `style.css` | 전역 CSS (다크/라이트 변수 포함) |
 
 ## 데이터 모델 (IndexedDB, v3)
@@ -57,6 +60,7 @@
 - **shares**: id(8자), title, note_json, view_count
 - **market_presets**: id(UUID), user_id, title, description, dancer_count, formation_count, preset_data(JSONB), download_count, created_at
 - **notes**: id(UUID), user_id, title, note_json(JSONB), music_name, created_at, updated_at (RLS: 본인만 접근)
+- **user_baskets**: id(UUID), user_id, preset_id(→market_presets ON DELETE CASCADE), added_at — 컬렉션은 참조 모델 (원본 preset 삭제 시 자동 정리), `UNIQUE(user_id, preset_id)`
 
 ## 좌표계
 - 무대 중앙이 (0, 0), 오른쪽 +x, 아래쪽 +y
