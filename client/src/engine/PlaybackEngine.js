@@ -63,37 +63,42 @@ export class PlaybackEngine {
   }
 
   async play(fromMs = null) {
-    if (this.isPlaying) return;
-    if (!this.audioContext) {
-      this.audioContext = new AudioContext();
-      this.gainNode = this.audioContext.createGain();
-      this.gainNode.connect(this.audioContext.destination);
+    // 이중 탭 방어 — _starting 플래그로 resume await 중 중복 진입 차단
+    // (이전: isPlaying만 체크 → 두 개의 sourceNode + 두 개의 RAF 루프 생성 → pause 시 일부만 멈춤, main thread 점유로 UI freeze)
+    if (this.isPlaying || this._starting) return;
+    this._starting = true;
+
+    try {
+      if (!this.audioContext) {
+        this.audioContext = new AudioContext();
+        this.gainNode = this.audioContext.createGain();
+        this.gainNode.connect(this.audioContext.destination);
+      }
+
+      // iOS Safari는 AudioContext가 suspended 상태로 시작. resume await 후 start()가 정상 동작
+      if (this.audioContext.state === 'suspended') {
+        try { await this.audioContext.resume(); } catch (_) {}
+      }
+
+      const offset = fromMs !== null ? fromMs / 1000 : this._startOffset;
+      this._startOffset = offset;
+
+      if (this.audioBuffer) {
+        this.sourceNode = this.audioContext.createBufferSource();
+        this.sourceNode.buffer = this.audioBuffer;
+        this.sourceNode.connect(this.gainNode);
+        this.sourceNode.start(0, offset);
+        this.sourceNode.onended = () => {
+          this.sourceNode = null;
+        };
+      }
+
+      this._startTime = this.audioContext.currentTime;
+      this.isPlaying = true;
+      this._animate();
+    } finally {
+      this._starting = false;
     }
-
-    // iOS Safari는 AudioContext가 suspended 상태로 시작. resume을 await 해야 currentTime/start()가 정상 동작
-    if (this.audioContext.state === 'suspended') {
-      try { await this.audioContext.resume(); } catch (_) {}
-    }
-
-    // 이중 탭 방어 — resume await 동안 pause 호출된 경우
-    if (this.isPlaying) return;
-
-    const offset = fromMs !== null ? fromMs / 1000 : this._startOffset;
-    this._startOffset = offset;
-
-    if (this.audioBuffer) {
-      this.sourceNode = this.audioContext.createBufferSource();
-      this.sourceNode.buffer = this.audioBuffer;
-      this.sourceNode.connect(this.gainNode);
-      this.sourceNode.start(0, offset);
-      this.sourceNode.onended = () => {
-        this.sourceNode = null;
-      };
-    }
-
-    this._startTime = this.audioContext.currentTime;
-    this.isPlaying = true;
-    this._animate();
   }
 
   pause() {
