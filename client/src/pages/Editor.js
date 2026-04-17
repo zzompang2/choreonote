@@ -288,14 +288,14 @@ function buildEditorHTML(data) {
               <div class="settings-label">${t('inspectorColor')}</div>
               <div class="inspector-palette" id="inspector-palette"></div>
             </div>
-          </div>
-          <div class="sidebar__actions sidebar__actions--hidden" id="inspector-actions">
-            <div style="display:flex;gap:4px">
-              <button class="btn btn--ghost" id="inspector-copy-pos-btn" style="flex:1;font-size:12px">${t('inspectorCopyPos')}</button>
-              <button class="btn btn--ghost" id="inspector-paste-pos-btn" style="flex:1;font-size:12px">${t('inspectorPastePos')}</button>
+            <div class="sidebar__actions sidebar__actions--hidden sidebar__actions--inline" id="inspector-actions">
+              <div style="display:flex;gap:4px">
+                <button class="btn btn--ghost" id="inspector-copy-pos-btn" style="flex:1;font-size:12px">${t('inspectorCopyPos')}</button>
+                <button class="btn btn--ghost" id="inspector-paste-pos-btn" style="flex:1;font-size:12px">${t('inspectorPastePos')}</button>
+              </div>
+              <button class="btn btn--ghost" id="inspector-preset-btn" style="width:100%;font-size:12px">${t('inspectorPresetBtn')}</button>
+              <button class="btn btn--ghost" id="inspector-reset-waypoints-btn" style="width:100%;font-size:12px">${t('inspectorResetWaypoints')}</button>
             </div>
-            <button class="btn btn--ghost" id="inspector-preset-btn" style="width:100%;font-size:12px">${t('inspectorPresetBtn')}</button>
-            <button class="btn btn--ghost" id="inspector-reset-waypoints-btn" style="width:100%;font-size:12px">${t('inspectorResetWaypoints')}</button>
           </div>
         </div>
 
@@ -2447,6 +2447,12 @@ function setupInspector(container) {
     noteData.dancers[selected[0]].name = e.target.value;
     renderDancerList(document.querySelector('#dancer-list'));
     updateStage(); saveSnapshot();
+  });
+
+  // 이름 input 포커스 시 전체 텍스트 선택 (빠른 rename)
+  container.querySelector('#inspector-header').addEventListener('focusin', (e) => {
+    if (e.target.id !== 'inspector-name') return;
+    e.target.select();
   });
 
   // Waypoint reset button for selected dancers in transition

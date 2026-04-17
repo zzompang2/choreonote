@@ -1582,6 +1582,12 @@ html:has(.editor) {
   border-top: 1px solid var(--border);
 }
 
+/* 스크롤 내부에 놓일 때 — 사이드 패딩 제거 (부모 scroll 이미 padding 보유) */
+.sidebar__actions--inline {
+  padding: 12px 0 4px;
+  margin-top: 4px;
+}
+
 .sidebar__actions--hidden {
   display: none;
 }

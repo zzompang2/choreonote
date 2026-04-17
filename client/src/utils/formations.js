@@ -47,6 +47,15 @@ export const PRESETS = {
     }));
   },
 
+  '역대각선': (n, s) => {
+    const startX = -(n - 1) * s / 2;
+    const startY = (n - 1) * s / 2;
+    return Array.from({ length: n }, (_, i) => ({
+      x: startX + i * s * 0.7,
+      y: startY - i * s * 0.5,
+    }));
+  },
+
   '삼각형': (n, s) => {
     const positions = [];
     let row = 0;
