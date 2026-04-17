@@ -33,11 +33,11 @@
 | 유틸 | `utils/constants.js` | 무대 크기, 그리드, 타임라인 상수 |
 | | `utils/history.js` | Undo/Redo 스택 (50단계, JSON 스냅샷) |
 | | `utils/formations.js` | 대형 프리셋, 보간 계산 |
-| | `utils/router.js` | hash 기반 SPA 라우터 |
+| | `utils/router.js` | hash 기반 SPA 라우터 + `rerouteCurrent` (auth 변경 시 재렌더용) |
 | | `utils/theme.js` | 다크/라이트 모드 |
 | | `utils/toast.js` | 토스트 알림 |
 | | `utils/share.js` | 공유 링크 생성/조회 (Supabase) |
-| | `utils/auth.js` | Google OAuth + 전역 `initAuthHandler` (SIGNED_IN→자동 다운로드, SIGNED_OUT→플래그 분기), 세션 만료 배너 API |
+| | `utils/auth.js` | Google OAuth + 전역 `initAuthHandler` (SIGNED_IN→`rerouteCurrent`+자동 다운로드, SIGNED_OUT→플래그 분기), `getCurrentUser` 500ms timeout(세션 지연 시 null 반환), 세션 만료 배너 API |
 | | `utils/market.js` | 대형 마켓 CRUD API (Supabase) |
 | | `utils/thumbnail.js` | 캔버스 썸네일 렌더링 (Dashboard/Market 공용) |
 | | `utils/cloudSync.js` | 폴더 모델 API (`uploadOnSave`/`downloadAllOnLogin`/`moveNoteToCloud`/`moveNoteToLocal`) + 충돌 감지/해결 |
@@ -68,6 +68,7 @@
 - 상태 변경 → `renderStage()` / `renderTimeline()` 등 수동 호출로 반영
 - Undo/Redo: 변경 전 전체 포지션 스냅샷을 JSON으로 저장
 - 타임라인: 1px = `PIXEL_PER_SEC`(40) / 1000 ms, 최소 시간 단위 250ms
+- **OAuth 복귀 시 UI는 세션 복원에 블록되지 않음**: PKCE 코드 교환이 수 초 지연될 수 있어 `getCurrentUser`/`getSession`에 UI 렌더를 기다리게 하면 빈 화면. 즉시 로그아웃 상태로 그린 뒤 `SIGNED_IN`에서 `rerouteCurrent`로 재렌더.
 
 ## 개발 시 참고
 - `TODO.md`에 우선순위별 작업 목록 있음

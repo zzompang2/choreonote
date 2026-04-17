@@ -1,8 +1,19 @@
 # 진행 상황
 
-## 현재 상태: 헤들리스 QA 1차 완료 · 로그인 의존 시나리오는 실기기 수동 검증 대기
+## 현재 상태: OAuth 복귀 첫 렌더 hang 해결 · 실기기 검증 나머지 시나리오 + 바구니 작업 진행 중
 
-### 최근 완료 (2026-04-17)
+### 최근 완료 (2026-04-17 pm)
+- **OAuth 로그인 복귀 직후 첫 렌더 hang 수정** (`3bdff13`)
+  - 증상: 구글 로그인 후 복귀하면 `#app`이 빈 채로 멈춤 (prod는 챗봇만, dev는 완전 백지). 새로고침 시 정상.
+  - 원인: PKCE 코드 교환이 수 초 지연되는 구간에서 `getSession`/`getUser`가 resolve 안 됨. `renderAppLayout`이 `innerHTML=''` 후 `await getCurrentUser()`에서 블록 → 아무것도 그려지지 않음.
+  - 해법:
+    - `main.js`: `await getSession()` 제거, 라우터·챗봇 즉시 시작
+    - `auth.js`: `getCurrentUser`에 500ms timeout (지연 시 null 반환 → UI는 로그아웃 상태로 즉시 렌더)
+    - `auth.js`: `SIGNED_IN` 이벤트에서 `rerouteCurrent()` 호출 → 세션 뒤늦게 복원 시 자동 재렌더
+    - `router.js`: `rerouteCurrent` export (현재 라우트 핸들러 재실행)
+  - 모바일 메타 태그 `mobile-web-app-capable` 추가 (`f3953c1`, 표준화, apple- prefix는 호환 유지)
+
+### 최근 완료 (2026-04-17 am)
 - **마켓 UI 개선**
   - 모든 마켓 썸네일/미리보기에서 `showWings: false` 강제 (퇴장영역 숨김)
   - 상세 모달 캔버스에 관객석 좌석 strip 추가 — `renderFormationThumbnail`의 `showAudience: 'top'|'bottom'` 옵션, 무대 바깥에 2줄 seat 박스 (`wingBg` 배경)
@@ -49,14 +60,17 @@
 - [x] ~~**사이드바 브라우저 검증**~~ — /dashboard /market /trash 전환, 활성 하이라이트, 모바일 drawer + scrim 확인 완료 (2026-04-17 QA)
 - [x] ~~**마켓 브라우저 검증**~~ — 프리셋 목록, 인원수/태그/정렬/관객석 토글, 상세 모달(관객석 strip + 재생 + 점프 칩), 모바일 필터 모달 확인 완료. **버그 1건 수정** (ISSUE-001 상세 모달 재생 컨트롤 잘림 — `b185aca`)
 - [x] ~~**폴더 모델 — 비로그인 시나리오**~~ — 💻 내 기기 단독 표시, ↺ 배지 렌더/해제 검증 완료
-- [ ] **폴더 모델 — 실기기 수동 검증** (OAuth 필요)
-  - 로그인 성공 → `downloadAllOnLogin` 자동 다운로드 + 충돌 모달
+- [x] ~~**OAuth 로그인 후 첫 렌더 이슈**~~ — hang 원인 파악 및 수정 완료 (`3bdff13`)
+- [ ] **폴더 모델 — 실기기 수동 검증 남은 시나리오** (OAuth 기본 flow는 통과)
+  - `downloadAllOnLogin` 자동 다운로드 + 충돌 모달 동작
   - 명시적 로그아웃 vs 세션 만료 분기 (캐시 삭제 / 재로그인 배너)
   - 기기 전환 (A에서 수정 → B에서 로그인 → 다운로드)
   - 폴더 이동 (로컬→클라우드 업로드, 클라우드→로컬 확인 모달 + 서버 삭제)
   - 오프라인 편집 → `↺` 배지 → 온라인 복구 후 배지 자동 해제
-- [ ] **대열 마켓 2단계 이어서**:
-  - "새 노트로 가져오기" → "내 바구니에 저장" + 에디터 대형 모음 연동
+- [ ] **대열 마켓 2단계 이어서** (바구니 작업 진행 중, 미커밋):
+  - 신규 파일: `utils/basket.js`, `store/user-baskets.sql`, `components/PresetDetailModal.js`
+  - 수정 중: `pages/Market.js`, `pages/Editor.js`, `locales/*`, `style.css`
+  - "내 바구니에 저장" + 에디터 대형 모음 연동
   - 마켓 카드 디자인 대시보드 카드와 차별화 재검토
 - [ ] 대열 마켓 3단계: 좋아요/인기순, 검색
 - [ ] 공유 뷰어 미세 조정
