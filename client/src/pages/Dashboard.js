@@ -4,44 +4,31 @@ import { navigate } from '../utils/router.js';
 import { formatTime } from '../utils/constants.js';
 import { t } from '../utils/i18n.js';
 import { renderFormationThumbnail } from '../utils/thumbnail.js';
-import { getCurrentUser, signInWithGoogle, signOut } from '../utils/auth.js';
+import { getCurrentUser } from '../utils/auth.js';
 import { getSyncStatus, fetchCloudNotes, downloadCloudNote } from '../utils/cloudSync.js';
 import { showToast } from '../utils/toast.js';
+import { renderAppLayout } from '../components/AppLayout.js';
 
 export async function renderDashboard(container) {
-  container.innerHTML = '';
-  const div = document.createElement('div');
-  div.className = 'dashboard';
+  await renderAppLayout(container, {
+    active: 'notes',
+    renderContent: async (content) => { await renderDashboardContent(content, container); },
+  });
+}
 
+async function renderDashboardContent(content, rootContainer) {
   // Purge notes deleted more than 30 days ago
   await NoteStore.purgeExpiredNotes(30);
 
   const notes = await NoteStore.getAllNotes();
-  const deletedNotes = await NoteStore.getDeletedNotes();
   const user = await getCurrentUser();
 
-  const userInitial = user
-    ? (user.user_metadata?.name?.[0] || user.email?.[0] || '?').toUpperCase()
-    : '';
-  const avatarUrl = user?.user_metadata?.avatar_url || '';
-  const userBtnHTML = user
-    ? `<div class="user-menu" id="user-menu">
-         <button class="user-menu__avatar" id="user-menu-btn" title="${user.email}">
-           ${avatarUrl ? `<img src="${avatarUrl}" alt="" />` : `<span>${userInitial}</span>`}
-         </button>
-         <div class="user-menu__dropdown" id="user-menu-dropdown" hidden>
-           <div class="user-menu__email">${user.email || ''}</div>
-           <button class="user-menu__item" id="dashboard-logout-btn">${t('marketLogout')}</button>
-         </div>
-       </div>`
-    : `<button class="btn btn--ghost btn--sm" id="dashboard-login-btn">${t('marketLoginGoogle')}</button>`;
+  const div = document.createElement('div');
+  div.className = 'dashboard';
 
   div.innerHTML = `
     <div class="dashboard__header">
-      <div id="dashboard-logo" class="dashboard__brand">
-        <div class="dashboard__title">ChoreoNote</div>
-        <div class="dashboard__subtitle">${t('backToLanding')}</div>
-      </div>
+      <h1 class="dashboard__title">${t('navNotes')}</h1>
       <div class="dashboard__actions">
         <div class="dashboard__toolbar">
           <div class="sort-dropdown">
@@ -55,76 +42,29 @@ export async function renderDashboard(container) {
           </div>
           <button class="btn btn--ghost btn--icon" id="view-toggle-btn" title="${t('viewToggle')}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
         </div>
-        <button class="btn btn--ghost" id="market-btn">${t('market')}</button>
         <button class="btn btn--ghost btn--icon" id="import-btn" title="${t('importBtn')}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>
         <button class="btn btn--primary" id="create-btn">${t('newNote')}</button>
-        ${userBtnHTML}
       </div>
     </div>
     <div class="dashboard__body">
       <div class="storage-warning" id="storage-warning" style="display:none"></div>
       <div class="note-grid" id="note-grid"></div>
       <div id="cloud-section"></div>
-      ${deletedNotes.length > 0 ? `
-        <details class="trash-section">
-          <summary class="trash-section__toggle">
-            ${t('trash')} (${deletedNotes.length})
-            <button class="btn btn--ghost btn--sm btn--danger trash-empty-btn" id="trash-empty-btn">${t('trashEmpty')}</button>
-          </summary>
-          <div class="note-grid" id="trash-grid"></div>
-        </details>
-      ` : ''}
       <input type="file" id="import-file" accept=".json" style="display:none" />
     </div>
   `;
 
-  container.appendChild(div);
+  content.innerHTML = '';
+  content.appendChild(div);
 
   const grid = div.querySelector('#note-grid');
   renderNoteCards(grid, notes, user);
 
   // 클라우드 노트 섹션 (로그인 시)
-  renderCloudSection(div.querySelector('#cloud-section'), notes, user, container);
-
-  // Render trash grid
-  const trashGrid = div.querySelector('#trash-grid');
-  if (trashGrid) {
-    if (localStorage.getItem('choreonote-list-view') === '1') trashGrid.classList.add('note-grid--list');
-    renderTrashCards(trashGrid, deletedNotes, div);
-  }
+  renderCloudSection(div.querySelector('#cloud-section'), notes, user, rootContainer);
 
   // Storage usage warning
   checkStorageUsage(div.querySelector('#storage-warning'));
-
-  div.querySelector('#dashboard-logo').addEventListener('click', () => navigate('/'));
-
-  // 로그인/로그아웃
-  const loginBtn = div.querySelector('#dashboard-login-btn');
-  if (loginBtn) {
-    loginBtn.addEventListener('click', () => signInWithGoogle('/dashboard'));
-  }
-  const userMenuBtn = div.querySelector('#user-menu-btn');
-  const userMenuDropdown = div.querySelector('#user-menu-dropdown');
-  if (userMenuBtn && userMenuDropdown) {
-    userMenuBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      userMenuDropdown.hidden = !userMenuDropdown.hidden;
-    });
-    document.addEventListener('click', (e) => {
-      if (!userMenuDropdown.hidden && !e.target.closest('#user-menu')) {
-        userMenuDropdown.hidden = true;
-      }
-    });
-  }
-  const logoutBtn = div.querySelector('#dashboard-logout-btn');
-  if (logoutBtn) {
-    logoutBtn.addEventListener('click', async () => {
-      await signOut();
-      renderDashboard(container);
-    });
-  }
-
-  div.querySelector('#market-btn').addEventListener('click', () => navigate('/market'));
 
   div.querySelector('#create-btn').addEventListener('click', async () => {
     const noteId = await NoteStore.createNote();
@@ -144,23 +84,7 @@ export async function renderDashboard(container) {
     isListView = !isListView;
     localStorage.setItem('choreonote-list-view', isListView ? '1' : '0');
     grid.classList.toggle('note-grid--list', isListView);
-    const trashG = div.querySelector('#trash-grid');
-    if (trashG) trashG.classList.toggle('note-grid--list', isListView);
   });
-
-  // Empty trash
-  const trashEmptyBtn = div.querySelector('#trash-empty-btn');
-  if (trashEmptyBtn) {
-    trashEmptyBtn.addEventListener('click', async (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      if (!confirm(t('confirmEmptyTrash'))) return;
-      for (const note of deletedNotes) {
-        await NoteStore.permanentlyDeleteNote(note.id);
-      }
-      renderDashboard(container);
-    });
-  }
 
   const importFile = div.querySelector('#import-file');
   div.querySelector('#import-btn').addEventListener('click', () => importFile.click());
@@ -237,46 +161,6 @@ function renderNoteCards(grid, notes, user) {
   });
 }
 
-function renderTrashCards(grid, notes, dashboardDiv) {
-  if (notes.length === 0) {
-    grid.innerHTML = '';
-    const section = grid.closest('.trash-section');
-    if (section) section.remove();
-    return;
-  }
-
-  grid.innerHTML = notes.map((note) => {
-    const daysLeft = Math.max(0, 30 - Math.round((Date.now() - new Date(note.deletedAt)) / (24 * 60 * 60 * 1000)));
-    return `
-      <div class="note-card note-card--deleted" data-id="${note.id}">
-        <div class="note-card__body">
-          <div class="note-card__title">${escapeHtml(note.title)}</div>
-          <div class="note-card__meta">${t('trashDaysLeft', { days: daysLeft })}</div>
-          <div class="note-card__trash-actions">
-            <button class="btn btn--ghost btn--sm" data-restore="${note.id}">${t('trashRestore')}</button>
-            <button class="btn btn--ghost btn--sm btn--danger" data-purge="${note.id}">${t('trashDelete')}</button>
-          </div>
-        </div>
-      </div>
-    `;
-  }).join('');
-
-  grid.querySelectorAll('[data-restore]').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      await NoteStore.restoreNote(Number(btn.dataset.restore));
-      renderDashboard(dashboardDiv.parentElement);
-    });
-  });
-
-  grid.querySelectorAll('[data-purge]').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      if (!confirm(t('confirmPermanentDelete'))) return;
-      await NoteStore.permanentlyDeleteNote(Number(btn.dataset.purge));
-      renderDashboard(dashboardDiv.parentElement);
-    });
-  });
-}
-
 async function renderThumbnail(canvas, noteId) {
   if (!canvas) return;
   const data = await NoteStore.getThumbnailData(noteId);
@@ -333,14 +217,12 @@ async function renderCloudSection(el, localNotes, user, dashboardContainer) {
 
   try {
     const cloudNotes = await fetchCloudNotes();
-    // 로컬에 이미 있는 cloudId 목록
     const localCloudIds = new Set();
     const allLocalNotes = await db.notes.toArray();
     for (const n of allLocalNotes) {
       if (n.cloudId) localCloudIds.add(n.cloudId);
     }
 
-    // 로컬에 없는 클라우드 노트만 필터
     const missingNotes = cloudNotes.filter(cn => !localCloudIds.has(cn.id));
     if (missingNotes.length === 0) return;
 
@@ -366,13 +248,11 @@ async function renderCloudSection(el, localNotes, user, dashboardContainer) {
       </div>
     `;
 
-    // 리스트뷰 적용
     const cloudGrid = el.querySelector('#cloud-grid');
     if (localStorage.getItem('choreonote-list-view') === '1') {
       cloudGrid.classList.add('note-grid--list');
     }
 
-    // 다운로드 버튼 이벤트
     el.querySelectorAll('[data-cloud-download]').forEach(btn => {
       btn.addEventListener('click', async (e) => {
         e.stopPropagation();
@@ -383,8 +263,7 @@ async function renderCloudSection(el, localNotes, user, dashboardContainer) {
         btn.disabled = true;
         btn.textContent = '...';
         try {
-          const newNoteId = await downloadCloudNote(cloudNote);
-          // 음악 미포함 안내
+          await downloadCloudNote(cloudNote);
           if (cloudNote.music_name) {
             showToast(t('cloudMusicNotice'), 5000);
           }

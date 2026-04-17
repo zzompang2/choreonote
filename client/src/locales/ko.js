@@ -55,6 +55,7 @@ export const ko = {
   trashEmpty: '비우기',
   confirmEmptyTrash: '휴지통을 비울까요? 모든 항목이 완전 삭제됩니다.',
   trashDaysLeft: '{days}일 후 자동 삭제',
+  trashEmptyState: '휴지통이 비어 있습니다',
   viewToggle: '보기 전환',
   importError: '파일을 불러올 수 없습니다:',
 
@@ -395,6 +396,16 @@ export const ko = {
   marketPlay: '재생',
   marketPause: '일시정지',
   marketReplay: '다시 재생',
+
+  // App navigation (sidebar)
+  navNotes: '내 노트',
+  navMarket: '대형 마켓',
+  navCommunity: '커뮤니티',
+  navCommunityComing: '준비 중',
+  navTrash: '휴지통',
+  navLoginOptional: '로그인 (선택)',
+  navLoginHint: '클라우드 동기화 · 마켓 참여 시 사용',
+  navMenu: '메뉴 열기',
 
   // Cloud sync
   cloudSynced: '클라우드 동기화됨',

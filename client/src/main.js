@@ -6,13 +6,16 @@ import { renderDashboard } from './pages/Dashboard.js';
 import { renderEditor } from './pages/Editor.js';
 import { renderViewer } from './pages/Viewer.js';
 import { renderMarket } from './pages/Market.js';
+import { renderTrash } from './pages/Trash.js';
 import { registerSW } from 'virtual:pwa-register';
 import { initChatBot } from './components/ChatBot.js';
 import { supabase } from './store/supabase.js';
+import { initAuthHandler } from './utils/auth.js';
 
 initTheme();
 
-// OAuth PKCE 리다이렉트 후 세션 복원
+// OAuth PKCE 리다이렉트 후 세션 복원 + 전역 auth 핸들러 등록
+initAuthHandler();
 supabase.auth.getSession();
 
 const app = document.querySelector('#app');
@@ -22,6 +25,7 @@ route('/dashboard', () => renderDashboard(app));
 route('/edit', (noteId) => renderEditor(app, noteId));
 route('/share', (shareId) => renderViewer(app, shareId));
 route('/market', () => renderMarket(app));
+route('/trash', () => renderTrash(app));
 
 startRouter();
 initChatBot();

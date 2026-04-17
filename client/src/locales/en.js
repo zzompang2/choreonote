@@ -55,6 +55,7 @@ export const en = {
   trashEmpty: 'Empty',
   confirmEmptyTrash: 'Empty trash? All items will be permanently deleted.',
   trashDaysLeft: 'Auto-delete in {days} days',
+  trashEmptyState: 'Trash is empty',
   viewToggle: 'Toggle view',
   importError: 'Failed to load file:',
 
@@ -395,6 +396,16 @@ export const en = {
   marketPlay: 'Play',
   marketPause: 'Pause',
   marketReplay: 'Replay',
+
+  // App navigation (sidebar)
+  navNotes: 'My Notes',
+  navMarket: 'Formation Market',
+  navCommunity: 'Community',
+  navCommunityComing: 'Soon',
+  navTrash: 'Trash',
+  navLoginOptional: 'Sign in (optional)',
+  navLoginHint: 'For cloud sync & market',
+  navMenu: 'Open menu',
 
   // Cloud sync
   cloudSynced: 'Synced to cloud',
