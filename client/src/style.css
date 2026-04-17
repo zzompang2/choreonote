@@ -4314,6 +4314,11 @@ html:has(.editor) {
   max-width: 560px;
 }
 
+.market-modal__box--detail .market-modal__body {
+  display: flex;
+  flex-direction: column;
+}
+
 .market-modal__header {
   display: flex;
   justify-content: space-between;
@@ -4376,20 +4381,27 @@ html:has(.editor) {
   flex-direction: column;
   gap: 10px;
   padding-bottom: 8px;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .market-modal__canvas-wrap {
   width: 100%;
   display: flex;
   justify-content: center;
+  align-items: center;
   background: var(--stage-wing, #0a0a15);
   border-radius: 8px;
   overflow: hidden;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .market-modal__canvas {
   display: block;
   max-width: 100%;
+  max-height: 100%;
+  width: auto;
   height: auto;
   border-radius: 8px;
 }
@@ -4400,6 +4412,7 @@ html:has(.editor) {
   cursor: pointer;
   user-select: none;
   touch-action: none;
+  flex-shrink: 0;
 }
 
 .market-modal__timeline-track {
@@ -4452,6 +4465,7 @@ html:has(.editor) {
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
+  flex-shrink: 0;
 }
 
 .market-modal__play-btn {
