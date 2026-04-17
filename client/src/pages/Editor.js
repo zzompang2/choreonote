@@ -10,6 +10,7 @@ import { getPresetNames, applyPreset, getCustomPresets, saveCustomPreset, delete
 import { toggleTheme, isLightMode } from '../utils/theme.js';
 import {
   PIXEL_PER_SEC, TIMELINE_PADDING, TIME_UNIT, WING_SIZE,
+  MIN_FORMATION_DURATION, DEFAULT_FORMATION_DURATION, PASTE_FORMATION_DURATION,
   formatTime, floorTime, clamp, roundToGrid, GRID_GAP, HALF_W, HALF_H,
   STAGE_WIDTH, STAGE_HEIGHT, CANVAS_WIDTH, CANVAS_HEIGHT, setStageSize,
 } from '../utils/constants.js';
@@ -1548,14 +1549,14 @@ function setupFormationDrag(el, fIdx, mode) {
       } else if (mode === 'left') {
         const newStart = origStart + dtMs;
         const newDur = origDuration - dtMs;
-        if (newDur >= TIME_UNIT && newStart >= 0) {
+        if (newDur >= MIN_FORMATION_DURATION && newStart >= 0) {
           targetFormation.startTime = newStart;
           targetFormation.duration = newDur;
         }
       } else if (mode === 'right') {
         const newDur = origDuration + dtMs;
         const endTime = targetFormation.startTime + newDur;
-        if (newDur >= TIME_UNIT && endTime <= maxTime) {
+        if (newDur >= MIN_FORMATION_DURATION && endTime <= maxTime) {
           targetFormation.duration = newDur;
         }
       }
@@ -2648,7 +2649,6 @@ function setupToolbar(container) {
   addBtn.addEventListener('click', () => {
     if (guardPlaying()) return;
     const newStart = floorTime(currentMs);
-    const DEFAULT_DURATION = TIME_UNIT * 4;
 
     // Find max available space at newStart
     let maxDuration = noteData.note.duration - newStart;
@@ -2662,8 +2662,8 @@ function setupToolbar(container) {
       }
     }
 
-    const duration = Math.min(DEFAULT_DURATION, floorTime(maxDuration));
-    if (duration < TIME_UNIT) {
+    const duration = Math.min(DEFAULT_FORMATION_DURATION, floorTime(maxDuration));
+    if (duration < MIN_FORMATION_DURATION) {
       showToast(t('toastOverlap'));
       return;
     }
@@ -2754,7 +2754,7 @@ function setupToolbar(container) {
       // Empty space: create new formation with copied positions
       const newStart = floorTime(currentMs);
       const overlaps = noteData.formations.some((f) =>
-        newStart < f.startTime + f.duration && newStart + TIME_UNIT * 5 > f.startTime
+        newStart < f.startTime + f.duration && newStart + PASTE_FORMATION_DURATION > f.startTime
       );
       if (overlaps) {
         showToast(t('toastOverlap'));
@@ -2765,7 +2765,7 @@ function setupToolbar(container) {
         id: Date.now(),
         noteId: noteData.note.id,
         startTime: newStart,
-        duration: TIME_UNIT * 5,
+        duration: PASTE_FORMATION_DURATION,
         order: noteData.formations.length,
         positions: copiedPositions.map((p) => ({ ...p })),
       };
@@ -3706,7 +3706,7 @@ function setupSettings(container, noteId) {
       for (const f of noteData.formations) {
         if (f.startTime + f.duration > newDuration) {
           f.duration = newDuration - f.startTime;
-          if (f.duration < TIME_UNIT) f.duration = TIME_UNIT;
+          if (f.duration < MIN_FORMATION_DURATION) f.duration = MIN_FORMATION_DURATION;
         }
       }
       selectedFormation = -1;
@@ -3717,7 +3717,7 @@ function setupSettings(container, noteId) {
       for (const f of noteData.formations) {
         if (f.startTime + f.duration > newDuration) {
           f.duration = newDuration - f.startTime;
-          if (f.duration < TIME_UNIT) f.duration = TIME_UNIT;
+          if (f.duration < MIN_FORMATION_DURATION) f.duration = MIN_FORMATION_DURATION;
         }
       }
     }

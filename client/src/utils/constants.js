@@ -20,7 +20,10 @@ export const GRID_GAP = 30;
 
 export const PIXEL_PER_SEC = 40;
 export const TIMELINE_PADDING = 20;
-export const TIME_UNIT = 250; // ms
+export const TIME_UNIT = 125; // ms — 스냅/시크 단위 (1/8초, 120 BPM 8분음표)
+export const MIN_FORMATION_DURATION = 250; // ms — 대형 최소 길이 (드래그/클릭 가능한 최소 크기)
+export const DEFAULT_FORMATION_DURATION = 1000; // ms — 새 대형 기본 길이
+export const PASTE_FORMATION_DURATION = 1250; // ms — 빈 공간 붙여넣기로 생성되는 대형 길이
 
 export const DANCER_RADIUS = 15;
 
