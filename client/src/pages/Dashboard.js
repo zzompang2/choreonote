@@ -20,30 +20,45 @@ export async function renderDashboard(container) {
   const deletedNotes = await NoteStore.getDeletedNotes();
   const user = await getCurrentUser();
 
+  const userInitial = user
+    ? (user.user_metadata?.name?.[0] || user.email?.[0] || '?').toUpperCase()
+    : '';
+  const avatarUrl = user?.user_metadata?.avatar_url || '';
   const userBtnHTML = user
-    ? `<button class="btn btn--ghost btn--sm" id="dashboard-user-btn" title="${user.email}">${user.user_metadata?.name || user.email?.split('@')[0] || '유저'}</button>
-       <button class="btn btn--ghost btn--sm" id="dashboard-logout-btn">${t('marketLogout')}</button>`
+    ? `<div class="user-menu" id="user-menu">
+         <button class="user-menu__avatar" id="user-menu-btn" title="${user.email}">
+           ${avatarUrl ? `<img src="${avatarUrl}" alt="" />` : `<span>${userInitial}</span>`}
+         </button>
+         <div class="user-menu__dropdown" id="user-menu-dropdown" hidden>
+           <div class="user-menu__email">${user.email || ''}</div>
+           <button class="user-menu__item" id="dashboard-logout-btn">${t('marketLogout')}</button>
+         </div>
+       </div>`
     : `<button class="btn btn--ghost btn--sm" id="dashboard-login-btn">${t('marketLoginGoogle')}</button>`;
 
   div.innerHTML = `
     <div class="dashboard__header">
-      <div id="dashboard-logo" style="cursor:pointer">
+      <div id="dashboard-logo" class="dashboard__brand">
         <div class="dashboard__title">ChoreoNote</div>
         <div class="dashboard__subtitle">${t('backToLanding')}</div>
       </div>
-      <div style="display:flex;gap:8px;align-items:center;">
-        ${userBtnHTML}
-        <label class="sort-dropdown">
-          <select id="sort-select">
-            <option value="editedAt">${t('sortRecent')}</option>
-            <option value="createdAt">${t('sortCreated')}</option>
-            <option value="title">${t('sortName')}</option>
-          </select>
-        </label>
-        <button class="btn btn--ghost btn--icon" id="view-toggle-btn" title="${t('viewToggle')}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
+      <div class="dashboard__actions">
+        <div class="dashboard__toolbar">
+          <div class="sort-dropdown">
+            <svg class="sort-dropdown__icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h13M3 12h9M3 18h5"/><path d="M17 3v18M17 3l-3 3M17 3l3 3"/></svg>
+            <select id="sort-select" aria-label="${t('sortRecent')}">
+              <option value="editedAt">${t('sortRecent')}</option>
+              <option value="createdAt">${t('sortCreated')}</option>
+              <option value="title">${t('sortName')}</option>
+            </select>
+            <svg class="sort-dropdown__caret" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <button class="btn btn--ghost btn--icon" id="view-toggle-btn" title="${t('viewToggle')}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
+        </div>
         <button class="btn btn--ghost" id="market-btn">${t('market')}</button>
-        <button class="btn btn--ghost" id="import-btn">${t('importBtn')}</button>
+        <button class="btn btn--ghost btn--icon" id="import-btn" title="${t('importBtn')}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>
         <button class="btn btn--primary" id="create-btn">${t('newNote')}</button>
+        ${userBtnHTML}
       </div>
     </div>
     <div class="dashboard__body">
@@ -87,6 +102,19 @@ export async function renderDashboard(container) {
   const loginBtn = div.querySelector('#dashboard-login-btn');
   if (loginBtn) {
     loginBtn.addEventListener('click', () => signInWithGoogle('/dashboard'));
+  }
+  const userMenuBtn = div.querySelector('#user-menu-btn');
+  const userMenuDropdown = div.querySelector('#user-menu-dropdown');
+  if (userMenuBtn && userMenuDropdown) {
+    userMenuBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      userMenuDropdown.hidden = !userMenuDropdown.hidden;
+    });
+    document.addEventListener('click', (e) => {
+      if (!userMenuDropdown.hidden && !e.target.closest('#user-menu')) {
+        userMenuDropdown.hidden = true;
+      }
+    });
   }
   const logoutBtn = div.querySelector('#dashboard-logout-btn');
   if (logoutBtn) {
@@ -162,18 +190,22 @@ function renderNoteCards(grid, notes, user) {
   }
 
   grid.innerHTML = notes.map((note) => {
-    const syncBadge = user ? renderSyncBadge(note) : '';
+    const syncIcon = user ? renderSyncIcon(note) : '';
     return `
       <div class="note-card" data-id="${note.id}">
-        <button class="note-card__delete" data-delete="${note.id}" title="${t('delete')}">✕</button>
         <div class="note-card__thumbnail">
           <canvas data-thumb="${note.id}" width="200" height="134"></canvas>
+          ${syncIcon}
+          <button class="note-card__delete" data-delete="${note.id}" title="${t('delete')}" aria-label="${t('delete')}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></svg></button>
         </div>
-        <div class="note-card__title">${escapeHtml(note.title)}</div>
-        <div class="note-card__meta">
-          ${t('created')} ${formatDate(note.createdAt)} · ${t('edited')} ${formatDate(note.editedAt)} · ${formatTime(note.duration)}
+        <div class="note-card__body">
+          <div class="note-card__title">${escapeHtml(note.title)}</div>
+          <div class="note-card__meta">
+            <span>${formatDate(note.createdAt)}</span>
+            <span class="note-card__dot"></span>
+            <span>${formatTime(note.duration)}</span>
+          </div>
         </div>
-        ${syncBadge}
       </div>
     `;
   }).join('');
@@ -200,7 +232,7 @@ function renderNoteCards(grid, notes, user) {
         localStorage.removeItem('choreonote-onboarding-done');
         localStorage.removeItem('choreonote-unlocked-features');
       }
-      renderNoteCards(grid, updated);
+      renderNoteCards(grid, updated, user);
     });
   });
 }
@@ -217,11 +249,13 @@ function renderTrashCards(grid, notes, dashboardDiv) {
     const daysLeft = Math.max(0, 30 - Math.round((Date.now() - new Date(note.deletedAt)) / (24 * 60 * 60 * 1000)));
     return `
       <div class="note-card note-card--deleted" data-id="${note.id}">
-        <div class="note-card__title">${escapeHtml(note.title)}</div>
-        <div class="note-card__meta">${t('trashDaysLeft', { days: daysLeft })}</div>
-        <div class="note-card__trash-actions">
-          <button class="btn btn--ghost btn--sm" data-restore="${note.id}">${t('trashRestore')}</button>
-          <button class="btn btn--ghost btn--sm btn--danger" data-purge="${note.id}">${t('trashDelete')}</button>
+        <div class="note-card__body">
+          <div class="note-card__title">${escapeHtml(note.title)}</div>
+          <div class="note-card__meta">${t('trashDaysLeft', { days: daysLeft })}</div>
+          <div class="note-card__trash-actions">
+            <button class="btn btn--ghost btn--sm" data-restore="${note.id}">${t('trashRestore')}</button>
+            <button class="btn btn--ghost btn--sm btn--danger" data-purge="${note.id}">${t('trashDelete')}</button>
+          </div>
         </div>
       </div>
     `;
@@ -250,18 +284,16 @@ async function renderThumbnail(canvas, noteId) {
     renderFormationThumbnail(canvas, { dancers: [], positions: [], stageWidth: 600, stageHeight: 400, dancerShape: 'pentagon', dancerScale: 1, showWings: false });
     return;
   }
-  renderFormationThumbnail(canvas, data);
+  renderFormationThumbnail(canvas, { ...data, showWings: false, hideOffstage: true });
 }
 
 function formatDate(date) {
   if (!date) return '';
   const d = new Date(date);
-  const now = new Date();
   const y = d.getFullYear();
-  const m = d.getMonth() + 1;
-  const day = d.getDate();
-  if (y === now.getFullYear()) return `${m}/${day}`;
-  return `${y}.${m}.${day}`;
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}. ${m}. ${day}.`;
 }
 
 function escapeHtml(str) {
@@ -283,17 +315,15 @@ async function checkStorageUsage(el) {
   } catch (_) {}
 }
 
-// ── 클라우드 동기화 뱃지 ──
+// ── 클라우드 동기화 아이콘 (썸네일 오버레이) ──
 
-function renderSyncBadge(note) {
+function renderSyncIcon(note) {
   const status = getSyncStatus(note);
-  if (status === 'synced') {
-    return `<div class="note-card__sync note-card__sync--synced"><span class="note-card__sync-icon">☁</span>${t('cloudSynced')}</div>`;
-  }
-  if (status === 'unsynced') {
-    return `<div class="note-card__sync note-card__sync--unsynced"><span class="note-card__sync-icon">☁</span>${t('cloudUnsynced')}</div>`;
-  }
-  return `<div class="note-card__sync"><span class="note-card__sync-icon">💾</span>${t('cloudLocal')}</div>`;
+  if (status === 'local') return '';
+  const label = status === 'synced' ? t('cloudSynced') : t('cloudUnsynced');
+  return `<span class="note-card__sync note-card__sync--${status}" title="${label}" aria-label="${label}">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>
+  </span>`;
 }
 
 // ── 클라우드 노트 섹션 (이 기기에 없는 노트) ──

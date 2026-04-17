@@ -73,6 +73,11 @@ body {
   justify-content: space-between;
   align-items: center;
   padding: 20px 20px 16px;
+  gap: 16px;
+}
+
+.dashboard__brand {
+  cursor: pointer;
 }
 
 .dashboard__body {
@@ -80,14 +85,39 @@ body {
 }
 
 .dashboard__title {
-  font-size: 24px;
+  font-size: 22px;
   font-weight: 700;
+  letter-spacing: -0.01em;
 }
 
 .dashboard__subtitle {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--text-secondary);
-  margin-top: 4px;
+  margin-top: 2px;
+}
+
+.dashboard__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dashboard__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  background: var(--bg-card);
+  border-radius: 10px;
+}
+
+.dashboard__toolbar .btn--icon {
+  border: none;
+  background: transparent;
+}
+
+.dashboard__toolbar .btn--icon:hover {
+  background: var(--bg-primary);
 }
 
 .btn {
@@ -165,6 +195,8 @@ body {
 .note-grid--list .note-card__thumbnail {
   width: 120px;
   flex-shrink: 0;
+  border-bottom: none;
+  border-right: 1px solid var(--border);
 }
 
 .note-grid--list .note-card__thumbnail canvas {
@@ -172,13 +204,13 @@ body {
   height: 80px;
 }
 
-.note-grid--list .note-card__title {
-  padding: 0 12px;
-  margin: 0;
+.note-grid--list .note-card__body {
+  flex: 1;
+  padding: 10px 14px;
 }
 
-.note-grid--list .note-card__meta {
-  padding: 0 12px;
+.note-grid--list .note-card__title {
+  margin-bottom: 4px;
 }
 
 .btn--icon {
@@ -225,21 +257,25 @@ body {
 
 .note-card {
   background: var(--bg-card);
-  border-radius: 10px;
+  border-radius: 14px;
   padding: 0;
   cursor: pointer;
-  transition: transform 0.15s, box-shadow 0.15s;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
   position: relative;
   overflow: hidden;
+  border: 1px solid var(--border);
 }
 
 .note-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+  transform: translateY(-3px);
+  box-shadow: 0 12px 28px rgba(0,0,0,0.25);
+  border-color: var(--border-strong);
 }
 
 .note-card__thumbnail {
   line-height: 0;
+  position: relative;
+  border-bottom: 1px solid var(--border);
 }
 
 .note-card__thumbnail canvas {
@@ -248,37 +284,57 @@ body {
   display: block;
 }
 
+.note-card__body {
+  padding: 12px 14px 14px;
+}
+
 .note-card__title {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
-  margin-bottom: 8px;
-  padding: 12px 16px 0;
+  margin-bottom: 6px;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  letter-spacing: -0.01em;
 }
 
 .note-card__meta {
   font-size: 12px;
   color: var(--text-secondary);
-  padding: 0 16px 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-variant-numeric: tabular-nums;
+}
+
+.note-card__dot {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--text-secondary);
+  opacity: 0.45;
+  display: inline-block;
 }
 
 .note-card__delete {
   position: absolute;
   top: 8px;
   right: 8px;
-  background: rgba(0,0,0,0.5);
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(6px);
   border: none;
   color: #fff;
   cursor: pointer;
-  font-size: 14px;
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   opacity: 0;
-  transition: opacity 0.15s;
-  z-index: 1;
+  transition: opacity 0.15s, background 0.15s;
+  z-index: 2;
 }
 
 .note-card:hover .note-card__delete {
@@ -287,12 +343,12 @@ body {
 
 @media (hover: none) {
   .note-card__delete {
-    opacity: 0.7;
+    opacity: 0.75;
   }
 }
 
 .note-card__delete:hover {
-  color: var(--danger);
+  background: var(--danger);
 }
 
 .empty-state {
@@ -2245,15 +2301,116 @@ html:has(.editor) {
 }
 
 /* --- Sort dropdown --- */
+.sort-dropdown {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.sort-dropdown__icon {
+  position: absolute;
+  left: 10px;
+  color: var(--text-secondary);
+  pointer-events: none;
+}
+
+.sort-dropdown__caret {
+  position: absolute;
+  right: 8px;
+  color: var(--text-secondary);
+  pointer-events: none;
+}
+
 .sort-dropdown select {
   appearance: none;
   background: transparent;
-  border: 1px solid var(--border-strong);
-  color: var(--text-secondary);
-  padding: 6px 28px 6px 10px;
-  border-radius: 6px;
+  border: none;
+  color: var(--text-primary);
+  padding: 7px 28px 7px 32px;
+  border-radius: 8px;
   font-size: 13px;
+  font-weight: 500;
   cursor: pointer;
+}
+
+.sort-dropdown select:hover {
+  background: var(--bg-primary);
+}
+
+.sort-dropdown select:focus {
+  outline: none;
+}
+
+/* --- User menu (dashboard avatar + dropdown) --- */
+.user-menu {
+  position: relative;
+}
+
+.user-menu__avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid var(--border-strong);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  transition: border-color 0.15s;
+}
+
+.user-menu__avatar:hover {
+  border-color: var(--text-secondary);
+}
+
+.user-menu__avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.user-menu__dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 200px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  padding: 6px;
+  z-index: 200;
+}
+
+.user-menu__email {
+  font-size: 12px;
+  color: var(--text-secondary);
+  padding: 8px 10px 6px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 4px;
+  word-break: break-all;
+}
+
+.user-menu__item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-size: 13px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.user-menu__item:hover {
+  background: var(--bg-primary);
 }
 
 /* --- Landing Page --- */
@@ -2626,18 +2783,30 @@ html:has(.editor) {
   /* Dashboard */
   .dashboard__header {
     flex-direction: column;
-    align-items: flex-start;
+    align-items: stretch;
     gap: 12px;
     padding: 16px;
+  }
+  .dashboard__actions {
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: flex-end;
   }
   .dashboard__body {
     padding: 0 16px 24px;
   }
   .note-grid {
     grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
   }
   .note-grid--list {
     grid-template-columns: 1fr;
+  }
+  .note-card__title {
+    font-size: 14px;
+  }
+  .note-card__body {
+    padding: 10px 12px 12px;
   }
 
   /* Viewer */
@@ -3850,6 +4019,147 @@ html:has(.editor) {
   background: var(--stage-bg);
 }
 
+/* --- 상세 모달 미니 플레이어 --- */
+.market-modal__player {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-bottom: 8px;
+}
+
+.market-modal__canvas-wrap {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  background: var(--stage-wing, #0a0a15);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.market-modal__canvas {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+}
+
+.market-modal__timeline {
+  position: relative;
+  height: 18px;
+  cursor: pointer;
+  user-select: none;
+  touch-action: none;
+}
+
+.market-modal__timeline-track {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 4px;
+  transform: translateY(-50%);
+  background: var(--border-color, rgba(255,255,255,0.12));
+  border-radius: 2px;
+}
+
+.market-modal__timeline-box {
+  position: absolute;
+  top: 50%;
+  height: 8px;
+  transform: translateY(-50%);
+  background: var(--accent, #4f8cff);
+  opacity: 0.55;
+  border-radius: 2px;
+  pointer-events: none;
+}
+
+.market-modal__playhead {
+  position: absolute;
+  top: 0;
+  width: 2px;
+  height: 100%;
+  background: var(--text-primary, #fff);
+  transform: translateX(-1px);
+  pointer-events: none;
+}
+
+.market-modal__playhead::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--text-primary, #fff);
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 0 2px var(--bg-card, #16213e);
+}
+
+.market-modal__player-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.market-modal__play-btn {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--accent, #4f8cff);
+  color: #fff;
+  border: none;
+  font-size: 14px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.market-modal__play-btn:hover {
+  filter: brightness(1.1);
+}
+
+.market-modal__time {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+  min-width: 72px;
+}
+
+.market-modal__formation-chips {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+
+.market-modal__chip {
+  min-width: 28px;
+  height: 28px;
+  padding: 0 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color, rgba(255,255,255,0.12));
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.market-modal__chip:hover {
+  color: var(--text-primary);
+  border-color: var(--accent, #4f8cff);
+}
+
+.market-modal__chip--active {
+  background: var(--accent, #4f8cff);
+  border-color: var(--accent, #4f8cff);
+  color: #fff;
+}
+
 .market-modal__actions {
   display: flex;
   gap: 8px;
@@ -4276,15 +4586,23 @@ html:has(.editor) {
   }
 }
 
-/* ── 클라우드 동기화 뱃지 ── */
+/* ── 클라우드 동기화 아이콘 (썸네일 오버레이) ── */
 
 .note-card__sync {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  font-size: 12px;
-  color: var(--text-secondary);
-  margin-top: 2px;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(6px);
+  color: #fff;
+  z-index: 2;
+  pointer-events: none;
 }
 
 .note-card__sync--synced {
@@ -4293,11 +4611,6 @@ html:has(.editor) {
 
 .note-card__sync--unsynced {
   color: #f0ad4e;
-}
-
-.note-card__sync-icon {
-  font-size: 13px;
-  line-height: 1;
 }
 
 /* ── 클라우드 노트 섹션 ── */
