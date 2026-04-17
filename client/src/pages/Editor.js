@@ -3536,6 +3536,9 @@ function setupHeader(container, noteId) {
       audienceDirection,
       showWings: renderer.showWings,
       showNames: renderer.showNames,
+      showNumbers: renderer.showNumbers,
+      dancerShape: renderer.dancerShape,
+      gridGap: renderer.gridGap,
       markers: renderer.showMarkers ? renderer.markers : [],
       dancerScale: renderer.dancerScale,
       onProgress: (percent) => {

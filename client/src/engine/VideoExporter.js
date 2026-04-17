@@ -45,7 +45,7 @@ export class VideoExporter {
     this.onError = null;    // (error) => void
   }
 
-  async export({ dancers, formations, audioBlob, duration, is3D, showNames, dancerScale, audienceDirection, showWings, markers, onProgress, onComplete, onError }) {
+  async export({ dancers, formations, audioBlob, duration, is3D, showNames, showNumbers, dancerShape, gridGap, dancerScale, audienceDirection, showWings, markers, onProgress, onComplete, onError }) {
     if (this.isExporting) return;
     this.isExporting = true;
     this._cancelRequested = false;
@@ -58,14 +58,18 @@ export class VideoExporter {
       // Create offscreen canvas for rendering
       const canvas = document.createElement('canvas');
       const renderer = new StageRenderer(canvas);
-      renderer.showNames = showNames;
+      // 에디터 뷰 옵션을 그대로 반영 — 이전엔 dancerShape/showNumbers/gridGap이 누락돼 기본값(pentagon/숫자표시/기본그리드)으로 내보내짐
+      renderer.showNames = !!showNames;
+      if (typeof showNumbers === 'boolean') renderer.showNumbers = showNumbers;
+      if (dancerShape) renderer.dancerShape = dancerShape;
+      if (gridGap) renderer.gridGap = gridGap;
       renderer.audienceDirection = audienceDirection || 'top';
       renderer.showWings = !!showWings;
       const exportMarkers = (markers || []).map(m => ({ ...m }));
       renderer.markers = exportMarkers;
       renderer.showMarkers = exportMarkers.length > 0;
-      renderer._drawGridCache();
       if (dancerScale) renderer.dancerScale = dancerScale;
+      renderer._drawGridCache();
 
       // Export canvas: include wings if showWings is on, otherwise add audience margin
       const audienceMargin = 65; // stageGap(24) + 2 rows of seats(18+5+18)
@@ -73,7 +77,8 @@ export class VideoExporter {
       const hasAudience = !showWings;
       const baseW = showWings ? CANVAS_WIDTH : STAGE_WIDTH;
       const baseH = showWings ? CANVAS_HEIGHT : (STAGE_HEIGHT + (hasAudience ? audienceMargin : 0));
-      const exportWidth = 1280;
+      // 1080p + 6Mbps — 이전 720p·2Mbps는 모션 많을 때 지지직 현상
+      const exportWidth = 1920;
       const exportHeight = Math.round(exportWidth * (baseH / baseW));
       canvas.width = exportWidth;
       canvas.height = exportHeight;
@@ -120,7 +125,7 @@ export class VideoExporter {
 
       this._mediaRecorder = new MediaRecorder(combinedStream, {
         mimeType,
-        videoBitsPerSecond: 2_000_000,
+        videoBitsPerSecond: 6_000_000,
       });
 
       this._mediaRecorder.ondataavailable = (e) => {
