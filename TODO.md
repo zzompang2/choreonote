@@ -24,14 +24,11 @@
     - 마켓 카드 디자인을 대시보드 노트 카드와 차별화
   - 3단계: 좋아요/인기순 정렬, 검색
 - [P3] 기존 모바일 앱 사용자 인터뷰 (웹 전환 + 영상 내보내기 가설 검증)
-- [P1] 클라우드/로컬 폴더 모델 (iCloud 방식 — 2단계) — **스캐폴딩 완료, UI 연결 남음**
-  - ~~DB v3: `location` 필드 + 백필 (`cloudId` 있으면 `cloud`)~~ ✅
-  - ~~`uploadOnSave` rename + cloudSync 신규 API (`downloadAllOnLogin`, `moveNoteToCloud/Local`)~~ ✅
-  - ~~auth 핸들러: 명시적 로그아웃/세션 만료 분기, pending 동기화 플래그, 세션 만료 배너 상태~~ ✅
-  - ~~에디터 저장 hook: `location==='cloud'`만 자동 업로드~~ ✅
-  - 대시보드 UI: 기존 `cloud-section`·`renderSyncIcon`·`.note-card__sync*` 제거, 두 섹션 그리드(`💻 내 기기` / `☁ 클라우드`), 빈 섹션 힌트, 더보기 메뉴(이동), 업로드 실패 `↺` 인디케이터, 세션 만료 배너
-  - CSS 정리: `.dashboard__folder-section` 신설
-  - 수동 검증: 로그인/로그아웃(의도/만료), 기기 전환, 폴더 이동, 오프라인 편집 후 복구
+- [P1] 클라우드/로컬 폴더 모델 (iCloud 방식 — 2단계) — **구현 완료, 브라우저 검증 남음**
+  - ~~DB v3 location, cloudSync API (uploadOnSave/downloadAllOnLogin/moveTo*), auth 핸들러, 에디터 hook~~ ✅
+  - ~~대시보드 두 섹션 그리드, 카드 ⋯ 메뉴(이동/삭제), 세션 만료 배너, `app:cloud-notes-updated` 재렌더~~ ✅
+  - 검증: 로그인/로그아웃(의도 vs 만료), 기기 전환, 폴더 이동, 오프라인 복구
+  - 업로드 실패 시 `↺` 인디케이터 + 재시도 로직 — 현재 구현 여부 확인 필요
 - [P4] 커뮤니티 기능 복원 (별도 서비스)
 - [P4] 노트 폴더화 (프로젝트/그룹별 정리)
 
@@ -43,6 +40,7 @@
 ---
 
 ## 완료
+- [x] 클라우드/로컬 폴더 모델 — 대시보드 UI 연결 (두 섹션 그리드, 카드 ⋯ 메뉴, 세션 만료 배너)
 - [x] 클라우드/로컬 폴더 모델 — 백엔드 스캐폴딩 (DB v3 location, auth 핸들러, uploadOnSave, 에디터 hook)
 - [x] 마켓 UI 개선 — 퇴장영역 숨김, 상세 모달 관객석 좌석, 미리보기 정규화(대형수×1초), 단일 대형 정적 표시, 관객석 텍스트 버튼, 모바일 필터 한 줄(인원수 드롭다운 + 태그 모달), 필터/뷰 그룹핑
 - [x] 사이드바 레이아웃 (AppLayout — 220px 고정 + 모바일 drawer, 메뉴: 내 노트/마켓/커뮤니티(준비 중)/휴지통, 하단 user slot, 로그인 버튼 top bar에서 제거, 휴지통 독립 `/trash` 라우트)

@@ -1,6 +1,6 @@
 # 진행 상황
 
-## 현재 상태: 클라우드/로컬 폴더 모델 스캐폴딩 완료 (백엔드/저장소 레이어) · 다음은 대시보드 UI 연결
+## 현재 상태: 클라우드/로컬 폴더 모델 UI 연결까지 완료 · 다음은 브라우저 통합 검증
 
 ### 최근 완료 (2026-04-17)
 - **마켓 UI 개선**
@@ -11,12 +11,13 @@
   - 관객 방향 토글: 이모지 → `관객석 ↓/↑` 텍스트 버튼
   - 모바일 필터 한 줄: `[인원수 드롭다운] [태그 (N)] [정렬 ▼] [관객석 ↓]` — 태그는 모달로, 인원수는 select로 전환
   - 필터 그룹핑: 좌(필터: 인원수+태그) / 우(뷰: 정렬+관객석), `market__filter-left/-right` 구조
-- **클라우드/로컬 폴더 모델 — 스캐폴딩 완료**
+- **클라우드/로컬 폴더 모델 — 스캐폴딩 + UI 연결 완료**
   - `db.js` v3: `location` 필드 추가 + 기존 노트 백필(`cloudId` 있으면 cloud)
   - `NoteStore`: createNote/importJSON 기본 `location='local'`
-  - `auth.js`: `initAuthHandler` 신설 — 명시적 로그아웃/세션 만료 분기, `SIGNED_IN` 시 pending 플래그 기반 자동 동기화, `wasSessionExpired()`로 배너 상태 조회
-  - `cloudSync`: `uploadNote` → `uploadOnSave` 이름 변경, 관련 i18n 키 추가
-  - `Editor`: 저장 시 `location==='cloud'`인 노트만 자동 업로드
+  - `auth.js`: `initAuthHandler` — 명시적 로그아웃/세션 만료 분기, `SIGNED_IN` 시 pending 플래그 기반 자동 동기화, `wasSessionExpired()` 배너 상태
+  - `cloudSync`: `uploadNote` → `uploadOnSave` 이름 변경, `moveNoteToCloud/Local`, `downloadAllOnLogin`
+  - `Editor`: 저장 시 `location==='cloud'`만 자동 업로드
+  - `Dashboard`: 💻 내 기기 / ☁ 클라우드 두 섹션 그리드, 빈 섹션 힌트, 카드 ⋯ 메뉴(이동/삭제 통합), 세션 만료 배너, `app:cloud-notes-updated` 이벤트 재렌더
 - **사이드바 레이아웃 도입**
   - `components/AppLayout.js` — 220px 고정 사이드바 + 모바일(≤840px) 햄버거 drawer
   - 메뉴: 내 노트 / 마켓 / 커뮤니티(준비 중) / 휴지통
@@ -44,13 +45,11 @@
   - 재로그인 시 cloudId 매칭 병합으로 중복 방지
 
 ## 다음 할 일
-- [ ] **대시보드 UI 연결** (폴더 모델 UI 레이어, 구현순서 5~7번)
-  - 기존 `cloud-section`, `renderSyncIcon`, `.note-card__sync*` CSS 제거
-  - 두 섹션 그리드 (`💻 내 기기`, `☁ 클라우드`), 빈 섹션 힌트 카드
-  - 카드 더보기 메뉴: `☁ 클라우드로 이동` / `💻 내 기기로 이동` (후자 확인 모달)
-  - 업로드 실패 시 `↺` 마이크로 인디케이터
-  - 세션 만료 배너 렌더 (`wasSessionExpired()`)
-- [ ] **수동 검증**: 로그인/로그아웃(의도/만료), 기기 전환, 폴더 이동, 오프라인 편집 후 복구
+- [ ] **폴더 모델 브라우저 검증** (최우선)
+  - 로그인/로그아웃(의도 vs 세션 만료) 시 캐시·배너 동작
+  - 기기 전환 (로그인 직후 다운로드 + cloudId 매칭 병합, 충돌 모달)
+  - 폴더 이동 (로컬→클라우드 업로드, 클라우드→로컬 확인 모달 + 서버 삭제)
+  - 오프라인 편집 후 복구 (업로드 실패 시 `↺` 인디케이터, 다음 저장에 재시도 — 현재 재시도 로직 여부 확인 필요)
 - [ ] **사이드바 브라우저 검증**: `/dashboard` `/market` `/trash` 전환, 활성 메뉴 하이라이트, 모바일 drawer, user slot 드롭다운
 - [ ] **마켓 브라우저 검증**: 관객석 좌석 표시, 단일/다중 대형 재생, 모바일 필터 모달/드롭다운
 - [ ] **대열 마켓 2단계 이어서**:
