@@ -16,17 +16,18 @@
 
 | 영역 | 파일 | 역할 |
 |------|------|------|
-| 진입점 | `main.js` | 라우터 등록 (`/`, `/dashboard`, `/edit`, `/share`, `/market`) |
+| 진입점 | `main.js` | 라우터 등록 (`/`, `/dashboard`, `/edit`, `/share`, `/market`, `/trash`) + 전역 auth 핸들러 초기화 |
 | 페이지 | `pages/Editor.js` | 에디터 — 캔버스, 사이드바, 타임라인, 플레이어바 통합 |
-| | `pages/Dashboard.js` | 노트 목록, 생성/삭제/정렬/가져오기 |
+| | `pages/Dashboard.js` | 노트 목록, 생성/삭제/정렬/가져오기 (AppLayout 사용) |
 | | `pages/Landing.js` | 랜딩 페이지 |
 | | `pages/Viewer.js` | 공유 재생 전용 뷰어 (읽기 전용, Supabase 조회) |
-| | `pages/Market.js` | 대형 마켓 — 목록/상세/업로드 (Google OAuth 인증) |
+| | `pages/Market.js` | 대형 마켓 — 목록/상세/업로드 (Google OAuth 인증, AppLayout 사용) |
+| | `pages/Trash.js` | 휴지통 — 삭제된 노트 복원/영구삭제 (독립 라우트, AppLayout 사용) |
 | 렌더링 | `renderer/StageRenderer.js` | Canvas 무대 렌더링 (댄서, 그리드, 경로, 2D/3D) |
 | 엔진 | `engine/PlaybackEngine.js` | Web Audio 재생, 시간 동기화, 선형 보간 |
 | | `engine/VideoExporter.js` | captureStream + MediaRecorder 영상 내보내기 |
 | 저장 | `store/NoteStore.js` | 노트 CRUD, 대형/댄서/포지션 관리 (Dexie 트랜잭션) |
-| | `store/db.js` | Dexie 스키마 (notes, dancers, formations, positions, musicFiles) |
+| | `store/db.js` | Dexie 스키마 v3 (notes에 `location` 필드 — `'local'` \| `'cloud'`) |
 | | `store/supabase.js` | Supabase 클라이언트 초기화 (PKCE auth flow) |
 | | `store/cloud-notes.sql` | Supabase notes 테이블 DDL (참조용) |
 | 유틸 | `utils/constants.js` | 무대 크기, 그리드, 타임라인 상수 |
@@ -40,12 +41,13 @@
 | | `utils/market.js` | 대형 마켓 CRUD API (Supabase) |
 | | `utils/thumbnail.js` | 캔버스 썸네일 렌더링 (Dashboard/Market 공용) |
 | | `utils/cloudSync.js` | 클라우드 동기화 (업로드/다운로드/충돌감지/해결) |
-| 컴포넌트 | `components/ChatBot.js` | FAQ 챗봇 (FAB + 사이드바 임베드, 팁 배너, 자동완성) |
+| 컴포넌트 | `components/AppLayout.js` | 공용 셸 (220px 사이드바 + 모바일 drawer) — Dashboard/Market/Trash에서 사용, 에디터·랜딩·공유뷰어는 풀스크린 |
+| | `components/ChatBot.js` | FAQ 챗봇 (FAB + 사이드바 임베드, 팁 배너, 자동완성) |
 | | `components/ConflictModal.js` | 클라우드 충돌 해결 모달 (덮어쓰기/서버교체/둘다유지) |
 | 스타일 | `style.css` | 전역 CSS (다크/라이트 변수 포함) |
 
-## 데이터 모델 (IndexedDB)
-- **notes**: id, title, musicName, musicBlobId, duration, settings(JSON), cloudId, cloudUpdatedAt
+## 데이터 모델 (IndexedDB, v3)
+- **notes**: id, title, musicName, musicBlobId, duration, settings(JSON), cloudId, cloudUpdatedAt, **location**(`'local'`|`'cloud'`)
 - **dancers**: id, noteId, name, color, order, shape, size
 - **formations**: id, noteId, startTime, duration, order
 - **positions**: id, formationId, dancerId, x, y, angle, waypoints
