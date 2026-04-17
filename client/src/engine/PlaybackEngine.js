@@ -57,7 +57,7 @@ export class PlaybackEngine {
     this.dancers = dancers;
   }
 
-  play(fromMs = null) {
+  async play(fromMs = null) {
     if (this.isPlaying) return;
     if (!this.audioContext) {
       this.audioContext = new AudioContext();
@@ -65,10 +65,13 @@ export class PlaybackEngine {
       this.gainNode.connect(this.audioContext.destination);
     }
 
-    // iOS Safari는 AudioContext가 suspended 상태로 시작. 재생 버튼 탭(사용자 제스처) 안에서 resume 해야 소리 나옴
+    // iOS Safari는 AudioContext가 suspended 상태로 시작. resume을 await 해야 currentTime/start()가 정상 동작
     if (this.audioContext.state === 'suspended') {
-      this.audioContext.resume();
+      try { await this.audioContext.resume(); } catch (_) {}
     }
+
+    // 이중 탭 방어 — resume await 동안 pause 호출된 경우
+    if (this.isPlaying) return;
 
     const offset = fromMs !== null ? fromMs / 1000 : this._startOffset;
     this._startOffset = offset;
@@ -78,7 +81,6 @@ export class PlaybackEngine {
       this.sourceNode.buffer = this.audioBuffer;
       this.sourceNode.connect(this.gainNode);
       this.sourceNode.start(0, offset);
-      // Don't stop playback when audio ends — animation may continue beyond audio
       this.sourceNode.onended = () => {
         this.sourceNode = null;
       };
