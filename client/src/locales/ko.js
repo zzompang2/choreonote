@@ -62,6 +62,11 @@ export const ko = {
   // Editor — Header
   addMusic: '음악 넣기',
   exportVideo: '영상 저장',
+  emergencyRestart: '긴급 재시작',
+  emergencyRestartTooltip: '저장 후 새로고침 (먹통 시)',
+  emergencyRestartArmed: '한 번 더 눌러 재시작',
+  fullscreenEnter: '전체화면 (F)',
+  fullscreenExit: '전체화면 나가기 (F/ESC)',
   noteNotFound: '노트를 찾을 수 없습니다',
 
   // Editor — Stage banners

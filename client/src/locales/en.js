@@ -62,6 +62,11 @@ export const en = {
   // Editor — Header
   addMusic: 'Add Music',
   exportVideo: 'Export Video',
+  emergencyRestart: 'Emergency restart',
+  emergencyRestartTooltip: 'Save and reload (if frozen)',
+  emergencyRestartArmed: 'Click again to restart',
+  fullscreenEnter: 'Fullscreen (F)',
+  fullscreenExit: 'Exit fullscreen (F/ESC)',
   noteNotFound: 'Note not found',
 
   // Editor — Stage banners

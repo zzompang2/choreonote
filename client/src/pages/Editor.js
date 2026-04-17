@@ -122,6 +122,10 @@ export async function renderEditor(container, noteId) {
   if (noteData.note.gridGap) renderer.gridGap = noteData.note.gridGap;
   if (noteData.note.dancerScale) renderer.dancerScale = noteData.note.dancerScale;
   if (noteData.note.showWings === true) renderer.showWings = true;
+  // 댄서 표기 모드 복원 ('number'/'name'/'none'). 기본값은 'number'
+  if (noteData.note.displayMode === 'name') { renderer.showNames = true; renderer.showNumbers = false; }
+  else if (noteData.note.displayMode === 'none') { renderer.showNames = false; renderer.showNumbers = false; }
+  else { renderer.showNames = false; renderer.showNumbers = true; }
   renderer.touchScale = window.innerWidth <= 768 ? 1.4 : 1.0;
   renderer._drawGridCache();
 
@@ -220,6 +224,7 @@ function buildEditorHTML(data) {
           <button class="btn btn--ghost" id="music-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:5px"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>${t('addMusic')}</button>
           <button class="btn btn--ghost" id="export-video-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:5px"><path d="m22 8-6 4 6 4V8Z" fill="none"/><rect x="2" y="6" width="14" height="12" rx="2" fill="none"/></svg>${t('exportVideo')}</button>
           <button class="btn btn--primary" id="save-btn">${t('save')}</button>
+          <button class="editor__emergency" id="emergency-restart-btn" type="button" title="${t('emergencyRestartTooltip')}" aria-label="${t('emergencyRestart')}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg></button>
         </div>
       </div>
 
@@ -503,11 +508,12 @@ function buildEditorHTML(data) {
 
       <div class="player-bar">
         <div class="player-bar__row">
-          <button class="player-bar__btn" id="play-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>
+          <button class="player-bar__btn player-bar__btn--primary" id="play-btn"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>
           <button class="player-bar__btn" id="stop-btn" title="${t('stopBtn')}"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12"/></svg></button>
           <button class="player-bar__btn" id="prev-formation-btn" title="${t('prevFormation')}"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg></button>
           <button class="player-bar__btn" id="next-formation-btn" title="${t('nextFormation')}"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg></button>
           <span class="player-bar__time" id="time-display">${formatTime(0, true)}</span><span class="player-bar__time player-bar__time--sep">/</span><span class="player-bar__time" id="duration-display">${formatTime(data.note.duration, true)}</span>
+          <button class="player-bar__btn player-bar__fullscreen" id="fullscreen-btn" title="${t('fullscreenEnter')}" aria-label="${t('fullscreenEnter')}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9V3h6"/><path d="M21 9V3h-6"/><path d="M3 15v6h6"/><path d="M21 15v6h-6"/></svg></button>
         </div>
 
         <div class="toolbar__separator"></div>
@@ -585,13 +591,13 @@ function setupPlayback(container) {
   };
 
   engine.onPlaybackEnd = () => {
-    playBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
+    playBtn.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
   };
 
   playBtn.addEventListener('click', () => {
     if (engine.isPlaying) {
       engine.pause();
-      playBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
+      playBtn.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
       seekTo(currentMs);
     } else {
       if (swapMode) setSwapMode(false);
@@ -603,14 +609,14 @@ function setupPlayback(container) {
       highlightFormation();
       highlightTransition();
       engine.play(currentMs);
-      playBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg>';
+      playBtn.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg>';
     }
   });
 
   // Stop button (go to beginning)
   container.querySelector('#stop-btn').addEventListener('click', () => {
     if (engine.isPlaying) engine.pause();
-    const PLAY_SVG = '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
+    const PLAY_SVG = '<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
     playBtn.innerHTML = PLAY_SVG;
     seekTo(0);
   });
@@ -637,6 +643,18 @@ function setupPlayback(container) {
         return;
       }
     }
+  });
+
+  // 스테이지 전체화면(집중) 모드 — 헤더/사이드바/타임라인 숨김, 플레이어바만 남김
+  const fullscreenBtn = container.querySelector('#fullscreen-btn');
+  fullscreenBtn.addEventListener('click', () => {
+    const editorRoot = container.querySelector('.editor');
+    const entering = !editorRoot.classList.contains('editor--focus');
+    editorRoot.classList.toggle('editor--focus', entering);
+    fullscreenBtn.setAttribute('title', t(entering ? 'fullscreenExit' : 'fullscreenEnter'));
+    fullscreenBtn.setAttribute('aria-label', t(entering ? 'fullscreenExit' : 'fullscreenEnter'));
+    // 레이아웃 변경 후 캔버스 fit 재계산
+    requestAnimationFrame(() => { try { fitStage?.(); } catch (_) {} });
   });
 
   // Keyboard shortcuts (remove previous listener to avoid duplicates)
@@ -745,9 +763,19 @@ function setupPlayback(container) {
       updateStage();
     }
     if (e.code === 'Escape') {
+      // 전체화면 모드면 탈출 우선
+      const editorRoot = container.querySelector('.editor');
+      if (editorRoot?.classList.contains('editor--focus')) {
+        container.querySelector('#fullscreen-btn')?.click();
+        return;
+      }
       renderer._selectedDancers.clear();
       renderer.onDancerSelect?.(-1);
       updateStage();
+    }
+    if (e.code === 'KeyF' && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
+      e.preventDefault();
+      container.querySelector('#fullscreen-btn')?.click();
     }
     if (e.key === '?' || (e.shiftKey && e.code === 'Slash')) {
       e.preventDefault();
@@ -2542,7 +2570,12 @@ function setupFocusArea(container) {
     timelineEl.classList.toggle('editor__timeline-wrap--focused', area === 'timeline');
   }
 
-  stageEl.addEventListener('pointerdown', () => setFocus('stage'));
+  // 스테이지 클릭 = 편집 의도 → 재생 자동 정지 (드래그가 메인 스레드 점유해 정지 버튼 먹통 되는 시나리오 차단)
+  // 룰러/플레이어바는 timelineEl/별도 영역이라 영향 없음
+  stageEl.addEventListener('pointerdown', () => {
+    setFocus('stage');
+    if (engine?.isPlaying) engine.pause();
+  });
   timelineEl.addEventListener('pointerdown', () => setFocus('timeline'));
 
   // 초기 상태
@@ -3120,11 +3153,18 @@ function setupToolbar(container) {
 
   // Display options (number / name / none)
   const displayOptions = container.querySelector('#sidebar-display-options');
+  // 저장된 displayMode에 맞춰 초기 active 버튼 동기화 (기본 HTML은 'number' 고정이라 재진입 시 UI와 renderer 어긋남)
+  const currentDisplay = renderer.showNumbers ? 'number' : (renderer.showNames ? 'name' : 'none');
+  displayOptions.querySelectorAll('.settings-option').forEach(b => {
+    b.classList.toggle('settings-option--active', b.dataset.display === currentDisplay);
+  });
   displayOptions.querySelectorAll('[data-display]').forEach(btn => {
     btn.addEventListener('click', () => {
       const mode = btn.dataset.display;
       renderer.showNames = mode === 'name';
       renderer.showNumbers = mode === 'number';
+      noteData.note.displayMode = mode;
+      unsaved = true;
       displayOptions.querySelectorAll('.settings-option').forEach(b => b.classList.remove('settings-option--active'));
       btn.classList.add('settings-option--active');
       updateStage();
@@ -3133,9 +3173,13 @@ function setupToolbar(container) {
 
   // Dancer shape options (view panel)
   const viewShapeOptions = container.querySelector('#view-shape-options');
+  viewShapeOptions.querySelectorAll('.settings-option').forEach(b => {
+    b.classList.toggle('settings-option--active', b.dataset.shape === renderer.dancerShape);
+  });
   viewShapeOptions.querySelectorAll('[data-shape]').forEach(btn => {
     btn.addEventListener('click', () => {
       renderer.dancerShape = btn.dataset.shape;
+      unsaved = true;
       viewShapeOptions.querySelectorAll('.settings-option').forEach(b => b.classList.remove('settings-option--active'));
       btn.classList.add('settings-option--active');
       updateStage();
@@ -3144,9 +3188,13 @@ function setupToolbar(container) {
 
   // Grid gap options (view panel)
   const viewGridOptions = container.querySelector('#view-grid-options');
+  viewGridOptions.querySelectorAll('.settings-option').forEach(b => {
+    b.classList.toggle('settings-option--active', Number(b.dataset.grid) === renderer.gridGap);
+  });
   viewGridOptions.querySelectorAll('[data-grid]').forEach(btn => {
     btn.addEventListener('click', () => {
       renderer.gridGap = Number(btn.dataset.grid);
+      unsaved = true;
       renderer._drawGridCache();
       updateStage();
       viewGridOptions.querySelectorAll('.settings-option').forEach(b => b.classList.remove('settings-option--active'));
@@ -3395,6 +3443,7 @@ function setupHeader(container, noteId) {
       dancerShape: renderer.dancerShape,
       gridGap: renderer.gridGap,
       showWings: renderer.showWings,
+      displayMode: renderer.showNumbers ? 'number' : (renderer.showNames ? 'name' : 'none'),
       markers: renderer.markers,
       dancers: noteData.dancers.map((d) => ({ name: d.name, color: d.color })),
       formations: noteData.formations.map((f) => ({
@@ -3462,6 +3511,33 @@ function setupHeader(container, noteId) {
 
   container.querySelector('#save-btn').addEventListener('click', () => saveToDB());
 
+  // 긴급 재시작 — 2-step confirm (3초 이내 연속 2번 클릭)
+  const emergencyBtn = container.querySelector('#emergency-restart-btn');
+  const emergencyLabel = t('emergencyRestart');
+  const emergencyArmedLabel = t('emergencyRestartArmed');
+  let emergencyArmed = false;
+  let emergencyTimer = null;
+  const resetEmergency = () => {
+    emergencyArmed = false;
+    emergencyBtn.classList.remove('editor__emergency--armed');
+    emergencyBtn.setAttribute('aria-label', emergencyLabel);
+    if (emergencyTimer) { clearTimeout(emergencyTimer); emergencyTimer = null; }
+  };
+  emergencyBtn.addEventListener('click', async () => {
+    if (!emergencyArmed) {
+      emergencyArmed = true;
+      emergencyBtn.classList.add('editor__emergency--armed');
+      emergencyBtn.setAttribute('aria-label', emergencyArmedLabel);
+      showToast(emergencyArmedLabel, 3000);
+      emergencyTimer = setTimeout(resetEmergency, 3000);
+      return;
+    }
+    resetEmergency();
+    try { await saveToDB(true); } catch (_) {}
+    try { engine?.destroy(); } catch (_) {}
+    location.reload();
+  });
+
   // Auto-save every 30 seconds when there are unsaved changes
   let autoSaveEnabled = true;
   let autoSaveInterval = setInterval(async () => {
@@ -3485,9 +3561,13 @@ function setupHeader(container, noteId) {
     autoSaveToggle.classList.toggle('toggle-switch--on', autoSaveEnabled);
   });
 
-  // Clean up interval when leaving editor
-  const cleanupAutoSave = () => clearInterval(autoSaveInterval);
-  window.addEventListener('hashchange', cleanupAutoSave, { once: true });
+  // Clean up interval + tear down audio when leaving editor
+  // engine.destroy() 누락 시 sourceNode가 살아남아 재진입 후 새 engine과 노래 중첩
+  const cleanupOnLeave = () => {
+    clearInterval(autoSaveInterval);
+    try { engine?.destroy(); } catch (_) {}
+  };
+  window.addEventListener('hashchange', cleanupOnLeave, { once: true });
 
   // Export JSON moved to settings panel
 
@@ -4016,7 +4096,7 @@ function seekTo(ms) {
     }
   }
 
-  document.querySelector('#play-btn').innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
+  document.querySelector('#play-btn').innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
 }
 
 function updateStage() {

@@ -883,6 +883,25 @@ body {
   grid-template-columns: 1fr 220px 48px;
 }
 
+/* 집중(전체화면) 모드 — 헤더/사이드바/레일/타임라인 숨김, 스테이지 + 플레이어바만 */
+.editor--focus {
+  grid-template-columns: 1fr 0 0 !important;
+}
+.editor--focus .editor__header,
+.editor--focus .editor__sidebar,
+.editor--focus .sidebar-rail,
+.editor--focus .editor__timeline-wrap {
+  display: none !important;
+}
+
+.player-bar__fullscreen {
+  margin-left: auto;
+  opacity: 0.7;
+}
+.player-bar__fullscreen:hover {
+  opacity: 1;
+}
+
 .editor > * {
   min-width: 0;
   min-height: 0;
@@ -948,6 +967,39 @@ html:has(.editor) {
   gap: 8px;
 }
 
+/* 긴급 재시작 — 평소엔 은은하게, armed 상태에선 경고색 */
+.editor__emergency {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  margin-left: 4px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-secondary);
+  opacity: 0.45;
+  cursor: pointer;
+  transition: opacity 0.15s, background 0.15s, color 0.15s, border-color 0.15s;
+}
+.editor__emergency:hover {
+  opacity: 1;
+  background: var(--bg-secondary);
+}
+.editor__emergency--armed {
+  opacity: 1;
+  color: #fff;
+  background: #d9534f;
+  border-color: #d9534f;
+  animation: emergency-pulse 0.6s ease-in-out infinite alternate;
+}
+@keyframes emergency-pulse {
+  from { box-shadow: 0 0 0 0 rgba(217, 83, 79, 0.6); }
+  to   { box-shadow: 0 0 0 6px rgba(217, 83, 79, 0); }
+}
+
 .player-bar {
   grid-column: 1 / -1;
   display: flex;
@@ -991,6 +1043,22 @@ html:has(.editor) {
 
 .player-bar__btn:hover {
   color: var(--accent);
+}
+
+/* 재생 버튼 — 다른 컨트롤보다 한 단계 큰 위계 (정지 버튼과의 혼동 차단) */
+.player-bar__btn--primary {
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  margin-right: 4px;
+}
+.player-bar__btn--primary:hover {
+  color: #fff;
+  filter: brightness(1.1);
 }
 
 .player-bar__duration {
@@ -1450,6 +1518,13 @@ html:has(.editor) {
   gap: 8px;
   padding: 10px 0;
   user-select: none;
+  /* 스크롤해도 상단에 고정 — 스크롤 아래 카드들이 비쳐보이지 않도록 배경 + 하단 구분선 */
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 4px;
 }
 
 .preset-spacing span:not(.settings-label) {
@@ -3571,6 +3646,12 @@ html:has(.editor) {
     width: 40px;
     height: 40px;
     font-size: 24px;
+  }
+  .player-bar__btn--primary {
+    width: 52px;
+    height: 52px;
+    min-width: 52px;
+    min-height: 52px;
   }
   .player-bar__row {
     display: flex;
