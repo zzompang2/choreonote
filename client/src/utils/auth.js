@@ -1,5 +1,11 @@
 import { supabase } from '../store/supabase.js';
 import { t } from './i18n.js';
+import { showToast } from './toast.js';
+
+// sessionStorage 플래그 키
+const EXPLICIT_LOGOUT_KEY = 'explicit-logout';
+const SESSION_EXPIRED_KEY = 'session-expired';
+const PENDING_LOGIN_SYNC_KEY = 'pending-login-sync';
 
 /** 현재 로그인된 유저 반환 (없으면 null) */
 export async function getCurrentUser() {
@@ -7,28 +13,163 @@ export async function getCurrentUser() {
   return user;
 }
 
-/** Google OAuth 로그인 */
+/** Google OAuth 로그인. 리다이렉트 복귀 후 자동 동기화되도록 플래그를 심어 둔다. */
 export async function signInWithGoogle(redirectPath = '/market') {
+  sessionStorage.setItem(PENDING_LOGIN_SYNC_KEY, '1');
   const { error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
       redirectTo: window.location.origin + '/#' + redirectPath,
     },
   });
-  if (error) throw error;
+  if (error) {
+    sessionStorage.removeItem(PENDING_LOGIN_SYNC_KEY);
+    throw error;
+  }
 }
 
-/** 로그아웃 */
+/**
+ * 로그아웃. 명시적 호출 표시로 플래그를 세워 두면 onAuthStateChange에서
+ * 클라우드 캐시 삭제로 분기한다. 세션 만료로 인한 SIGNED_OUT은 플래그 없음 → 캐시 유지.
+ */
 export async function signOut() {
+  sessionStorage.setItem(EXPLICIT_LOGOUT_KEY, '1');
   const { error } = await supabase.auth.signOut();
-  if (error) throw error;
+  if (error) {
+    sessionStorage.removeItem(EXPLICIT_LOGOUT_KEY);
+    throw error;
+  }
 }
 
-/** auth 상태 변경 리스너 */
+/** auth 상태 변경 리스너 (페이지 레벨 커스텀 구독용) */
 export function onAuthStateChange(callback) {
   return supabase.auth.onAuthStateChange((_event, session) => {
     callback(session?.user || null);
   });
+}
+
+/** 세션 만료(암묵 로그아웃) 배너 상태 */
+export function wasSessionExpired() {
+  return sessionStorage.getItem(SESSION_EXPIRED_KEY) === '1';
+}
+
+export function clearSessionExpired() {
+  sessionStorage.removeItem(SESSION_EXPIRED_KEY);
+}
+
+/**
+ * 전역 auth 핸들러. main.js에서 한 번만 호출.
+ * - SIGNED_IN + pending 플래그 → downloadAllOnLogin + 충돌 모달
+ * - SIGNED_OUT: explicit 플래그 있으면 클라우드 캐시 삭제, 없으면 세션 만료 배너 플래그
+ */
+let authHandlerInitialized = false;
+export function initAuthHandler() {
+  if (authHandlerInitialized) return;
+  authHandlerInitialized = true;
+
+  supabase.auth.onAuthStateChange(async (event) => {
+    if (event === 'SIGNED_IN') {
+      if (sessionStorage.getItem(PENDING_LOGIN_SYNC_KEY) === '1') {
+        sessionStorage.removeItem(PENDING_LOGIN_SYNC_KEY);
+        clearSessionExpired();
+        await handlePostLoginSync();
+      }
+    } else if (event === 'SIGNED_OUT') {
+      if (sessionStorage.getItem(EXPLICIT_LOGOUT_KEY) === '1') {
+        sessionStorage.removeItem(EXPLICIT_LOGOUT_KEY);
+        try {
+          await clearCloudCache();
+        } catch (err) {
+          console.warn('clearCloudCache failed:', err);
+        }
+      } else {
+        sessionStorage.setItem(SESSION_EXPIRED_KEY, '1');
+      }
+    }
+  });
+
+  // OAuth 복귀 직후에는 SIGNED_IN 이벤트가 getSession 전에 이미 지나갔을 수 있다.
+  // pending 플래그가 남아있다면 세션 확인 후 동기화를 한 번 더 시도.
+  if (sessionStorage.getItem(PENDING_LOGIN_SYNC_KEY) === '1') {
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session && sessionStorage.getItem(PENDING_LOGIN_SYNC_KEY) === '1') {
+        sessionStorage.removeItem(PENDING_LOGIN_SYNC_KEY);
+        clearSessionExpired();
+        handlePostLoginSync();
+      }
+    });
+  }
+}
+
+async function handlePostLoginSync() {
+  try {
+    const { downloadAllOnLogin } = await import('./cloudSync.js');
+    const result = await downloadAllOnLogin();
+
+    const restored = result.downloaded + result.merged;
+    if (restored > 0) {
+      showToast(t('cloudRestoreToast', { count: restored }), 4000);
+    }
+
+    for (const c of result.conflicts) {
+      try {
+        await resolveConflictInteractive(c);
+      } catch (err) {
+        console.error('Conflict resolution failed:', err);
+      }
+    }
+
+    // 현재 렌더된 페이지가 변경을 반영하도록 이벤트 발행
+    document.dispatchEvent(new CustomEvent('app:cloud-notes-updated'));
+  } catch (err) {
+    console.error('handlePostLoginSync failed:', err);
+  }
+}
+
+async function resolveConflictInteractive({ noteId, serverNote }) {
+  const [{ db }, { NoteStore }, { showConflictModal }, cloudSync] = await Promise.all([
+    import('../store/db.js'),
+    import('../store/NoteStore.js'),
+    import('../components/ConflictModal.js'),
+    import('./cloudSync.js'),
+  ]);
+
+  const localNote = await db.notes.get(noteId);
+  if (!localNote) return;
+
+  const jsonStr = await NoteStore.exportJSON(noteId);
+  const localNoteJson = JSON.parse(jsonStr);
+
+  const action = await showConflictModal({
+    serverNote,
+    localNoteJson,
+    localEditedAt: localNote.editedAt,
+  });
+
+  if (action === 'overwrite') {
+    await cloudSync.resolveOverwriteServer(noteId);
+    await db.notes.update(noteId, { location: 'cloud' });
+  } else if (action === 'use-server') {
+    await cloudSync.resolveUseServer(noteId, serverNote);
+    await db.notes.update(noteId, { location: 'cloud' });
+  } else if (action === 'keep-both') {
+    await cloudSync.resolveKeepBoth(noteId, serverNote);
+    await db.notes.update(noteId, { location: 'cloud' });
+  }
+  // cancel → 아무 것도 안 함 (위치도 승격하지 않음)
+}
+
+async function clearCloudCache() {
+  const [{ db }, { NoteStore }] = await Promise.all([
+    import('../store/db.js'),
+    import('../store/NoteStore.js'),
+  ]);
+  const all = await db.notes.toArray();
+  for (const n of all) {
+    if (n.location === 'cloud') {
+      await NoteStore.permanentlyDeleteNote(n.id);
+    }
+  }
 }
 
 /**

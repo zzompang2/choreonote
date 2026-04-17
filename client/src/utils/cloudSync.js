@@ -7,9 +7,10 @@ import { t } from './i18n.js';
 
 /**
  * 클라우드 동기화 유틸리티
- * - IndexedDB가 항상 primary (source of truth)
- * - 로그인 시 저장하면 서버에도 업로드
- * - 새 기기에서 수동으로 가져오기
+ * - IndexedDB가 primary, 폴더 모델(location='local' | 'cloud')로 서버와 연결
+ * - location='cloud' 노트는 저장 시 자동 업로드 (uploadOnSave)
+ * - 로그인 직후 클라우드 노트 자동 다운로드/병합, 충돌은 호출자가 모달로 해결 (downloadAllOnLogin)
+ * - 폴더 간 이동은 moveNoteToCloud / moveNoteToLocal
  */
 
 // ── 노트를 서버에 업로드 (INSERT or UPDATE) ──
@@ -269,12 +270,131 @@ export async function deleteCloudNote(cloudId) {
 }
 
 // ── 노트 동기화 상태 확인 ──
+// @deprecated 폴더 모델로 전환 중. 위치(note.location)가 상태를 대체한다. Dashboard 리팩터 후 제거.
 
 export function getSyncStatus(note) {
   if (!note.cloudId) return 'local'; // 로컬 전용
   if (!note.cloudUpdatedAt) return 'unsynced'; // cloudId는 있지만 동기화 안 됨
   if (new Date(note.editedAt) > new Date(note.cloudUpdatedAt)) return 'unsynced'; // 로컬이 더 최신
   return 'synced'; // 동기화 완료
+}
+
+// ─────────────────────────────────────────────────────
+// 폴더 모델 API
+// ─────────────────────────────────────────────────────
+
+/**
+ * 저장 시 자동 업로드. note.location === 'cloud' 일 때만 실제 업로드한다.
+ * 반환: null (no-op) 또는 uploadNote 결과 ({ conflict, serverNote? | cloudId })
+ */
+export async function uploadOnSave(noteId) {
+  const localNote = await db.notes.get(noteId);
+  if (!localNote || localNote.location !== 'cloud') return null;
+  return uploadNote(noteId);
+}
+
+/**
+ * 노트를 클라우드 폴더로 이동: location 플립 + 서버 업로드.
+ * 로그인 필요. 결과는 uploadNote 결과와 동일 구조.
+ */
+export async function moveNoteToCloud(noteId) {
+  const user = await getCurrentUser();
+  if (!user) throw new Error('not-authenticated');
+
+  await db.notes.update(noteId, { location: 'cloud' });
+  return uploadNote(noteId);
+}
+
+/**
+ * 노트를 내 기기 폴더로 이동: 서버에서도 삭제, cloudId/cloudUpdatedAt 제거, location='local'.
+ * 서버 삭제 실패는 경고만 남기고 로컬 전환은 진행한다.
+ */
+export async function moveNoteToLocal(noteId) {
+  const localNote = await db.notes.get(noteId);
+  if (!localNote) return;
+
+  if (localNote.cloudId) {
+    try {
+      await deleteCloudNote(localNote.cloudId);
+    } catch (err) {
+      console.warn('Cloud delete failed during moveNoteToLocal:', err);
+    }
+  }
+
+  await db.notes.update(noteId, {
+    location: 'local',
+    cloudId: undefined,
+    cloudUpdatedAt: undefined,
+  });
+}
+
+/**
+ * 로그인 직후 호출. 서버의 모든 노트를 훑으며:
+ *  - 로컬에 cloudId 매칭 없음 → 새로 다운로드 (location='cloud')
+ *  - 매칭 있고 서버만 최신 → 서버 버전으로 덮어씀 + 승격
+ *  - 매칭 있고 양쪽 다 변경 → conflicts에 push (호출자가 모달)
+ *  - 매칭 있고 로컬이 최신/동일 → 폴더만 'cloud'로 승격
+ * 반환: { downloaded, merged, conflicts: [{noteId, serverNote}], errors }
+ */
+export async function downloadAllOnLogin() {
+  const result = { downloaded: 0, merged: 0, conflicts: [], errors: [] };
+
+  const user = await getCurrentUser();
+  if (!user) return result;
+
+  let cloudNotes;
+  try {
+    cloudNotes = await fetchCloudNotes();
+  } catch (err) {
+    console.error('downloadAllOnLogin: fetch failed', err);
+    result.errors.push({ error: err });
+    return result;
+  }
+
+  const allLocalNotes = await db.notes.toArray();
+  const localByCloudId = new Map();
+  for (const n of allLocalNotes) {
+    if (n.cloudId) localByCloudId.set(n.cloudId, n);
+  }
+
+  for (const cn of cloudNotes) {
+    try {
+      const local = localByCloudId.get(cn.id);
+      if (!local) {
+        const newNoteId = await NoteStore.importJSON(JSON.stringify(cn.note_json));
+        await db.notes.update(newNoteId, {
+          cloudId: cn.id,
+          cloudUpdatedAt: cn.updated_at,
+          location: 'cloud',
+        });
+        result.downloaded++;
+        continue;
+      }
+
+      const serverTime = new Date(cn.updated_at).getTime();
+      const localCloudTime = local.cloudUpdatedAt ? new Date(local.cloudUpdatedAt).getTime() : 0;
+      const localEditedTime = local.editedAt ? new Date(local.editedAt).getTime() : 0;
+
+      const serverChanged = serverTime > localCloudTime;
+      const localChanged = localEditedTime > localCloudTime;
+
+      if (serverChanged && localChanged) {
+        result.conflicts.push({ noteId: local.id, serverNote: cn });
+      } else if (serverChanged) {
+        await resolveUseServer(local.id, cn);
+        await db.notes.update(local.id, { location: 'cloud' });
+        result.merged++;
+      } else {
+        await db.notes.update(local.id, { location: 'cloud' });
+        result.merged++;
+      }
+    } catch (err) {
+      console.error('downloadAllOnLogin: merge failed for', cn.id, err);
+      result.errors.push({ cloudId: cn.id, error: err });
+    }
+  }
+
+  return result;
 }
 
 // ── 노트 요약 (충돌 모달용) ──

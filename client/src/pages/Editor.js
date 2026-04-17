@@ -16,7 +16,7 @@ import {
 import { t, getLang, setLang, getAvailableLangs } from '../utils/i18n.js';
 import { buildHelpPanelHTML, initEmbeddedChat } from '../components/ChatBot.js';
 import { generateShareURL } from '../utils/share.js';
-import { uploadNote, checkServerNewer, resolveOverwriteServer, resolveUseServer, resolveKeepBoth } from '../utils/cloudSync.js';
+import { uploadOnSave, checkServerNewer, resolveOverwriteServer, resolveUseServer, resolveKeepBoth } from '../utils/cloudSync.js';
 import { getCurrentUser } from '../utils/auth.js';
 import { showConflictModal } from '../components/ConflictModal.js';
 
@@ -3161,21 +3161,19 @@ function setupHeader(container, noteId) {
       const user = await getCurrentUser();
       if (!user) return;
 
-      const localNote = await NoteStore.loadNote(noteId);
-      if (!localNote) return;
-
-      // 최초 동기화 안내
       const raw = await db.notes.get(noteId);
+      if (!raw || raw.location !== 'cloud') return;
+
+      // 최초 업로드 직전 음악 파일 제외 안내 (세션당 1회)
       if (!raw.cloudId && !sessionStorage.getItem(`cloud-notice-${noteId}`)) {
         sessionStorage.setItem(`cloud-notice-${noteId}`, '1');
         showToast(t('cloudFirstSync'), 4000);
       }
 
-      const result = await uploadNote(noteId);
+      const result = await uploadOnSave(noteId);
       if (!result) return;
 
       if (result.conflict) {
-        // 충돌 해결 모달
         const jsonStr = await NoteStore.exportJSON(noteId);
         const localNoteJson = JSON.parse(jsonStr);
         const action = await showConflictModal({
@@ -3189,15 +3187,12 @@ function setupHeader(container, noteId) {
           showToast(t('cloudUploaded'));
         } else if (action === 'use-server') {
           await resolveUseServer(noteId, result.serverNote);
-          // 에디터 새로고침
           navigate(`/edit/${noteId}`);
         } else if (action === 'keep-both') {
           await resolveKeepBoth(noteId, result.serverNote);
           showToast(t('cloudUploaded'));
         }
         // cancel → 아무것도 안 함
-      } else if (!silent) {
-        // 성공 시 별도 토스트 없음 (이미 '저장 완료' 표시됨)
       }
     } catch (err) {
       console.warn('Cloud sync failed:', err);

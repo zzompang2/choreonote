@@ -37,6 +37,7 @@ export const NoteStore = {
         musicName: null,
         musicBlobId: null,
         duration: 30000,
+        location: 'local',
         createdAt: now,
         editedAt: now,
       });
@@ -275,6 +276,7 @@ export const NoteStore = {
         gridGap: data.note.gridGap || undefined,
         showWings: data.note.showWings != null ? data.note.showWings : undefined,
         markers: data.note.markers || undefined,
+        location: 'local',
         createdAt: now,
         editedAt: now,
       });
