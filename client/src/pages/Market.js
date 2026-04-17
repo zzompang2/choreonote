@@ -3,9 +3,10 @@ import { t } from '../utils/i18n.js';
 import { showToast } from '../utils/toast.js';
 import { renderFormationThumbnail } from '../utils/thumbnail.js';
 import { fetchPresets, uploadPreset, incrementDownload, deletePreset, buildPresetData } from '../utils/market.js';
-import { getCurrentUser, requireAuth, signOut } from '../utils/auth.js';
+import { getCurrentUser, requireAuth } from '../utils/auth.js';
 import { NoteStore } from '../store/NoteStore.js';
 import { PlaybackEngine } from '../engine/PlaybackEngine.js';
+import { renderAppLayout } from '../components/AppLayout.js';
 
 const PAGE_SIZE = 20;
 
@@ -24,22 +25,28 @@ const TITLE_EXAMPLES = [
 
 // 인원수 필터 정의
 const DANCER_FILTERS = [
-  { label: () => t('marketFilterAll'), min: null, max: null },
-  { label: () => '2', min: 2, max: 2 },
-  { label: () => '3', min: 3, max: 3 },
-  { label: () => '4', min: 4, max: 4 },
-  { label: () => '5', min: 5, max: 5 },
-  { label: () => '6', min: 6, max: 6 },
-  { label: () => '7', min: 7, max: 7 },
-  { label: () => '8', min: 8, max: 8 },
-  { label: () => t('marketFilter9plus'), min: 9, max: null },
+  { label: () => t('marketFilterAll'), selectLabel: () => t('marketFilterAll'), min: null, max: null },
+  { label: () => '2', selectLabel: () => t('marketDancerCount', { count: 2 }), min: 2, max: 2 },
+  { label: () => '3', selectLabel: () => t('marketDancerCount', { count: 3 }), min: 3, max: 3 },
+  { label: () => '4', selectLabel: () => t('marketDancerCount', { count: 4 }), min: 4, max: 4 },
+  { label: () => '5', selectLabel: () => t('marketDancerCount', { count: 5 }), min: 5, max: 5 },
+  { label: () => '6', selectLabel: () => t('marketDancerCount', { count: 6 }), min: 6, max: 6 },
+  { label: () => '7', selectLabel: () => t('marketDancerCount', { count: 7 }), min: 7, max: 7 },
+  { label: () => '8', selectLabel: () => t('marketDancerCount', { count: 8 }), min: 8, max: 8 },
+  { label: () => t('marketFilter9plus'), selectLabel: () => t('marketFilter9plus'), min: 9, max: null },
 ];
 
 export async function renderMarket(container) {
-  container.innerHTML = '';
-  const div = document.createElement('div');
-  div.className = 'market';
-  container.appendChild(div);
+  let div;
+  await renderAppLayout(container, {
+    active: 'market',
+    renderContent: async (content) => {
+      content.innerHTML = '';
+      div = document.createElement('div');
+      div.className = 'market';
+      content.appendChild(div);
+    },
+  });
 
   let currentPage = 0;
   let sortBy = 'created_at';
@@ -65,33 +72,35 @@ export async function renderMarket(container) {
 
     div.innerHTML = `
       <div class="market__header">
-        <div style="display:flex;align-items:center;gap:12px">
-          <button class="btn btn--ghost btn--sm" id="market-back">${t('marketBack')}</button>
-          <h1 class="market__title">${t('market')}</h1>
-        </div>
-        <div style="display:flex;gap:8px;align-items:center">
-          <button class="btn btn--primary btn--sm" id="market-upload-btn">${t('marketUpload')}</button>
-          ${currentUser
-            ? `<button class="btn btn--ghost btn--sm" id="market-logout-btn" title="${t('marketLogout')}">${currentUser.email?.split('@')[0] || '?'}</button>`
-            : ''}
-        </div>
+        <h1 class="market__title">${t('market')}</h1>
+        <button class="btn btn--primary btn--sm" id="market-upload-btn">${t('marketUpload')}</button>
       </div>
 
       <div class="market__filters">
         <div class="market__filter-row">
-          <div class="market__filter-group">
-            ${DANCER_FILTERS.map((f, i) => `
-              <button class="market__filter-chip${i === filterIndex ? ' market__filter-chip--active' : ''}" data-filter="${i}">${f.label()}</button>
-            `).join('')}
+          <div class="market__filter-left">
+            <div class="market__filter-group market__dancer-chips">
+              ${DANCER_FILTERS.map((f, i) => `
+                <button class="market__filter-chip${i === filterIndex ? ' market__filter-chip--active' : ''}" data-filter="${i}">${f.label()}</button>
+              `).join('')}
+            </div>
+            <select class="market__dancer-select" id="market-dancer-select">
+              ${DANCER_FILTERS.map((f, i) => `
+                <option value="${i}"${i === filterIndex ? ' selected' : ''}>${f.selectLabel()}</option>
+              `).join('')}
+            </select>
+            <button class="market__tag-filter-btn" id="market-tag-filter-btn">
+              ${t('marketTagFilterBtn')}${filterTags.length > 0 ? ` (${filterTags.length})` : ''}
+            </button>
           </div>
           <div class="market__filter-right">
-            <button class="market__audience-btn" id="market-audience" title="${t('marketAudienceToggle')}">
-              <span class="market__audience-icon${viewAudience === 'top' ? ' market__audience-icon--top' : ''}">👥</span>
-            </button>
             <select class="market__sort" id="market-sort">
               <option value="created_at"${sortBy === 'created_at' ? ' selected' : ''}>${t('marketSortNewest')}</option>
               <option value="download_count"${sortBy === 'download_count' ? ' selected' : ''}>${t('marketSortPopular')}</option>
             </select>
+            <button class="market__audience-btn" id="market-audience" title="${t('marketAudienceToggle')}">
+              ${viewAudience === 'top' ? t('marketAudienceTop') : t('marketAudienceBottom')}
+            </button>
           </div>
         </div>
         <div class="market__filter-group market__tag-filters">
@@ -122,18 +131,7 @@ export async function renderMarket(container) {
     `;
 
     // 이벤트 바인딩
-    div.querySelector('#market-back').addEventListener('click', () => navigate('/dashboard'));
-
     div.querySelector('#market-upload-btn').addEventListener('click', () => openUploadModal());
-
-    const logoutBtn = div.querySelector('#market-logout-btn');
-    if (logoutBtn) {
-      logoutBtn.addEventListener('click', async () => {
-        await signOut();
-        currentUser = null;
-        loadAndRender();
-      });
-    }
 
     div.querySelector('#market-audience').addEventListener('click', () => {
       viewAudience = viewAudience === 'bottom' ? 'top' : 'bottom';
@@ -154,6 +152,12 @@ export async function renderMarket(container) {
       });
     });
 
+    div.querySelector('#market-dancer-select').addEventListener('change', (e) => {
+      filterIndex = Number(e.target.value);
+      currentPage = 0;
+      loadAndRender();
+    });
+
     div.querySelectorAll('.market__filter-chip[data-tag]').forEach(btn => {
       btn.addEventListener('click', () => {
         const tag = btn.dataset.tag;
@@ -164,6 +168,8 @@ export async function renderMarket(container) {
         loadAndRender();
       });
     });
+
+    div.querySelector('#market-tag-filter-btn').addEventListener('click', () => openTagFilterModal());
 
     const prevBtn = div.querySelector('#market-prev');
     const nextBtn = div.querySelector('#market-next');
@@ -203,6 +209,60 @@ export async function renderMarket(container) {
     `;
   }
 
+  // --- 태그 필터 모달 (모바일) ---
+  function openTagFilterModal() {
+    const overlay = document.createElement('div');
+    overlay.className = 'market-modal';
+    overlay.innerHTML = `
+      <div class="market-modal__box market-modal__box--tag-filter">
+        <div class="market-modal__top">
+          <div class="market-modal__header">
+            <h2>${t('marketMoodTags')}</h2>
+            <button class="market-modal__close">✕</button>
+          </div>
+        </div>
+        <div class="market-modal__body">
+          <div class="market-upload__tags">
+            ${MOOD_TAGS.map(tag => `
+              <button type="button" class="market-upload__tag-chip${filterTags.includes(tag) ? ' market-upload__tag-chip--active' : ''}" data-tag="${tag}">${t('marketTag_' + tag)}</button>
+            `).join('')}
+          </div>
+        </div>
+        <div class="market-modal__bottom">
+          <div class="market-modal__actions">
+            <button class="btn btn--ghost" id="tag-filter-clear">${t('marketTagFilterClear')}</button>
+            <button class="btn btn--primary" id="tag-filter-apply">${t('marketTagFilterApply')}</button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    const close = () => overlay.remove();
+    overlay.querySelector('.market-modal__close').addEventListener('click', close);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+
+    overlay.querySelectorAll('.market-upload__tag-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        chip.classList.toggle('market-upload__tag-chip--active');
+      });
+    });
+
+    overlay.querySelector('#tag-filter-clear').addEventListener('click', () => {
+      overlay.querySelectorAll('.market-upload__tag-chip').forEach(c =>
+        c.classList.remove('market-upload__tag-chip--active'));
+    });
+
+    overlay.querySelector('#tag-filter-apply').addEventListener('click', () => {
+      filterTags = Array.from(overlay.querySelectorAll('.market-upload__tag-chip--active'))
+        .map(c => c.dataset.tag);
+      currentPage = 0;
+      close();
+      loadAndRender();
+    });
+  }
+
   // --- 상세 모달 (미니 플레이어) ---
   function openDetailModal(preset) {
     const pd = preset.preset_data;
@@ -216,7 +276,7 @@ export async function renderMarket(container) {
     const stageHeight = pd.note.stageHeight || 400;
     const dancerShape = pd.note.dancerShape || 'pentagon';
     const dancerScale = pd.note.dancerScale || 1.0;
-    const showWings = pd.note.showWings || false;
+    const showWings = false;
 
     // 엔진용 dancers/formations 변환 (dancerIndex → dancerId, 좌표 flip)
     const engineDancers = pd.dancers.map((d, i) => ({ id: i, name: d.name, color: d.color }));
@@ -236,8 +296,19 @@ export async function renderMarket(container) {
       })),
     }));
 
+    // 총 길이를 대형 수 × 1초로 정규화 (상대 비율 유지). 단일 대형이면 정적 표시.
+    const isSingle = engineFormations.length <= 1;
+    const previewDuration = engineFormations.length * 1000;
     const lastF = engineFormations[engineFormations.length - 1];
-    const totalMs = lastF ? lastF.startTime + lastF.duration : 0;
+    const rawTotalMs = lastF ? lastF.startTime + lastF.duration : 0;
+    if (!isSingle && rawTotalMs > 0) {
+      const scale = previewDuration / rawTotalMs;
+      for (const f of engineFormations) {
+        f.startTime = f.startTime * scale;
+        f.duration = f.duration * scale;
+      }
+    }
+    const totalMs = isSingle ? 0 : previewDuration;
 
     overlay.innerHTML = `
       <div class="market-modal__box market-modal__box--detail">
@@ -256,22 +327,23 @@ export async function renderMarket(container) {
             <div class="market-modal__canvas-wrap">
               <canvas class="market-modal__canvas" data-player-canvas width="480" height="320"></canvas>
             </div>
+            ${isSingle ? '' : `
             <div class="market-modal__timeline" data-timeline>
               <div class="market-modal__timeline-track"></div>
               ${engineFormations.map((f, i) => {
-                const startPct = totalMs > 0 ? (f.startTime / totalMs) * 100 : 0;
-                const widthPct = totalMs > 0 ? (f.duration / totalMs) * 100 : 0;
+                const startPct = (f.startTime / totalMs) * 100;
+                const widthPct = (f.duration / totalMs) * 100;
                 return `<div class="market-modal__timeline-box" data-fidx="${i}" style="left:${startPct}%;width:${widthPct}%"></div>`;
               }).join('')}
               <div class="market-modal__playhead" data-playhead style="left:0%"></div>
             </div>
             <div class="market-modal__player-controls">
               <button class="market-modal__play-btn" data-play-btn title="${t('marketPlay')}" aria-label="${t('marketPlay')}">▶</button>
-              <span class="market-modal__time" data-time>0:00 / ${formatTime(totalMs)}</span>
               <div class="market-modal__formation-chips">
                 ${engineFormations.map((_, i) => `<button class="market-modal__chip" data-chip="${i}">${i + 1}</button>`).join('')}
               </div>
             </div>
+            `}
           </div>
         </div>
         <div class="market-modal__bottom">
@@ -287,12 +359,6 @@ export async function renderMarket(container) {
 
     // --- 엔진 및 렌더링 ---
     const canvas = overlay.querySelector('[data-player-canvas]');
-    const playBtn = overlay.querySelector('[data-play-btn]');
-    const timeEl = overlay.querySelector('[data-time]');
-    const playhead = overlay.querySelector('[data-playhead]');
-    const timeline = overlay.querySelector('[data-timeline]');
-    const chips = overlay.querySelectorAll('.market-modal__chip');
-
     const engine = new PlaybackEngine();
     engine.duration = totalMs || 1;
     engine.setFormations(engineFormations, engineDancers);
@@ -303,77 +369,81 @@ export async function renderMarket(container) {
         dancers: engineDancers, positions,
         stageWidth, stageHeight, dancerShape, dancerScale, showWings,
         hideOffstage: true,
+        showAudience: viewAudience,
       });
-    }
-
-    function setPlayIcon(playing, ended) {
-      playBtn.textContent = playing ? '❚❚' : (ended ? '↻' : '▶');
-      playBtn.title = playing ? t('marketPause') : (ended ? t('marketReplay') : t('marketPlay'));
-      playBtn.setAttribute('aria-label', playBtn.title);
-    }
-
-    function updateChipsActive(ms) {
-      let activeIdx = -1;
-      for (let i = 0; i < engineFormations.length; i++) {
-        const f = engineFormations[i];
-        if (ms >= f.startTime && ms < f.startTime + f.duration) { activeIdx = i; break; }
-      }
-      chips.forEach((c, i) => c.classList.toggle('market-modal__chip--active', i === activeIdx));
     }
 
     engine.onPositionsUpdate = (positions) => drawFrame(positions);
-    engine.onTimeUpdate = (ms) => {
-      const pct = totalMs > 0 ? Math.min(100, (ms / totalMs) * 100) : 0;
-      playhead.style.left = `${pct}%`;
-      timeEl.textContent = `${formatTime(ms)} / ${formatTime(totalMs)}`;
-      updateChipsActive(ms);
-    };
-    engine.onPlaybackEnd = () => setPlayIcon(false, true);
-
-    // 초기 프레임
     drawFrame(engine.calcPositionsAt(0));
-    updateChipsActive(0);
 
-    // 재생/일시정지
-    playBtn.addEventListener('click', () => {
-      if (engine.isPlaying) {
-        engine.pause();
-        setPlayIcon(false, false);
-      } else {
-        if (engine.currentTime >= totalMs) engine.seek(0);
-        engine.play();
-        setPlayIcon(true, false);
+    if (!isSingle) {
+      const playBtn = overlay.querySelector('[data-play-btn]');
+      const playhead = overlay.querySelector('[data-playhead]');
+      const timeline = overlay.querySelector('[data-timeline]');
+      const chips = overlay.querySelectorAll('.market-modal__chip');
+
+      function setPlayIcon(playing, ended) {
+        playBtn.textContent = playing ? '❚❚' : (ended ? '↻' : '▶');
+        playBtn.title = playing ? t('marketPause') : (ended ? t('marketReplay') : t('marketPlay'));
+        playBtn.setAttribute('aria-label', playBtn.title);
       }
-    });
 
-    // 타임라인 클릭/드래그 seek
-    function seekFromEvent(e) {
-      const rect = timeline.getBoundingClientRect();
-      const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
-      const pct = Math.max(0, Math.min(1, x / rect.width));
-      engine.seek(pct * totalMs);
-      setPlayIcon(engine.isPlaying, false);
-    }
-    timeline.addEventListener('mousedown', (e) => {
-      if (e.target.closest('[data-chip]')) return;
-      seekFromEvent(e);
-      const onMove = (ev) => seekFromEvent(ev);
-      const onUp = () => {
-        window.removeEventListener('mousemove', onMove);
-        window.removeEventListener('mouseup', onUp);
+      function updateChipsActive(ms) {
+        let activeIdx = -1;
+        for (let i = 0; i < engineFormations.length; i++) {
+          const f = engineFormations[i];
+          if (ms >= f.startTime && ms < f.startTime + f.duration) { activeIdx = i; break; }
+        }
+        chips.forEach((c, i) => c.classList.toggle('market-modal__chip--active', i === activeIdx));
+      }
+
+      engine.onTimeUpdate = (ms) => {
+        const pct = Math.min(100, (ms / totalMs) * 100);
+        playhead.style.left = `${pct}%`;
+        updateChipsActive(ms);
       };
-      window.addEventListener('mousemove', onMove);
-      window.addEventListener('mouseup', onUp);
-    });
+      engine.onPlaybackEnd = () => setPlayIcon(false, true);
 
-    // 대형 칩 클릭 → 해당 대형 시작으로 이동
-    chips.forEach((chip) => {
-      chip.addEventListener('click', () => {
-        const i = Number(chip.dataset.chip);
-        engine.seek(engineFormations[i].startTime);
-        setPlayIcon(engine.isPlaying, false);
+      updateChipsActive(0);
+
+      playBtn.addEventListener('click', () => {
+        if (engine.isPlaying) {
+          engine.pause();
+          setPlayIcon(false, false);
+        } else {
+          if (engine.currentTime >= totalMs) engine.seek(0);
+          engine.play();
+          setPlayIcon(true, false);
+        }
       });
-    });
+
+      function seekFromEvent(e) {
+        const rect = timeline.getBoundingClientRect();
+        const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+        const pct = Math.max(0, Math.min(1, x / rect.width));
+        engine.seek(pct * totalMs);
+        setPlayIcon(engine.isPlaying, false);
+      }
+      timeline.addEventListener('mousedown', (e) => {
+        if (e.target.closest('[data-chip]')) return;
+        seekFromEvent(e);
+        const onMove = (ev) => seekFromEvent(ev);
+        const onUp = () => {
+          window.removeEventListener('mousemove', onMove);
+          window.removeEventListener('mouseup', onUp);
+        };
+        window.addEventListener('mousemove', onMove);
+        window.addEventListener('mouseup', onUp);
+      });
+
+      chips.forEach((chip) => {
+        chip.addEventListener('click', () => {
+          const i = Number(chip.dataset.chip);
+          engine.seek(engineFormations[i].startTime);
+          setPlayIcon(engine.isPlaying, false);
+        });
+      });
+    }
 
     // --- 닫기 / 가져오기 ---
     const close = () => {
@@ -648,7 +718,7 @@ export async function renderMarket(container) {
           stageHeight: noteData.note.stageHeight || 400,
           dancerShape: noteData.note.dancerShape || 'pentagon',
           dancerScale: noteData.note.dancerScale || 1.0,
-          showWings: noteData.note.showWings || false,
+          showWings: false,
           hideOffstage: true,
         });
       }
@@ -768,7 +838,7 @@ export async function renderMarket(container) {
           stageHeight: noteData.note.stageHeight || 400,
           dancerShape: noteData.note.dancerShape || 'pentagon',
           dancerScale: noteData.note.dancerScale || 1.0,
-          showWings: noteData.note.showWings || false,
+          showWings: false,
           hideOffstage: true,
         });
       });
@@ -851,7 +921,7 @@ function renderPresetThumbnail(canvas, presetData, targetAudience) {
     stageHeight: pd.note.stageHeight || 400,
     dancerShape: pd.note.dancerShape || 'pentagon',
     dancerScale: pd.note.dancerScale || 1.0,
-    showWings: pd.note.showWings || false,
+    showWings: false,
     hideOffstage: true,
   });
 }

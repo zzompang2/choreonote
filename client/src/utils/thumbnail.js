@@ -4,7 +4,7 @@ import { DANCER_RADIUS } from './constants.js';
  * 대형 데이터를 캔버스에 썸네일로 렌더링.
  * Dashboard 노트 카드, 마켓 프리셋 카드 등에서 공통 사용.
  */
-export function renderFormationThumbnail(canvas, { dancers, positions, stageWidth, stageHeight, dancerShape, dancerScale, showWings, hideOffstage }) {
+export function renderFormationThumbnail(canvas, { dancers, positions, stageWidth, stageHeight, dancerShape, dancerScale, showWings, hideOffstage, showAudience }) {
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
   const w = canvas.width;
@@ -27,16 +27,27 @@ export function renderFormationThumbnail(canvas, { dancers, positions, stageWidt
   const halfW = stageWidth / 2;
   const halfH = stageHeight / 2;
 
+  // 관객석 strip (ex. 상세 모달 캔버스)
+  const audienceTop = showAudience === 'top';
+  const audienceBottom = showAudience === 'bottom';
+  const seatRowH = 6;
+  const seatRowSpacing = 2;
+  const seatStageGap = 4;
+  const seatStripH = (audienceTop || audienceBottom)
+    ? seatRowH * 2 + seatRowSpacing + seatStageGap
+    : 0;
+
   const wingRatio = showWings ? 0.08 : 0;
   const stageX = w * wingRatio;
-  const stageY = h * wingRatio;
+  const stageY = h * wingRatio + (audienceTop ? seatStripH : 0);
   const stageW = w * (1 - wingRatio * 2);
-  const stageH = h * (1 - wingRatio * 2);
+  const stageH = h * (1 - wingRatio * 2) - seatStripH;
   const scaleX = stageW / stageWidth;
   const scaleY = stageH / stageHeight;
   const scale = Math.min(scaleX, scaleY);
 
-  ctx.fillStyle = showWings ? wingBg : cardBg;
+  const hasAudience = audienceTop || audienceBottom;
+  ctx.fillStyle = (showWings || hasAudience) ? wingBg : cardBg;
   ctx.fillRect(0, 0, w, h);
 
   ctx.fillStyle = stageBg;
@@ -47,6 +58,23 @@ export function renderFormationThumbnail(canvas, { dancers, positions, stageWidt
   ctx.setLineDash([3, 2]);
   ctx.strokeRect(stageX, stageY, stageW, stageH);
   ctx.setLineDash([]);
+
+  if (audienceTop || audienceBottom) {
+    const seatW = 14;
+    const seatHGap = 3;
+    const cols = Math.max(1, Math.floor((stageW - seatHGap) / (seatW + seatHGap)));
+    const totalW = cols * seatW + (cols - 1) * seatHGap;
+    const seatStartX = stageX + (stageW - totalW) / 2;
+    for (let r = 0; r < 2; r++) {
+      const rowY = audienceTop
+        ? stageY - seatStageGap - seatRowH - r * (seatRowH + seatRowSpacing)
+        : stageY + stageH + seatStageGap + r * (seatRowH + seatRowSpacing);
+      ctx.fillStyle = `rgba(255,255,255,${r === 0 ? 0.22 : 0.11})`;
+      for (let c = 0; c < cols; c++) {
+        ctx.fillRect(seatStartX + c * (seatW + seatHGap), rowY, seatW, seatRowH);
+      }
+    }
+  }
 
   const r = DANCER_RADIUS * dancerScale * scale;
   for (const pos of positions) {

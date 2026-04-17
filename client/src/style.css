@@ -4071,6 +4071,7 @@ html:has(.editor) {
   padding: 12px 20px;
   gap: 8px;
   border-bottom: 1px solid var(--border);
+  min-width: 0;
 }
 
 .market__filter-row {
@@ -4078,6 +4079,7 @@ html:has(.editor) {
   justify-content: space-between;
   align-items: center;
   gap: 12px;
+  min-width: 0;
 }
 
 .market__filter-group {
@@ -4088,34 +4090,41 @@ html:has(.editor) {
   min-width: 0;
 }
 
+.market__filter-left,
 .market__filter-right {
   display: flex;
   gap: 8px;
   align-items: center;
+  min-width: 0;
 }
 
-.market__audience-btn {
+.market__filter-left {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.market__audience-btn,
+.market__tag-filter-btn {
   background: var(--bg-secondary);
+  color: var(--text-primary);
   border: 1px solid var(--border-strong);
   border-radius: 6px;
-  padding: 4px 8px;
+  padding: 4px 10px;
   cursor: pointer;
-  font-size: 16px;
-  line-height: 1;
+  font-size: 13px;
+  line-height: 1.4;
+  white-space: nowrap;
   transition: border-color 0.15s;
 }
 
-.market__audience-btn:hover {
+.market__audience-btn:hover,
+.market__tag-filter-btn:hover {
   border-color: var(--accent);
 }
 
-.market__audience-icon {
-  display: inline-block;
-  transition: transform 0.2s;
-}
-
-.market__audience-icon--top {
-  transform: rotate(180deg);
+.market__tag-filter-btn {
+  display: none;
+  align-self: flex-start;
 }
 
 .market__filter-chip {
@@ -4143,13 +4152,18 @@ html:has(.editor) {
   font-weight: 600;
 }
 
-.market__sort {
+.market__sort,
+.market__dancer-select {
   background: var(--bg-secondary);
   color: var(--text-primary);
   border: 1px solid var(--border-strong);
   border-radius: 6px;
   padding: 4px 8px;
   font-size: 13px;
+}
+
+.market__dancer-select {
+  display: none;
 }
 
 .market__body {
@@ -4469,13 +4483,6 @@ html:has(.editor) {
 
 .market-modal__play-btn:hover {
   filter: brightness(1.1);
-}
-
-.market-modal__time {
-  font-size: 12px;
-  color: var(--text-secondary);
-  font-variant-numeric: tabular-nums;
-  min-width: 72px;
 }
 
 .market-modal__formation-chips {
@@ -4909,8 +4916,20 @@ html:has(.editor) {
     padding: 12px 12px;
   }
   .market__filters {
-    flex-wrap: wrap;
     padding: 8px 12px;
+  }
+  .market__filter-row {
+    flex-wrap: wrap;
+  }
+  .market__tag-filters,
+  .market__dancer-chips {
+    display: none;
+  }
+  .market__dancer-select {
+    display: inline-block;
+  }
+  .market__tag-filter-btn {
+    display: inline-flex;
   }
   .market__body {
     padding: 12px;
