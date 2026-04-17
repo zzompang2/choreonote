@@ -4992,6 +4992,23 @@ html:has(.editor) {
   transform: scale(0.95);
 }
 
+/* 업로드 대기 (재시도) 배지 */
+.note-card__pending {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(240, 173, 78, 0.95);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+  pointer-events: auto;
+}
+
 .card-menu {
   min-width: 180px;
   background: var(--bg-card);

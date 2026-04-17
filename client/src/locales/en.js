@@ -450,4 +450,5 @@ export const en = {
   moveToLocalSuccess: 'Moved to this device',
   moveFail: 'Move failed',
   cardMoreMenu: 'More',
+  cloudUploadPending: 'Upload pending — will retry on next save',
 };

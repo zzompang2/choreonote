@@ -1,6 +1,6 @@
 # 진행 상황
 
-## 현재 상태: 클라우드/로컬 폴더 모델 UI 연결까지 완료 · 다음은 브라우저 통합 검증
+## 현재 상태: 클라우드/로컬 폴더 모델 완료(업로드 실패 `↺` 포함) · 다음은 브라우저 통합 검증
 
 ### 최근 완료 (2026-04-17)
 - **마켓 UI 개선**
@@ -17,7 +17,8 @@
   - `auth.js`: `initAuthHandler` — 명시적 로그아웃/세션 만료 분기, `SIGNED_IN` 시 pending 플래그 기반 자동 동기화, `wasSessionExpired()` 배너 상태
   - `cloudSync`: `uploadNote` → `uploadOnSave` 이름 변경, `moveNoteToCloud/Local`, `downloadAllOnLogin`
   - `Editor`: 저장 시 `location==='cloud'`만 자동 업로드
-  - `Dashboard`: 💻 내 기기 / ☁ 클라우드 두 섹션 그리드, 빈 섹션 힌트, 카드 ⋯ 메뉴(이동/삭제 통합), 세션 만료 배너, `app:cloud-notes-updated` 이벤트 재렌더
+  - `Dashboard`: 💻 내 기기 / ☁ 클라우드 두 섹션 그리드, 빈 섹션 힌트, 카드 ⋯ 메뉴(이동/삭제 통합, 히트 영역 썸네일 오른쪽 상단까지 확장), 세션 만료 배너, `app:cloud-notes-updated` 이벤트 재렌더
+  - 업로드 실패 `↺` 배지: `uploadOnSave`/`moveNoteToCloud` 실패 시 `cloudUploadPending` 플래그 세움, 다음 성공 시 자동 해제. 카드 썸네일 좌상단에 주황색 오버레이
 - **사이드바 레이아웃 도입**
   - `components/AppLayout.js` — 220px 고정 사이드바 + 모바일(≤840px) 햄버거 drawer
   - 메뉴: 내 노트 / 마켓 / 커뮤니티(준비 중) / 휴지통
@@ -49,7 +50,7 @@
   - 로그인/로그아웃(의도 vs 세션 만료) 시 캐시·배너 동작
   - 기기 전환 (로그인 직후 다운로드 + cloudId 매칭 병합, 충돌 모달)
   - 폴더 이동 (로컬→클라우드 업로드, 클라우드→로컬 확인 모달 + 서버 삭제)
-  - 오프라인 편집 후 복구 (업로드 실패 시 `↺` 인디케이터, 다음 저장에 재시도 — 현재 재시도 로직 여부 확인 필요)
+  - 오프라인 편집 후 복구 (네트워크 끊고 저장 → `↺` 배지 확인 → 복구 후 저장 시 배지 해제 확인)
 - [ ] **사이드바 브라우저 검증**: `/dashboard` `/market` `/trash` 전환, 활성 메뉴 하이라이트, 모바일 drawer, user slot 드롭다운
 - [ ] **마켓 브라우저 검증**: 관객석 좌석 표시, 단일/다중 대형 재생, 모바일 필터 모달/드롭다운
 - [ ] **대열 마켓 2단계 이어서**:
@@ -64,8 +65,3 @@
 - Google OAuth 활성화 완료
 - preset_data JSONB 구조: version, note, dancers, dancerCount, formations, tags, thumbnailIndex
 
-### 폴더 모델 — 남은 구현 (5~8)
-5. **대시보드 UI** — 두 섹션 그리드, 카드 더보기 메뉴, 업로드 실패 인디케이터, 세션 만료 배너
-6. **i18n 추가 키**: 이미 staged된 `folderLocal/Cloud`, `moveToCloud/Local`, `confirmMoveToLocal`, `logoutConfirm`, `sessionExpiredBanner`, `cloudRestoreToast`, `cardMoreMenu` 활용
-7. **CSS 정리**: `.note-card__sync*` 제거, `.dashboard__folder-section` 신설
-8. **수동 검증**: 4가지 시나리오 (로그인/로그아웃 의도·만료, 기기 전환, 폴더 이동, 오프라인 복구)

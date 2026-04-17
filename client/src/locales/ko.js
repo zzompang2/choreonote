@@ -450,4 +450,5 @@ export const ko = {
   moveToLocalSuccess: '내 기기로 이동했습니다',
   moveFail: '이동에 실패했습니다',
   cardMoreMenu: '더 보기',
+  cloudUploadPending: '업로드 대기 중 — 다음 저장 시 재시도합니다',
 };
