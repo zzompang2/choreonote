@@ -392,6 +392,9 @@ export const ko = {
   marketMyPresets: '내 대형',
   marketDeleteConfirm: '이 대형을 삭제할까요?',
   marketLogout: '로그아웃',
+  marketPlay: '재생',
+  marketPause: '일시정지',
+  marketReplay: '다시 재생',
 
   // Cloud sync
   cloudSynced: '클라우드 동기화됨',

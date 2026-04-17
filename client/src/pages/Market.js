@@ -5,6 +5,7 @@ import { renderFormationThumbnail } from '../utils/thumbnail.js';
 import { fetchPresets, uploadPreset, incrementDownload, deletePreset, buildPresetData } from '../utils/market.js';
 import { getCurrentUser, requireAuth, signOut } from '../utils/auth.js';
 import { NoteStore } from '../store/NoteStore.js';
+import { PlaybackEngine } from '../engine/PlaybackEngine.js';
 
 const PAGE_SIZE = 20;
 
@@ -202,13 +203,42 @@ export async function renderMarket(container) {
     `;
   }
 
-  // --- 상세 모달 ---
+  // --- 상세 모달 (미니 플레이어) ---
   function openDetailModal(preset) {
     const pd = preset.preset_data;
     const overlay = document.createElement('div');
     overlay.className = 'market-modal';
 
     const tags = pd.tags || [];
+    const srcAudience = pd.note.audienceDirection || 'bottom';
+    const flip = viewAudience !== srcAudience;
+    const stageWidth = pd.note.stageWidth || 600;
+    const stageHeight = pd.note.stageHeight || 400;
+    const dancerShape = pd.note.dancerShape || 'pentagon';
+    const dancerScale = pd.note.dancerScale || 1.0;
+    const showWings = pd.note.showWings || false;
+
+    // 엔진용 dancers/formations 변환 (dancerIndex → dancerId, 좌표 flip)
+    const engineDancers = pd.dancers.map((d, i) => ({ id: i, name: d.name, color: d.color }));
+    const engineFormations = pd.formations.map(f => ({
+      startTime: f.startTime,
+      duration: f.duration,
+      positions: f.positions.map(p => ({
+        dancerId: p.dancerIndex,
+        x: flip ? -p.x : p.x,
+        y: flip ? -p.y : p.y,
+        angle: flip ? (p.angle || 0) + 180 : (p.angle || 0),
+        waypoints: p.waypoints?.map(w => ({
+          ...w,
+          x: flip ? -w.x : w.x,
+          y: flip ? -w.y : w.y,
+        })),
+      })),
+    }));
+
+    const lastF = engineFormations[engineFormations.length - 1];
+    const totalMs = lastF ? lastF.startTime + lastF.duration : 0;
+
     overlay.innerHTML = `
       <div class="market-modal__box market-modal__box--detail">
         <div class="market-modal__top">
@@ -222,8 +252,26 @@ export async function renderMarket(container) {
           </div>
         </div>
         <div class="market-modal__body">
-          <div class="market-modal__previews">
-            ${pd.formations.map((_, i) => `<canvas data-detail-thumb="${i}" width="160" height="107"></canvas>`).join('')}
+          <div class="market-modal__player">
+            <div class="market-modal__canvas-wrap">
+              <canvas class="market-modal__canvas" data-player-canvas width="480" height="320"></canvas>
+            </div>
+            <div class="market-modal__timeline" data-timeline>
+              <div class="market-modal__timeline-track"></div>
+              ${engineFormations.map((f, i) => {
+                const startPct = totalMs > 0 ? (f.startTime / totalMs) * 100 : 0;
+                const widthPct = totalMs > 0 ? (f.duration / totalMs) * 100 : 0;
+                return `<div class="market-modal__timeline-box" data-fidx="${i}" style="left:${startPct}%;width:${widthPct}%"></div>`;
+              }).join('')}
+              <div class="market-modal__playhead" data-playhead style="left:0%"></div>
+            </div>
+            <div class="market-modal__player-controls">
+              <button class="market-modal__play-btn" data-play-btn title="${t('marketPlay')}" aria-label="${t('marketPlay')}">▶</button>
+              <span class="market-modal__time" data-time>0:00 / ${formatTime(totalMs)}</span>
+              <div class="market-modal__formation-chips">
+                ${engineFormations.map((_, i) => `<button class="market-modal__chip" data-chip="${i}">${i + 1}</button>`).join('')}
+              </div>
+            </div>
           </div>
         </div>
         <div class="market-modal__bottom">
@@ -235,7 +283,103 @@ export async function renderMarket(container) {
       </div>
     `;
 
-    const close = () => overlay.remove();
+    document.body.appendChild(overlay);
+
+    // --- 엔진 및 렌더링 ---
+    const canvas = overlay.querySelector('[data-player-canvas]');
+    const playBtn = overlay.querySelector('[data-play-btn]');
+    const timeEl = overlay.querySelector('[data-time]');
+    const playhead = overlay.querySelector('[data-playhead]');
+    const timeline = overlay.querySelector('[data-timeline]');
+    const chips = overlay.querySelectorAll('.market-modal__chip');
+
+    const engine = new PlaybackEngine();
+    engine.duration = totalMs || 1;
+    engine.setFormations(engineFormations, engineDancers);
+
+    function drawFrame(positionsRaw) {
+      const positions = positionsRaw.map((p, i) => ({ dancerId: i, x: p.x, y: p.y, angle: p.angle || 0 }));
+      renderFormationThumbnail(canvas, {
+        dancers: engineDancers, positions,
+        stageWidth, stageHeight, dancerShape, dancerScale, showWings,
+        hideOffstage: true,
+      });
+    }
+
+    function setPlayIcon(playing, ended) {
+      playBtn.textContent = playing ? '❚❚' : (ended ? '↻' : '▶');
+      playBtn.title = playing ? t('marketPause') : (ended ? t('marketReplay') : t('marketPlay'));
+      playBtn.setAttribute('aria-label', playBtn.title);
+    }
+
+    function updateChipsActive(ms) {
+      let activeIdx = -1;
+      for (let i = 0; i < engineFormations.length; i++) {
+        const f = engineFormations[i];
+        if (ms >= f.startTime && ms < f.startTime + f.duration) { activeIdx = i; break; }
+      }
+      chips.forEach((c, i) => c.classList.toggle('market-modal__chip--active', i === activeIdx));
+    }
+
+    engine.onPositionsUpdate = (positions) => drawFrame(positions);
+    engine.onTimeUpdate = (ms) => {
+      const pct = totalMs > 0 ? Math.min(100, (ms / totalMs) * 100) : 0;
+      playhead.style.left = `${pct}%`;
+      timeEl.textContent = `${formatTime(ms)} / ${formatTime(totalMs)}`;
+      updateChipsActive(ms);
+    };
+    engine.onPlaybackEnd = () => setPlayIcon(false, true);
+
+    // 초기 프레임
+    drawFrame(engine.calcPositionsAt(0));
+    updateChipsActive(0);
+
+    // 재생/일시정지
+    playBtn.addEventListener('click', () => {
+      if (engine.isPlaying) {
+        engine.pause();
+        setPlayIcon(false, false);
+      } else {
+        if (engine.currentTime >= totalMs) engine.seek(0);
+        engine.play();
+        setPlayIcon(true, false);
+      }
+    });
+
+    // 타임라인 클릭/드래그 seek
+    function seekFromEvent(e) {
+      const rect = timeline.getBoundingClientRect();
+      const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+      const pct = Math.max(0, Math.min(1, x / rect.width));
+      engine.seek(pct * totalMs);
+      setPlayIcon(engine.isPlaying, false);
+    }
+    timeline.addEventListener('mousedown', (e) => {
+      if (e.target.closest('[data-chip]')) return;
+      seekFromEvent(e);
+      const onMove = (ev) => seekFromEvent(ev);
+      const onUp = () => {
+        window.removeEventListener('mousemove', onMove);
+        window.removeEventListener('mouseup', onUp);
+      };
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('mouseup', onUp);
+    });
+
+    // 대형 칩 클릭 → 해당 대형 시작으로 이동
+    chips.forEach((chip) => {
+      chip.addEventListener('click', () => {
+        const i = Number(chip.dataset.chip);
+        engine.seek(engineFormations[i].startTime);
+        setPlayIcon(engine.isPlaying, false);
+      });
+    });
+
+    // --- 닫기 / 가져오기 ---
+    const close = () => {
+      engine.destroy();
+      overlay.remove();
+    };
 
     overlay.querySelector('.market-modal__close').addEventListener('click', close);
     overlay.querySelector('#modal-cancel-btn').addEventListener('click', close);
@@ -256,31 +400,13 @@ export async function renderMarket(container) {
         showToast(err.message);
       }
     });
+  }
 
-    document.body.appendChild(overlay);
-
-    // 각 대형 미리보기 렌더링
-    const srcAudience = pd.note.audienceDirection || 'bottom';
-    const flip = viewAudience !== srcAudience;
-    const dancers = pd.dancers.map((d, i) => ({ id: i, name: d.name, color: d.color }));
-    pd.formations.forEach((f, i) => {
-      const canvas = overlay.querySelector(`canvas[data-detail-thumb="${i}"]`);
-      const positions = f.positions.map(p => ({
-        dancerId: p.dancerIndex,
-        x: flip ? -p.x : p.x,
-        y: flip ? -p.y : p.y,
-        angle: flip ? (p.angle || 0) + 180 : (p.angle || 0),
-      }));
-      renderFormationThumbnail(canvas, {
-        dancers, positions,
-        stageWidth: pd.note.stageWidth || 600,
-        stageHeight: pd.note.stageHeight || 400,
-        dancerShape: pd.note.dancerShape || 'pentagon',
-        dancerScale: pd.note.dancerScale || 1.0,
-        showWings: pd.note.showWings || false,
-        hideOffstage: true,
-      });
-    });
+  function formatTime(ms) {
+    const totalSec = Math.max(0, Math.floor(ms / 1000));
+    const m = Math.floor(totalSec / 60);
+    const s = totalSec % 60;
+    return `${m}:${s.toString().padStart(2, '0')}`;
   }
 
   // --- 업로드 모달 ---

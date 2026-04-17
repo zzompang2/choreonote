@@ -392,6 +392,9 @@ export const en = {
   marketMyPresets: 'My Presets',
   marketDeleteConfirm: 'Delete this preset?',
   marketLogout: 'Sign Out',
+  marketPlay: 'Play',
+  marketPause: 'Pause',
+  marketReplay: 'Replay',
 
   // Cloud sync
   cloudSynced: 'Synced to cloud',
