@@ -285,24 +285,44 @@ export function getSyncStatus(note) {
 
 /**
  * 저장 시 자동 업로드. note.location === 'cloud' 일 때만 실제 업로드한다.
+ * 성공 시 cloudUploadPending 해제, 실패(throw) 시 플래그 세움.
  * 반환: null (no-op) 또는 uploadNote 결과 ({ conflict, serverNote? | cloudId })
  */
 export async function uploadOnSave(noteId) {
   const localNote = await db.notes.get(noteId);
   if (!localNote || localNote.location !== 'cloud') return null;
-  return uploadNote(noteId);
+  try {
+    const result = await uploadNote(noteId);
+    if (result && !result.conflict && localNote.cloudUploadPending) {
+      await db.notes.update(noteId, { cloudUploadPending: false });
+    }
+    return result;
+  } catch (err) {
+    await db.notes.update(noteId, { cloudUploadPending: true });
+    throw err;
+  }
 }
 
 /**
  * 노트를 클라우드 폴더로 이동: location 플립 + 서버 업로드.
  * 로그인 필요. 결과는 uploadNote 결과와 동일 구조.
+ * 업로드 실패 시 cloudUploadPending 플래그만 세우고 재throw (location은 'cloud' 유지 → 다음 저장 때 재시도).
  */
 export async function moveNoteToCloud(noteId) {
   const user = await getCurrentUser();
   if (!user) throw new Error('not-authenticated');
 
   await db.notes.update(noteId, { location: 'cloud' });
-  return uploadNote(noteId);
+  try {
+    const result = await uploadNote(noteId);
+    if (result && !result.conflict) {
+      await db.notes.update(noteId, { cloudUploadPending: false });
+    }
+    return result;
+  } catch (err) {
+    await db.notes.update(noteId, { cloudUploadPending: true });
+    throw err;
+  }
 }
 
 /**
