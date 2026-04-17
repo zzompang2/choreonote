@@ -105,7 +105,6 @@ export const en = {
   inspectorColor: 'Color',
   inspectorCopyPos: 'Copy position',
   inspectorPastePos: 'Paste position',
-  inspectorPresetBtn: 'Make preset from selection',
   inspectorResetWaypoints: 'Reset waypoints',
   inspectorMulti: '{count} selected',
   inspectorAlign: 'Align',

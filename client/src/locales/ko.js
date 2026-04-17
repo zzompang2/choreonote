@@ -105,7 +105,6 @@ export const ko = {
   inspectorColor: '색상',
   inspectorCopyPos: '위치 복사',
   inspectorPastePos: '위치 붙여넣기',
-  inspectorPresetBtn: '선택 댄서로 대형 만들기',
   inspectorResetWaypoints: '경유점 초기화',
   inspectorMulti: '{count}명 선택됨',
   inspectorAlign: '정렬',

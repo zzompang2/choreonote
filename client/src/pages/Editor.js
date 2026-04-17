@@ -293,7 +293,6 @@ function buildEditorHTML(data) {
                 <button class="btn btn--ghost" id="inspector-copy-pos-btn" style="flex:1;font-size:12px">${t('inspectorCopyPos')}</button>
                 <button class="btn btn--ghost" id="inspector-paste-pos-btn" style="flex:1;font-size:12px">${t('inspectorPastePos')}</button>
               </div>
-              <button class="btn btn--ghost" id="inspector-preset-btn" style="width:100%;font-size:12px">${t('inspectorPresetBtn')}</button>
               <button class="btn btn--ghost" id="inspector-reset-waypoints-btn" style="width:100%;font-size:12px">${t('inspectorResetWaypoints')}</button>
             </div>
           </div>
@@ -2218,8 +2217,6 @@ function updateInspector() {
   if (copyPosBtn) copyPosBtn.disabled = isTransitionCtx || selected.length !== 1;
   const pastePosBtn = document.querySelector('#inspector-paste-pos-btn');
   if (pastePosBtn) pastePosBtn.disabled = isTransitionCtx || selected.length < 1 || !copiedDancerPos;
-  const presetBtn = document.querySelector('#inspector-preset-btn');
-  if (presetBtn) presetBtn.disabled = isTransitionCtx || selected.length < 2;
   const waypointBtn = document.querySelector('#inspector-reset-waypoints-btn');
   if (waypointBtn) waypointBtn.disabled = !isTransitionCtx;
 
@@ -3079,12 +3076,6 @@ function setupToolbar(container) {
 
   railIcons.forEach(ic => {
     ic.addEventListener('click', () => openPanel(ic.dataset.panel));
-  });
-
-  // Inspector → Presets shortcut
-  container.querySelector('#inspector-preset-btn').addEventListener('click', () => {
-    if (_renderPresetThumbnails) _renderPresetThumbnails();
-    openPanel('presets');
   });
 
   // View mode toggles
