@@ -3,15 +3,16 @@
 ## 현재 상태: 노트=공책 종이 · 갤러리/컬렉션=포스트잇 (브레인스토밍 보드) 시각 언어 확정
 
 ### 최근 완료 (2026-04-18)
-- **갤러리/컬렉션 카드 — 포스트잇 스타일** — 5색 파스텔 로테이션(`nth-child`), 카드마다 미세한 다른 각도(±1deg 이내) 기울어짐, hover시 반듯해지며 `translateY -3px` 들림, 우하단 비대칭 blur 그림자로 "종이 들린" 느낌. 다크=무채톤 파스텔, 라이트=밝은 파스텔. 제목 센터 정렬, 태그 칩도 subtle하게 중앙 배치
-- **노트 카드 "공책" 리디자인** — 크림톤 종이 배경(`--paper`) + 가로 괘선(repeating-linear-gradient) + 3px 라운드 + 우상단 dog-ear(14px, hover시 fade-out) + hover `translateY -2px + rotate -0.2deg`. 리스트 뷰는 rotate 제거
-- **썸네일 스테이지 격자** — 4x4 서브그리드 + 센터 크로스 (다크/라이트 자동 분기). `utils/thumbnail.js` 의 `drawStageGrid` 헬퍼
-- **모바일 버그픽스 2건** — (1) 노래 재생 — `PlaybackEngine.play()`에 `audioContext.resume()` 추가 (iOS Safari suspended 상태 해제). (2) 댄서 색상 + 버튼 — 숨겨진 input에 `colorInput.click()` 프로그래매틱 호출 제거, 대신 `<label>` 안에 컬러 input을 투명 오버레이로 배치 (iOS/Android 네이티브 피커 open 필요조건 = 실제 탭 대상이 input)
+- **카드 시각 언어 확정** — 노트=공책 종이(크림톤+괘선+dog-ear 14px+hover 미세 rotate), 갤러리/컬렉션=포스트잇(5색 파스텔+±1° 기울어짐+hover 반듯해지며 들림). 다크=무채톤 파스텔, 라이트=밝은 파스텔. 썸네일 스테이지 4x4 격자 + 센터 크로스(`drawStageGrid` 헬퍼)
+- **에디터 UX 세트** — 재생 중 타임라인 auto-scroll, 댄서 이름 input 포커스 시 전체 텍스트 선택, 위치복사/붙여넣기 버튼 스크롤 내부로, "선택 댄서로 대형 만들기" 버튼 제거, 대형 프리셋 '역대각선' 추가, 바텀시트 상단 핸들 drag-to-dismiss(36px zone, 60px threshold)
+- **타임라인 스냅 단위 125ms (1/8초)** — `TIME_UNIT` 250→125. 별개 상수 `MIN_FORMATION_DURATION`=250, `DEFAULT_FORMATION_DURATION`=1000, `PASTE_FORMATION_DURATION`=1250 도입. 룰러 눈금·기존 데이터 영향 없음
+- **iOS/모바일 버그픽스** — (1) 음악 재생: `PlaybackEngine.play()` async화, `audioContext.resume()` await, `_starting` 플래그로 이중 탭 레이스 차단. (2) 무음 스위치 무시: `navigator.audioSession.type='playback'` (iOS 16.4+). (3) 댄서 색상 + 버튼: `<label>` 안에 컬러 input 투명 오버레이. (4) iPad PWA safe-area: `viewport-fit=cover` + 헤더 좌측 padding(standalone 최소 60px). (5) 홈 인디케이터 여유: 타임라인 바텀바 + 바텀시트 하단 padding에 `max(X, env(safe-area-inset-bottom))`
+- **재생 중 UI freeze 2차 진단** — 대형 박스 드래그의 document mouse 리스너가 onUp에서 제거되지 않아 누수. 각 드래그마다 onMove/onUp 스택. cleanup 래퍼로 종료 시 제거. 추가로 `_animate` RAF 프레임에 try/catch — 콜백 throw 시 체인 끊김 방지
 
-### 시각 언어 결정 (2026-04-18)
+### 시각 언어 결정 (2026-04-18, 유효)
 - **노트 = 공책 종이 한 장**: 내가 정리한 작업물. 썸네일 + 괘선 + dog-ear
 - **갤러리/컬렉션 = 포스트잇**: 브레인스토밍 보드에서 가져온 영감 한 컷. 파스텔 5색, 기울어진 각도
-- 두 카드는 "기록 생태계 속 다른 도구" (공책 vs 포스트잇) — 재질·색·모양 모두 대비되게 확실히 구분
+- 두 카드는 "기록 생태계 속 다른 도구" (공책 vs 포스트잇) — 재질·색·모양 모두 대비
 - 대안 검토 후 폐기: 찢어진 종이(과함), 스프링노트 커버(썸네일 죽음), 책장 꽂힌 책(지나친 장식), 카세트/백스테이지/스니커박스(브랜드 페르소나 미정 상태에서 선택 불가). 브랜드 확정은 실사용자 피드백 후로 연기
 
 ### 이전 완료 (2026-04-17 evening)
@@ -42,6 +43,7 @@
   - **마켓 데이터 클리어**: 기존 마켓은 모두 테스트 데이터라 `TRUNCATE market_presets CASCADE`로 새 출발
 
 ## 다음 할 일
+- [ ] **재생 중 UI freeze 재현 확인** — `_starting` 플래그 + 리스너 누수 수정 + RAF try/catch까지 적용됨. 여전히 발생하면 브라우저 콘솔 에러 메시지 + 기기/동작 시퀀스 확보 필요
 - [ ] **컬렉션 실기기 검증**
   - 마켓 모달 → "내 컬렉션에 저장" 토스트 / 중복 시 "이미 있어요"
   - 갤러리 [내 컬렉션] 탭: 비로그인 안내 / 빈 컬렉션 / 카드 그리드 + 관객방향 flip / 클라이언트 인원수·태그 필터
@@ -49,10 +51,11 @@
   - 에디터 대형 모음 패널: 컬렉션 카드 표시 + 단일/멀티 대형 적용 + 댄서 수 미스매치 (예: preset 5명, 노트 8명) + 뒤 대형 없을 때 토스트
 - [ ] **폴더 모델 — 실기기 수동 검증 남은 시나리오** (OAuth 기본 flow는 통과)
   - `downloadAllOnLogin` + 충돌 모달 / 명시적 vs 만료 분기 / 기기 전환 / 폴더 이동 / 오프라인 복구 `↺` 라운드트립
-- [ ] 마켓 카드 디자인을 대시보드 노트 카드와 차별화 (2단계 잔여)
+- [ ] **iPad PWA safe-area 실기기 확인** — `viewport-fit=cover` + standalone 좌측 60px 패딩이 iPad Stage Manager 창 컨트롤과 실제로 안 겹치는지
 - [ ] 대형 갤러리 3단계: 좋아요/인기순 정렬, 검색
 - [ ] **관리자 탭** (P3) — 다음 세션에서 목적·위치·권한 논의 후 정제
 - [ ] 공유 뷰어 미세 조정
+- [ ] (P3) BPM 기반 박자 스냅 — 현재 125ms 고정. 곡 BPM 입력 → 박/반박/4분박 토글 스냅
 
 ## QA 리포트
 - `.gstack/qa-reports/qa-report-localhost-2026-04-17.md` — 헤들리스 QA, health 95 → 100

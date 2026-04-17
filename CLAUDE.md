@@ -71,7 +71,9 @@
 - UI는 DOM 직접 조작 (`innerHTML` + 이벤트 바인딩), 컴포넌트 프레임워크 없음
 - 상태 변경 → `renderStage()` / `renderTimeline()` 등 수동 호출로 반영
 - Undo/Redo: 변경 전 전체 포지션 스냅샷을 JSON으로 저장
-- 타임라인: 1px = `PIXEL_PER_SEC`(40) / 1000 ms, 최소 시간 단위 250ms
+- 타임라인: 1px = `PIXEL_PER_SEC`(40) / 1000 ms. 스냅/시크 단위 `TIME_UNIT`=125ms(1/8초), 대형 최소 길이 `MIN_FORMATION_DURATION`=250ms, 기본 길이 `DEFAULT_FORMATION_DURATION`=1000ms
+- iOS Safari 오디오: `PlaybackEngine.play()`는 async — `audioContext.resume()` await 후 `sourceNode.start()`. `_starting` 플래그로 이중 탭 레이스 차단. `navigator.audioSession.type='playback'` 로 iOS 16.4+ 무음 스위치 무시
+- PWA safe-area: `viewport-fit=cover` + `editor__header`/`app-sidebar`/`app-topbar`에 `env(safe-area-inset-*)` 반영. standalone 모드에선 좌측 padding 최소 60px (iPad Stage Manager 창 컨트롤 간섭 방지)
 - **OAuth 복귀 시 UI는 세션 복원에 블록되지 않음**: PKCE 코드 교환이 수 초 지연될 수 있어 `getCurrentUser`/`getSession`에 UI 렌더를 기다리게 하면 빈 화면. 즉시 로그아웃 상태로 그린 뒤 `SIGNED_IN`에서 `rerouteCurrent`로 재렌더.
 
 ## 개발 시 참고

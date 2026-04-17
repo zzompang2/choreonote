@@ -45,6 +45,10 @@
 ---
 
 ## 완료
+- [x] 카드 시각 언어 — 노트=공책 종이(괘선+dog-ear) / 갤러리+컬렉션=포스트잇(5색 파스텔+기울어진 각도). 썸네일 스테이지 4x4 격자
+- [x] 에디터 UX — 재생 중 타임라인 자동 스크롤, 댄서 이름 포커스 시 전체 선택, 위치 복사/붙여넣기 스크롤 안으로, "선택 댄서로 대형 만들기" 버튼 제거, 역대각선 프리셋, 바텀시트 drag-to-dismiss, 스냅 단위 125ms(1/8초)
+- [x] 모바일/iOS 버그픽스 — 음악 재생(AudioContext.resume + 무음 스위치 audioSession playback), 댄서 색상 + 버튼(label 투명 오버레이 input), iPad PWA safe-area(헤더 좌측 창 컨트롤 간섭 방지), 홈 인디케이터 하단 여유
+- [x] 재생 중 UI freeze — async play() 이중 탭 레이스 차단(_starting 플래그) + 대형 박스 드래그 mouse 리스너 누수 제거 + RAF 프레임 try/catch 격리
 - [x] 대형 갤러리 2단계 (2/3) — 컬렉션 도입 (Supabase user_baskets 참조 모델, 에디터 대형 모음 통합 적용 로직, PresetDetailModal 추출, 갤러리 [전체][내 컬렉션] 탭 + 클라이언트 필터, 용어 마켓→갤러리·바구니→컬렉션)
 - [x] 에디터 P2 버그 2건 — 새 대형 생성 시 angle 복사, 대형 삭제 후 타임마커 위치 대형 선택 (toolbar + 키보드 Delete)
 - [x] 클라우드/로컬 폴더 모델 — 업로드 실패 `↺` 배지 (`cloudUploadPending` 자동 관리)
