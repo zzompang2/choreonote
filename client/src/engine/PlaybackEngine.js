@@ -143,12 +143,15 @@ export class PlaybackEngine {
       return;
     }
 
-    this.onTimeUpdate?.(ms);
-    this.onPositionsUpdate?.(this.calcPositionsAt(ms));
-
-    // Check which formation we're in
-    const fIdx = this._findFormationAt(ms);
-    this.onFormationChange?.(fIdx);
+    // 한 프레임에서 예외 터져도 루프 유지 (이전: throw 시 RAF 체인 끊겨 UI 멈춤 → 버튼 먹통 체감)
+    try {
+      this.onTimeUpdate?.(ms);
+      this.onPositionsUpdate?.(this.calcPositionsAt(ms));
+      const fIdx = this._findFormationAt(ms);
+      this.onFormationChange?.(fIdx);
+    } catch (err) {
+      console.error('PlaybackEngine frame error:', err);
+    }
 
     this._rafId = requestAnimationFrame(() => this._animate());
   }

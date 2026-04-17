@@ -1683,11 +1683,16 @@ function setupFormationDrag(el, fIdx, mode) {
       updateStage(); saveSnapshot();
     };
 
+    const cleanupMouse = () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onMouseUp);
+    };
+    const onMouseUp = (ev) => { onUp(ev); cleanupMouse(); };
     const onTouchMove = (ev) => { ev.preventDefault(); onMove(ev); };
     const onTouchEnd = () => { onUp(); document.removeEventListener('touchmove', onTouchMove); document.removeEventListener('touchend', onTouchEnd); setTimeout(() => { isTouchActive = false; }, 300); };
 
     document.addEventListener('mousemove', onMove);
-    document.addEventListener('mouseup', onUp);
+    document.addEventListener('mouseup', onMouseUp);
     document.addEventListener('touchmove', onTouchMove, { passive: false });
     document.addEventListener('touchend', onTouchEnd);
   }
