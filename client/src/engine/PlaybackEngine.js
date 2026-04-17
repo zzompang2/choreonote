@@ -21,6 +21,11 @@ export class PlaybackEngine {
     this.onPositionsUpdate = null; // (positions[]) => void
     this.onFormationChange = null; // (formationIndex) => void
     this.onPlaybackEnd = null;
+
+    // iOS 16.4+: 무음 스위치 무시하고 음악 재생 (음악 앱처럼 'playback' 카테고리). 미지원 OS는 no-op
+    if (navigator.audioSession) {
+      try { navigator.audioSession.type = 'playback'; } catch (_) {}
+    }
   }
 
   async loadAudio(blob) {
