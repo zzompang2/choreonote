@@ -122,6 +122,16 @@ export const en = {
 
   // Editor — Presets panel
   presetsTitle: 'Formations',
+  basketTitle: 'My Collection',
+  basketEmpty: 'Save inspiration from the gallery here',
+  basketApplied: 'Collection formation applied',
+  basketRemove: 'Remove from collection',
+  basketRemoved: 'Removed from collection',
+  basketNeedNextFormation: 'Need a following formation. Add a new one first.',
+  basketRemoveAction: 'Remove from collection',
+  collectionLoginRequired: 'Sign in to start collecting inspiration',
+  collectionGoToGallery: 'Browse gallery',
+  collectionLogin: 'Sign in',
   presetSpacing: 'Spacing',
   presetSelectionInfo: 'Apply to {count} selected',
   presetAllInfo: 'Apply to all {count}',
@@ -336,12 +346,16 @@ export const en = {
   chatDisambiguate: 'Which one are you looking for?',
   chatSuggestionLabel: 'Frequently Asked',
 
-  // Market
-  market: 'Formation Market',
+  // Market (= Formation Gallery)
+  market: 'Formation Gallery',
+  marketTabAll: 'All',
   marketBack: '← Dashboard',
   marketUpload: 'Share',
   marketImport: 'Import',
   marketImportAsNote: 'Import as New Note',
+  marketAddToBasket: 'Save to My Collection',
+  marketBasketAdded: 'Inspiration saved to your collection',
+  marketBasketDuplicated: 'Already in your collection',
   marketDancerCount: '{count}',
   marketFormationCount: '{count} formations',
   marketDownloadCount: '↓{count}',
@@ -357,7 +371,7 @@ export const en = {
   marketTagFilterClear: 'Clear',
   marketSortNewest: 'Newest',
   marketSortPopular: 'Popular',
-  marketUploadTitle: 'Share to Market',
+  marketUploadTitle: 'Share to Gallery',
   marketSelectNote: 'Select Note',
   marketSelectFormations: 'Select formations to share',
   marketSelectHint: 'Click a formation (up to {max} consecutive)',
@@ -404,7 +418,7 @@ export const en = {
 
   // App navigation (sidebar)
   navNotes: 'My Notes',
-  navMarket: 'Formation Market',
+  navMarket: 'Formation Gallery',
   navCommunity: 'Community',
   navCommunityComing: 'Soon',
   navTrash: 'Trash',

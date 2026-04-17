@@ -437,6 +437,96 @@ body {
   letter-spacing: -0.01em;
 }
 
+.market__tabs {
+  display: flex;
+  gap: 4px;
+}
+
+.market__tab {
+  background: transparent;
+  border: none;
+  padding: 8px 12px;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: 6px;
+  transition: color 0.15s, background 0.15s;
+}
+
+.market__tab:hover {
+  color: var(--text-primary);
+  background: var(--bg-secondary);
+}
+
+.market__tab--active {
+  color: var(--text-primary);
+}
+
+.market__tab--active::after {
+  content: '';
+  display: block;
+  height: 2px;
+  background: var(--accent);
+  margin-top: 4px;
+  border-radius: 1px;
+}
+
+.collection-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+  padding: 16px 20px;
+}
+
+.collection-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+
+.collection-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--accent);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.collection-card__thumbnail {
+  background: var(--stage-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 3 / 2;
+}
+
+.collection-card__thumbnail canvas {
+  max-width: 100%;
+  max-height: 100%;
+  display: block;
+}
+
+.collection-card__body {
+  padding: 10px 12px;
+}
+
+.collection-card__title {
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.collection-card__meta {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+
 .dashboard__subtitle {
   font-size: 12px;
   color: var(--text-secondary);
@@ -1341,8 +1431,36 @@ html:has(.editor) {
   justify-content: center;
 }
 
-.preset-card--custom:hover .preset-card__delete {
+.preset-card--custom:hover .preset-card__delete,
+.preset-card--basket:hover .preset-card__delete {
   opacity: 1;
+}
+
+.preset-card--basket {
+  position: relative;
+  border-color: var(--accent);
+}
+
+.basket-section {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.basket-section__title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+  padding: 0 4px;
+}
+
+.basket-section__empty {
+  font-size: 12px;
+  color: var(--text-secondary);
+  padding: 12px 4px;
+  text-align: center;
+  opacity: 0.7;
 }
 
 .preset-card__delete:hover {

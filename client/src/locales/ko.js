@@ -122,6 +122,16 @@ export const ko = {
 
   // Editor — Presets panel
   presetsTitle: '대형 모음',
+  basketTitle: '내 컬렉션',
+  basketEmpty: '갤러리에서 받은 영감을 모아보세요',
+  basketApplied: '컬렉션 대형 적용 완료',
+  basketRemove: '컬렉션에서 제거',
+  basketRemoved: '컬렉션에서 제거됨',
+  basketNeedNextFormation: '뒤에 대형이 더 필요합니다. 새 대형을 추가하세요',
+  basketRemoveAction: '컬렉션에서 제거',
+  collectionLoginRequired: '로그인하면 영감을 모아둘 수 있어요',
+  collectionGoToGallery: '갤러리 둘러보기',
+  collectionLogin: '로그인',
   presetSpacing: '간격',
   presetSelectionInfo: '선택 {count}명에게 적용',
   presetAllInfo: '전체 {count}명에게 적용',
@@ -336,12 +346,16 @@ export const ko = {
   chatDisambiguate: '어떤 걸 찾으시나요?',
   chatSuggestionLabel: '자주 묻는 질문',
 
-  // Market
-  market: '대형 마켓',
+  // Market (= 대형 갤러리)
+  market: '대형 갤러리',
+  marketTabAll: '전체',
   marketBack: '← 대시보드',
   marketUpload: '공유하기',
   marketImport: '가져오기',
   marketImportAsNote: '새 노트로 가져오기',
+  marketAddToBasket: '내 컬렉션에 저장',
+  marketBasketAdded: '내 컬렉션에 영감을 담았어요',
+  marketBasketDuplicated: '이미 컬렉션에 있어요',
   marketDancerCount: '{count}명',
   marketFormationCount: '{count}대형',
   marketDownloadCount: '↓{count}',
@@ -357,7 +371,7 @@ export const ko = {
   marketTagFilterClear: '초기화',
   marketSortNewest: '최신순',
   marketSortPopular: '인기순',
-  marketUploadTitle: '마켓에 공유',
+  marketUploadTitle: '갤러리에 공유',
   marketSelectNote: '노트 선택',
   marketSelectFormations: '공유할 대형을 선택하세요',
   marketSelectHint: '대형을 클릭하세요 (연속 {max}개까지 선택 가능)',
@@ -404,12 +418,12 @@ export const ko = {
 
   // App navigation (sidebar)
   navNotes: '내 노트',
-  navMarket: '대형 마켓',
+  navMarket: '대형 갤러리',
   navCommunity: '커뮤니티',
   navCommunityComing: '준비 중',
   navTrash: '휴지통',
   navLoginOptional: '로그인 (선택)',
-  navLoginHint: '클라우드 동기화 · 마켓 참여 시 사용',
+  navLoginHint: '클라우드 동기화 · 갤러리 참여 시 사용',
   navMenu: '메뉴 열기',
 
   // Cloud sync

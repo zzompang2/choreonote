@@ -2,11 +2,14 @@ import { navigate } from '../utils/router.js';
 import { t } from '../utils/i18n.js';
 import { showToast } from '../utils/toast.js';
 import { renderFormationThumbnail } from '../utils/thumbnail.js';
-import { fetchPresets, uploadPreset, incrementDownload, deletePreset, buildPresetData } from '../utils/market.js';
+import { fetchPresets, uploadPreset, deletePreset, buildPresetData } from '../utils/market.js';
+import { fetchBasket } from '../utils/basket.js';
 import { getCurrentUser, requireAuth } from '../utils/auth.js';
 import { NoteStore } from '../store/NoteStore.js';
-import { PlaybackEngine } from '../engine/PlaybackEngine.js';
 import { renderAppLayout } from '../components/AppLayout.js';
+import { openPresetDetailModal } from '../components/PresetDetailModal.js';
+
+const GALLERY_TAB_KEY = 'choreonote-gallery-tab';
 
 const PAGE_SIZE = 20;
 
@@ -54,28 +57,37 @@ export async function renderMarket(container) {
   let viewAudience = 'bottom';
   let filterTags = []; // 선택된 느낌 태그
   let currentUser = await getCurrentUser();
+  let currentTab = localStorage.getItem(GALLERY_TAB_KEY) === 'collection' ? 'collection' : 'all';
 
-  async function loadAndRender() {
-    const filter = DANCER_FILTERS[filterIndex];
-    const result = await fetchPresets({
-      page: currentPage,
-      sortBy,
-      dancerCountMin: filter.min,
-      dancerCountMax: filter.max,
-      tags: filterTags,
-    });
-    renderPage(result);
+  function tabsHTML() {
+    return `
+      <div class="market__tabs">
+        <button class="market__tab${currentTab === 'all' ? ' market__tab--active' : ''}" data-tab="all">${t('marketTabAll')}</button>
+        <button class="market__tab${currentTab === 'collection' ? ' market__tab--active' : ''}" data-tab="collection">${t('basketTitle')}</button>
+      </div>
+    `;
   }
 
-  function renderPage({ data, totalCount, hasMore }) {
-    const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+  function bindTabHandlers() {
+    div.querySelectorAll('.market__tab').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const next = btn.dataset.tab;
+        if (next === currentTab) return;
+        currentTab = next;
+        localStorage.setItem(GALLERY_TAB_KEY, currentTab);
+        renderActiveTab();
+      });
+    });
+  }
 
-    div.innerHTML = `
-      <div class="market__header">
-        <h1 class="market__title">${t('market')}</h1>
-        <button class="btn btn--primary btn--sm" id="market-upload-btn">${t('marketUpload')}</button>
-      </div>
+  function renderActiveTab() {
+    if (currentTab === 'all') loadAndRender();
+    else renderCollectionTab();
+  }
 
+  // 필터 마크업 (전체/컬렉션 탭 공유). withSort=true면 정렬 select 포함.
+  function filtersHTML({ withSort }) {
+    return `
       <div class="market__filters">
         <div class="market__filter-row">
           <div class="market__filter-left">
@@ -94,10 +106,10 @@ export async function renderMarket(container) {
             </button>
           </div>
           <div class="market__filter-right">
-            <select class="market__sort" id="market-sort">
+            ${withSort ? `<select class="market__sort" id="market-sort">
               <option value="created_at"${sortBy === 'created_at' ? ' selected' : ''}>${t('marketSortNewest')}</option>
               <option value="download_count"${sortBy === 'download_count' ? ' selected' : ''}>${t('marketSortPopular')}</option>
-            </select>
+            </select>` : ''}
             <button class="market__audience-btn" id="market-audience" title="${t('marketAudienceToggle')}">
               ${viewAudience === 'top' ? t('marketAudienceTop') : t('marketAudienceBottom')}
             </button>
@@ -109,6 +121,183 @@ export async function renderMarket(container) {
           `).join('')}
         </div>
       </div>
+    `;
+  }
+
+  // 필터 핸들러 바인딩. onChange는 변경 직후 reload 트리거.
+  function bindFiltersHandlers({ withSort, onChange }) {
+    div.querySelector('#market-audience').addEventListener('click', () => {
+      viewAudience = viewAudience === 'bottom' ? 'top' : 'bottom';
+      onChange();
+    });
+
+    if (withSort) {
+      div.querySelector('#market-sort').addEventListener('change', (e) => {
+        sortBy = e.target.value;
+        currentPage = 0;
+        onChange();
+      });
+    }
+
+    div.querySelectorAll('.market__filter-chip[data-filter]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        filterIndex = Number(btn.dataset.filter);
+        currentPage = 0;
+        onChange();
+      });
+    });
+
+    div.querySelector('#market-dancer-select').addEventListener('change', (e) => {
+      filterIndex = Number(e.target.value);
+      currentPage = 0;
+      onChange();
+    });
+
+    div.querySelectorAll('.market__filter-chip[data-tag]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const tag = btn.dataset.tag;
+        const idx = filterTags.indexOf(tag);
+        if (idx >= 0) filterTags.splice(idx, 1);
+        else filterTags.push(tag);
+        currentPage = 0;
+        onChange();
+      });
+    });
+
+    div.querySelector('#market-tag-filter-btn').addEventListener('click', () => openTagFilterModal());
+  }
+
+  async function renderCollectionTab() {
+    const user = await getCurrentUser();
+    currentUser = user;
+
+    if (!user) {
+      div.innerHTML = `
+        <div class="market__header">
+          ${tabsHTML()}
+        </div>
+        <div class="market__body">
+          <div class="market__empty">
+            <div class="market__empty-icon">🔒</div>
+            <p>${t('collectionLoginRequired')}</p>
+            <button class="btn btn--primary" id="collection-login-btn" style="margin-top:12px">${t('collectionLogin')}</button>
+          </div>
+        </div>
+      `;
+      bindTabHandlers();
+      div.querySelector('#collection-login-btn').addEventListener('click', async () => {
+        await requireAuth('/market');
+      });
+      return;
+    }
+
+    div.innerHTML = `
+      <div class="market__header">${tabsHTML()}</div>
+      ${filtersHTML({ withSort: false })}
+      <div class="market__body"><div class="empty-state empty-state--subtle"><p>...</p></div></div>
+    `;
+    bindTabHandlers();
+    bindFiltersHandlers({ withSort: false, onChange: () => renderCollectionTab() });
+
+    let items;
+    try {
+      items = await fetchBasket();
+    } catch (err) {
+      div.querySelector('.market__body').innerHTML = `<div class="market__empty"><p>${err.message}</p></div>`;
+      return;
+    }
+
+    // 클라이언트 필터링: 인원수 + 느낌 태그
+    const filter = DANCER_FILTERS[filterIndex];
+    const filtered = items.filter(item => {
+      const dc = item.preset.dancer_count;
+      if (filter.min != null && dc < filter.min) return false;
+      if (filter.max != null && dc > filter.max) return false;
+      const tags = item.preset.preset_data?.tags || [];
+      for (const tag of filterTags) {
+        if (!tags.includes(tag)) return false;
+      }
+      return true;
+    });
+
+    if (filtered.length === 0) {
+      const isFilterActive = filterIndex !== 0 || filterTags.length > 0;
+      const emptyText = items.length === 0 ? t('basketEmpty') : t('marketEmpty');
+      div.querySelector('.market__body').innerHTML = `
+        <div class="market__empty">
+          <div class="market__empty-icon">${items.length === 0 ? '✨' : '🔍'}</div>
+          <p>${emptyText}</p>
+          ${items.length === 0 ? `<button class="btn btn--primary" id="collection-empty-btn" style="margin-top:12px">${t('marketTabAll')}</button>` : ''}
+        </div>
+      `;
+      const goAll = div.querySelector('#collection-empty-btn');
+      if (goAll) goAll.addEventListener('click', () => {
+        currentTab = 'all';
+        localStorage.setItem(GALLERY_TAB_KEY, currentTab);
+        renderActiveTab();
+      });
+      return;
+    }
+
+    const body = div.querySelector('.market__body');
+    body.innerHTML = `<div class="collection-grid"></div>`;
+    const grid = body.querySelector('.collection-grid');
+
+    for (const item of filtered) {
+      const pd = item.preset.preset_data;
+      const card = document.createElement('div');
+      card.className = 'collection-card';
+      card.innerHTML = `
+        <div class="collection-card__thumbnail">
+          <canvas data-c-thumb="${item.preset.id}" width="200" height="134"></canvas>
+        </div>
+        <div class="collection-card__body">
+          <div class="collection-card__title">${escapeHtml(item.preset.title)}</div>
+          <div class="collection-card__meta">
+            ${t('marketDancerCount', { count: item.preset.dancer_count })} · ${t('marketFormationCount', { count: Math.min(2, pd.formations.length) })}
+          </div>
+        </div>
+      `;
+
+      const cvs = card.querySelector(`canvas[data-c-thumb="${item.preset.id}"]`);
+      renderPresetThumbnail(cvs, pd, viewAudience);
+
+      card.addEventListener('click', () => {
+        openPresetDetailModal({
+          preset: item.preset,
+          viewAudience,
+          mode: 'basket',
+          authRedirect: '/market',
+          onAction: () => renderCollectionTab(),
+        });
+      });
+
+      grid.appendChild(card);
+    }
+  }
+
+  async function loadAndRender() {
+    const filter = DANCER_FILTERS[filterIndex];
+    const result = await fetchPresets({
+      page: currentPage,
+      sortBy,
+      dancerCountMin: filter.min,
+      dancerCountMax: filter.max,
+      tags: filterTags,
+    });
+    renderPage(result);
+  }
+
+  function renderPage({ data, totalCount, hasMore }) {
+    const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+
+    div.innerHTML = `
+      <div class="market__header">
+        ${tabsHTML()}
+        <button class="btn btn--primary btn--sm" id="market-upload-btn">${t('marketUpload')}</button>
+      </div>
+
+      ${filtersHTML({ withSort: true })}
 
       <div class="market__body">
         ${data.length === 0
@@ -131,45 +320,9 @@ export async function renderMarket(container) {
     `;
 
     // 이벤트 바인딩
+    bindTabHandlers();
+    bindFiltersHandlers({ withSort: true, onChange: () => loadAndRender() });
     div.querySelector('#market-upload-btn').addEventListener('click', () => openUploadModal());
-
-    div.querySelector('#market-audience').addEventListener('click', () => {
-      viewAudience = viewAudience === 'bottom' ? 'top' : 'bottom';
-      loadAndRender();
-    });
-
-    div.querySelector('#market-sort').addEventListener('change', (e) => {
-      sortBy = e.target.value;
-      currentPage = 0;
-      loadAndRender();
-    });
-
-    div.querySelectorAll('.market__filter-chip[data-filter]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        filterIndex = Number(btn.dataset.filter);
-        currentPage = 0;
-        loadAndRender();
-      });
-    });
-
-    div.querySelector('#market-dancer-select').addEventListener('change', (e) => {
-      filterIndex = Number(e.target.value);
-      currentPage = 0;
-      loadAndRender();
-    });
-
-    div.querySelectorAll('.market__filter-chip[data-tag]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const tag = btn.dataset.tag;
-        const idx = filterTags.indexOf(tag);
-        if (idx >= 0) filterTags.splice(idx, 1);
-        else filterTags.push(tag);
-        currentPage = 0;
-        loadAndRender();
-      });
-    });
-
-    div.querySelector('#market-tag-filter-btn').addEventListener('click', () => openTagFilterModal());
 
     const prevBtn = div.querySelector('#market-prev');
     const nextBtn = div.querySelector('#market-next');
@@ -180,7 +333,7 @@ export async function renderMarket(container) {
     div.querySelectorAll('.market-card').forEach(card => {
       card.addEventListener('click', () => {
         const preset = data.find(p => p.id === card.dataset.id);
-        if (preset) openDetailModal(preset);
+        if (preset) openPresetDetailModal({ preset, viewAudience, mode: 'market', authRedirect: '/market' });
       });
     });
 
@@ -259,218 +412,10 @@ export async function renderMarket(container) {
         .map(c => c.dataset.tag);
       currentPage = 0;
       close();
-      loadAndRender();
+      renderActiveTab();
     });
   }
 
-  // --- 상세 모달 (미니 플레이어) ---
-  function openDetailModal(preset) {
-    const pd = preset.preset_data;
-    const overlay = document.createElement('div');
-    overlay.className = 'market-modal';
-
-    const tags = pd.tags || [];
-    const srcAudience = pd.note.audienceDirection || 'bottom';
-    const flip = viewAudience !== srcAudience;
-    const stageWidth = pd.note.stageWidth || 600;
-    const stageHeight = pd.note.stageHeight || 400;
-    const dancerShape = pd.note.dancerShape || 'pentagon';
-    const dancerScale = pd.note.dancerScale || 1.0;
-    const showWings = false;
-
-    // 엔진용 dancers/formations 변환 (dancerIndex → dancerId, 좌표 flip)
-    const engineDancers = pd.dancers.map((d, i) => ({ id: i, name: d.name, color: d.color }));
-    const engineFormations = pd.formations.map(f => ({
-      startTime: f.startTime,
-      duration: f.duration,
-      positions: f.positions.map(p => ({
-        dancerId: p.dancerIndex,
-        x: flip ? -p.x : p.x,
-        y: flip ? -p.y : p.y,
-        angle: flip ? (p.angle || 0) + 180 : (p.angle || 0),
-        waypoints: p.waypoints?.map(w => ({
-          ...w,
-          x: flip ? -w.x : w.x,
-          y: flip ? -w.y : w.y,
-        })),
-      })),
-    }));
-
-    // 총 길이를 대형 수 × 1초로 정규화 (상대 비율 유지). 단일 대형이면 정적 표시.
-    const isSingle = engineFormations.length <= 1;
-    const previewDuration = engineFormations.length * 1000;
-    const lastF = engineFormations[engineFormations.length - 1];
-    const rawTotalMs = lastF ? lastF.startTime + lastF.duration : 0;
-    if (!isSingle && rawTotalMs > 0) {
-      const scale = previewDuration / rawTotalMs;
-      for (const f of engineFormations) {
-        f.startTime = f.startTime * scale;
-        f.duration = f.duration * scale;
-      }
-    }
-    const totalMs = isSingle ? 0 : previewDuration;
-
-    overlay.innerHTML = `
-      <div class="market-modal__box market-modal__box--detail">
-        <div class="market-modal__top">
-          <div class="market-modal__header">
-            <h2>${escapeHtml(preset.title)}</h2>
-            <button class="market-modal__close">✕</button>
-          </div>
-          ${tags.length > 0 ? `<div class="market-card__tags" style="margin-bottom:8px">${tags.map(tag => `<span class="market-card__tag">${t('marketTag_' + tag)}</span>`).join('')}</div>` : ''}
-          <div class="market-modal__meta">
-            ${t('marketDancerCount', { count: preset.dancer_count })} · ${t('marketFormationCount', { count: preset.formation_count })} · ${t('marketDownloadCount', { count: preset.download_count || 0 })}
-          </div>
-        </div>
-        <div class="market-modal__body">
-          <div class="market-modal__player">
-            <div class="market-modal__canvas-wrap">
-              <canvas class="market-modal__canvas" data-player-canvas width="480" height="320"></canvas>
-            </div>
-            ${isSingle ? '' : `
-            <div class="market-modal__timeline" data-timeline>
-              <div class="market-modal__timeline-track"></div>
-              ${engineFormations.map((f, i) => {
-                const startPct = (f.startTime / totalMs) * 100;
-                const widthPct = (f.duration / totalMs) * 100;
-                return `<div class="market-modal__timeline-box" data-fidx="${i}" style="left:${startPct}%;width:${widthPct}%"></div>`;
-              }).join('')}
-              <div class="market-modal__playhead" data-playhead style="left:0%"></div>
-            </div>
-            <div class="market-modal__player-controls">
-              <button class="market-modal__play-btn" data-play-btn title="${t('marketPlay')}" aria-label="${t('marketPlay')}">▶</button>
-              <div class="market-modal__formation-chips">
-                ${engineFormations.map((_, i) => `<button class="market-modal__chip" data-chip="${i}">${i + 1}</button>`).join('')}
-              </div>
-            </div>
-            `}
-          </div>
-        </div>
-        <div class="market-modal__bottom">
-          <div class="market-modal__actions">
-            <button class="btn btn--primary" id="modal-import-btn">${t('marketImportAsNote')}</button>
-            <button class="btn btn--ghost" id="modal-cancel-btn">${t('cancel')}</button>
-          </div>
-        </div>
-      </div>
-    `;
-
-    document.body.appendChild(overlay);
-
-    // --- 엔진 및 렌더링 ---
-    const canvas = overlay.querySelector('[data-player-canvas]');
-    const engine = new PlaybackEngine();
-    engine.duration = totalMs || 1;
-    engine.setFormations(engineFormations, engineDancers);
-
-    function drawFrame(positionsRaw) {
-      const positions = positionsRaw.map((p, i) => ({ dancerId: i, x: p.x, y: p.y, angle: p.angle || 0 }));
-      renderFormationThumbnail(canvas, {
-        dancers: engineDancers, positions,
-        stageWidth, stageHeight, dancerShape, dancerScale, showWings,
-        hideOffstage: true,
-        showAudience: viewAudience,
-      });
-    }
-
-    engine.onPositionsUpdate = (positions) => drawFrame(positions);
-    drawFrame(engine.calcPositionsAt(0));
-
-    if (!isSingle) {
-      const playBtn = overlay.querySelector('[data-play-btn]');
-      const playhead = overlay.querySelector('[data-playhead]');
-      const timeline = overlay.querySelector('[data-timeline]');
-      const chips = overlay.querySelectorAll('.market-modal__chip');
-
-      function setPlayIcon(playing, ended) {
-        playBtn.textContent = playing ? '❚❚' : (ended ? '↻' : '▶');
-        playBtn.title = playing ? t('marketPause') : (ended ? t('marketReplay') : t('marketPlay'));
-        playBtn.setAttribute('aria-label', playBtn.title);
-      }
-
-      function updateChipsActive(ms) {
-        let activeIdx = -1;
-        for (let i = 0; i < engineFormations.length; i++) {
-          const f = engineFormations[i];
-          if (ms >= f.startTime && ms < f.startTime + f.duration) { activeIdx = i; break; }
-        }
-        chips.forEach((c, i) => c.classList.toggle('market-modal__chip--active', i === activeIdx));
-      }
-
-      engine.onTimeUpdate = (ms) => {
-        const pct = Math.min(100, (ms / totalMs) * 100);
-        playhead.style.left = `${pct}%`;
-        updateChipsActive(ms);
-      };
-      engine.onPlaybackEnd = () => setPlayIcon(false, true);
-
-      updateChipsActive(0);
-
-      playBtn.addEventListener('click', () => {
-        if (engine.isPlaying) {
-          engine.pause();
-          setPlayIcon(false, false);
-        } else {
-          if (engine.currentTime >= totalMs) engine.seek(0);
-          engine.play();
-          setPlayIcon(true, false);
-        }
-      });
-
-      function seekFromEvent(e) {
-        const rect = timeline.getBoundingClientRect();
-        const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
-        const pct = Math.max(0, Math.min(1, x / rect.width));
-        engine.seek(pct * totalMs);
-        setPlayIcon(engine.isPlaying, false);
-      }
-      timeline.addEventListener('mousedown', (e) => {
-        if (e.target.closest('[data-chip]')) return;
-        seekFromEvent(e);
-        const onMove = (ev) => seekFromEvent(ev);
-        const onUp = () => {
-          window.removeEventListener('mousemove', onMove);
-          window.removeEventListener('mouseup', onUp);
-        };
-        window.addEventListener('mousemove', onMove);
-        window.addEventListener('mouseup', onUp);
-      });
-
-      chips.forEach((chip) => {
-        chip.addEventListener('click', () => {
-          const i = Number(chip.dataset.chip);
-          engine.seek(engineFormations[i].startTime);
-          setPlayIcon(engine.isPlaying, false);
-        });
-      });
-    }
-
-    // --- 닫기 / 가져오기 ---
-    const close = () => {
-      engine.destroy();
-      overlay.remove();
-    };
-
-    overlay.querySelector('.market-modal__close').addEventListener('click', close);
-    overlay.querySelector('#modal-cancel-btn').addEventListener('click', close);
-    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
-
-    overlay.querySelector('#modal-import-btn').addEventListener('click', async () => {
-      const user = await requireAuth('/market');
-      if (!user) return;
-
-      try {
-        const jsonStr = JSON.stringify(pd);
-        const noteId = await NoteStore.importJSON(jsonStr);
-        incrementDownload(preset.id);
-        close();
-        showToast(t('marketImportSuccess'));
-        navigate(`/edit/${noteId}`);
-      } catch (err) {
-        showToast(err.message);
-      }
-    });
-  }
 
   function formatTime(ms) {
     const totalSec = Math.max(0, Math.floor(ms / 1000));
@@ -891,8 +836,8 @@ export async function renderMarket(container) {
     }
   });
 
-  // 초기 로드
-  await loadAndRender();
+  // 초기 로드 (탭 상태에 따라)
+  await renderActiveTab();
 }
 
 // --- 유틸 ---

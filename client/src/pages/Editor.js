@@ -19,6 +19,8 @@ import { generateShareURL } from '../utils/share.js';
 import { uploadOnSave, checkServerNewer, resolveOverwriteServer, resolveUseServer, resolveKeepBoth } from '../utils/cloudSync.js';
 import { getCurrentUser } from '../utils/auth.js';
 import { showConflictModal } from '../components/ConflictModal.js';
+import { fetchBasket, removeFromBasket } from '../utils/basket.js';
+import { renderFormationThumbnail } from '../utils/thumbnail.js';
 
 let engine = null;
 let renderer = null;
@@ -37,6 +39,7 @@ let activePanel = null;
 let audienceDirection = 'top';
 let pixelsPerSec = PIXEL_PER_SEC;
 let _renderPresetThumbnails = null; // set by setupSidebar // mutable, for timeline zoom
+let _renderBasket = null; // set by setupSidebar — re-fetch basket items
 let _renderMarkerList = () => {};
 let _updateToolbarState = () => {};
 let copiedDancerPos = null;
@@ -321,6 +324,11 @@ function buildEditorHTML(data) {
               <button class="btn btn--ghost preset-btn-box" id="preset-spacing-up">+</button>
             </div>
             <div class="preset-grid" id="preset-grid"></div>
+            <div class="basket-section" id="basket-section" style="display:none">
+              <div class="basket-section__title">${t('basketTitle')}</div>
+              <div class="basket-section__empty" id="basket-empty"></div>
+              <div class="preset-grid" id="basket-grid"></div>
+            </div>
           </div>
         </div>
         <div class="sidebar__panel sidebar__panel--hidden" id="panel-view">
@@ -1887,6 +1895,212 @@ function setupSidebar(container) {
   renderPresetThumbnails();
   _renderPresetThumbnails = renderPresetThumbnails;
 
+  // --- 내 컬렉션 (갤러리에서 담은 영감) ---
+  async function renderBasket() {
+    const section = container.querySelector('#basket-section');
+    const empty = container.querySelector('#basket-empty');
+    const grid = container.querySelector('#basket-grid');
+    if (!section || !empty || !grid) return;
+
+    const user = await getCurrentUser();
+    if (!user) {
+      section.style.display = 'none';
+      return;
+    }
+    section.style.display = '';
+
+    let items;
+    try {
+      items = await fetchBasket();
+    } catch (err) {
+      console.warn('basket fetch failed', err);
+      return;
+    }
+
+    grid.innerHTML = '';
+    if (items.length === 0) {
+      empty.textContent = t('basketEmpty');
+      empty.style.display = '';
+      return;
+    }
+    empty.style.display = 'none';
+
+    for (const item of items) {
+      const pd = item.preset.preset_data;
+      const card = document.createElement('div');
+      card.className = 'preset-card preset-card--basket';
+
+      const cvs = document.createElement('canvas');
+      cvs.width = 120;
+      cvs.height = 80;
+      const f0 = pd.formations[0];
+      if (f0) {
+        const dancers = pd.dancers.map((d, i) => ({ id: i, name: d.name, color: d.color }));
+        const positions = f0.positions.map(p => ({ dancerId: p.dancerIndex, x: p.x, y: p.y, angle: p.angle || 0 }));
+        renderFormationThumbnail(cvs, {
+          dancers, positions,
+          stageWidth: pd.note.stageWidth, stageHeight: pd.note.stageHeight,
+          dancerShape: pd.note.dancerShape, dancerScale: pd.note.dancerScale,
+          showWings: false, hideOffstage: true,
+        });
+      }
+      card.appendChild(cvs);
+
+      const label = document.createElement('div');
+      label.className = 'preset-card__name';
+      const useCount = Math.min(2, pd.formations.length);
+      label.textContent = item.preset.title;
+      const badge = document.createElement('span');
+      badge.className = 'preset-card__count';
+      badge.textContent = `×${useCount}`;
+      label.appendChild(document.createTextNode(' '));
+      label.appendChild(badge);
+      card.appendChild(label);
+
+      const delBtn = document.createElement('button');
+      delBtn.className = 'preset-card__delete';
+      delBtn.textContent = '✕';
+      delBtn.title = t('basketRemove');
+      delBtn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        try {
+          await removeFromBasket(item.preset.id);
+          showToast(t('basketRemoved'));
+          renderBasket();
+        } catch (err) {
+          showToast(err.message);
+        }
+      });
+      card.appendChild(delBtn);
+
+      card.addEventListener('click', () => applyBasketItem(pd));
+      grid.appendChild(card);
+    }
+  }
+
+  function applyBasketItem(pd) {
+    if (engine.isPlaying) { showToast(t('toastStopFirst')); return; }
+    if (swapMode) { showToast(t('toastExitSwap')); return; }
+    if (selectedFormation < 0) { showToast(t('presetSelectFirst')); return; }
+
+    const presetFormations = pd.formations || [];
+    if (presetFormations.length === 0) return;
+    const N = Math.min(2, presetFormations.length);
+
+    if (N === 2 && selectedFormation + 1 >= noteData.formations.length) {
+      showToast(t('basketNeedNextFormation'));
+      return;
+    }
+
+    const selected = renderer._selectedDancers;
+    const hasSelection = selected && selected.size > 1;
+    const targetIndices = hasSelection ? Array.from(selected).sort((a, b) => a - b) : noteData.dancers.map((_, i) => i);
+
+    const presetCount = pd.dancers.length;
+    const presetEntries0 = []; // [{ presetIdx, x, y }]
+    for (const p of presetFormations[0].positions) {
+      presetEntries0.push({ presetIdx: p.dancerIndex, x: p.x, y: p.y });
+    }
+    if (presetEntries0.length === 0) return;
+
+    const currentFormation = noteData.formations[selectedFormation];
+    const dancerInfos = []; // [{ dancer, currentXY }]
+    for (const idx of targetIndices) {
+      const d = noteData.dancers[idx];
+      if (!d) continue;
+      const pos = currentFormation.positions.find(p => p.dancerId === d.id);
+      if (!pos) continue;
+      dancerInfos.push({ dancer: d, currentXY: { x: pos.x, y: pos.y } });
+    }
+    if (dancerInfos.length === 0) return;
+
+    // 첫 번째 대형 기준으로 노트 댄서 ↔ preset dancerIndex 매핑 결정
+    const mapping = pickAndMatch(dancerInfos, presetEntries0);
+
+    // N개 대형에 같은 매핑으로 좌표 적용
+    for (let k = 0; k < N; k++) {
+      const f = presetFormations[k];
+      const presetK = new Array(presetCount);
+      for (const p of f.positions) {
+        presetK[p.dancerIndex] = { x: p.x, y: p.y, angle: p.angle };
+      }
+
+      const targetFormation = noteData.formations[selectedFormation + k];
+      const oldPositions = new Map();
+      const movedIds = [];
+      for (const m of mapping) {
+        const target = presetK[m.presetIdx];
+        if (!target) continue;
+        const { dancer } = dancerInfos[m.dancerInfoIdx];
+        const pos = targetFormation.positions.find(p => p.dancerId === dancer.id);
+        if (!pos) continue;
+        oldPositions.set(dancer.id, { x: pos.x, y: pos.y });
+        pos.x = target.x;
+        pos.y = target.y;
+        if (target.angle !== undefined) pos.angle = target.angle;
+        movedIds.push(dancer.id);
+      }
+      recalcWaypoints(movedIds, selectedFormation + k, oldPositions);
+    }
+
+    updateStage(); saveSnapshot();
+    showToast(t('basketApplied'));
+  }
+
+  // 노트 댄서 ↔ preset 좌표 매핑: 가까운 M쌍 그리디 + 헝가리안 재최적화.
+  // M = min(노트, preset). 더 많은 쪽에서 가까운 M명만 사용.
+  function pickAndMatch(dancerInfos, presetEntries) {
+    const used = { dancers: new Set(), presets: new Set() };
+    const picked = []; // [{ dancerInfoIdx, presetEntryIdx }]
+
+    if (presetEntries.length <= dancerInfos.length) {
+      // preset 좌표가 적거나 같음 → preset 기준으로 가까운 댄서 선택
+      for (let pi = 0; pi < presetEntries.length; pi++) {
+        let bestIdx = -1, bestDist = Infinity;
+        for (let di = 0; di < dancerInfos.length; di++) {
+          if (used.dancers.has(di)) continue;
+          const dx = dancerInfos[di].currentXY.x - presetEntries[pi].x;
+          const dy = dancerInfos[di].currentXY.y - presetEntries[pi].y;
+          const d = dx * dx + dy * dy;
+          if (d < bestDist) { bestDist = d; bestIdx = di; }
+        }
+        if (bestIdx >= 0) {
+          used.dancers.add(bestIdx);
+          picked.push({ dancerInfoIdx: bestIdx, presetEntryIdx: pi });
+        }
+      }
+    } else {
+      // 노트 댄서가 적음 → 댄서 기준으로 가까운 preset 좌표 선택
+      for (let di = 0; di < dancerInfos.length; di++) {
+        let bestIdx = -1, bestDist = Infinity;
+        for (let pi = 0; pi < presetEntries.length; pi++) {
+          if (used.presets.has(pi)) continue;
+          const dx = dancerInfos[di].currentXY.x - presetEntries[pi].x;
+          const dy = dancerInfos[di].currentXY.y - presetEntries[pi].y;
+          const d = dx * dx + dy * dy;
+          if (d < bestDist) { bestDist = d; bestIdx = pi; }
+        }
+        if (bestIdx >= 0) {
+          used.presets.add(bestIdx);
+          picked.push({ dancerInfoIdx: di, presetEntryIdx: bestIdx });
+        }
+      }
+    }
+
+    if (picked.length === 0) return [];
+
+    const subCurrent = picked.map(p => dancerInfos[p.dancerInfoIdx].currentXY);
+    const subTarget = picked.map(p => ({ x: presetEntries[p.presetEntryIdx].x, y: presetEntries[p.presetEntryIdx].y }));
+    const assignment = matchNearest(subCurrent, subTarget);
+    return picked.map((p, i) => ({
+      dancerInfoIdx: p.dancerInfoIdx,
+      presetIdx: presetEntries[picked[assignment[i]].presetEntryIdx].presetIdx,
+    }));
+  }
+
+  _renderBasket = renderBasket;
+  renderBasket();
+
   renderDancerList(list);
 
   addBtn.addEventListener('click', () => {
@@ -2855,6 +3069,7 @@ function setupToolbar(container) {
     activePanel = name;
     if (name === 'inspector') updateInspector();
     if (name === 'presets' && _renderPresetThumbnails) _renderPresetThumbnails();
+    if (name === 'presets' && _renderBasket) _renderBasket();
     if (window.innerWidth <= 768) {
       overlay.classList.add('sidebar-overlay--visible');
     } else {
