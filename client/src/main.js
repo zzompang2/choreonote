@@ -16,7 +16,6 @@ initTheme();
 
 // OAuth PKCE 리다이렉트 후 세션 복원 + 전역 auth 핸들러 등록
 initAuthHandler();
-supabase.auth.getSession();
 
 const app = document.querySelector('#app');
 
@@ -27,8 +26,14 @@ route('/share', (shareId) => renderViewer(app, shareId));
 route('/market', () => renderMarket(app));
 route('/trash', () => renderTrash(app));
 
+// UI는 세션 복원에 의존하지 않음 — 즉시 렌더.
+// OAuth 복귀 직후 PKCE 교환이 수 초 걸릴 수 있어 await하면 화면이 빈 채로 멈춘다.
+// 세션이 복원되면 onAuthStateChange(SIGNED_IN) → rerouteCurrent()로 재렌더.
 startRouter();
 initChatBot();
+
+// 백그라운드 세션 복원 트리거 (결과는 onAuthStateChange로 흘러감).
+supabase.auth.getSession();
 
 // PWA: 새 버전 감지 시 업데이트 알림
 const updateSW = registerSW({

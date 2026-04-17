@@ -1,5 +1,6 @@
 const routes = {};
 let navigationGuard = null; // () => bool — return true to block navigation
+let currentHandleRoute = null;
 
 export function route(path, handler) {
   routes[path] = handler;
@@ -7,6 +8,11 @@ export function route(path, handler) {
 
 export function navigate(path) {
   window.location.hash = path;
+}
+
+/** 현재 라우트를 다시 실행. auth 상태 변경 등으로 재렌더가 필요할 때. */
+export function rerouteCurrent() {
+  if (currentHandleRoute) currentHandleRoute();
 }
 
 export function setNavigationGuard(guardFn) {
@@ -48,6 +54,7 @@ export function startRouter() {
     }
   };
 
+  currentHandleRoute = handleRoute;
   window.addEventListener('hashchange', handleRoute);
   handleRoute();
 }

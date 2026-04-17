@@ -1,16 +1,27 @@
 import { supabase } from '../store/supabase.js';
 import { t } from './i18n.js';
 import { showToast } from './toast.js';
+import { rerouteCurrent } from './router.js';
 
 // sessionStorage 플래그 키
 const EXPLICIT_LOGOUT_KEY = 'explicit-logout';
 const SESSION_EXPIRED_KEY = 'session-expired';
 const PENDING_LOGIN_SYNC_KEY = 'pending-login-sync';
 
-/** 현재 로그인된 유저 반환 (없으면 null) */
+/**
+ * 현재 로그인된 유저 반환 (없으면 null).
+ * getSession은 OAuth 복귀 직후 PKCE 교환 중엔 resolve가 지연될 수 있어
+ * 500ms timeout 둔다. 세션이 뒤늦게 올라오면 onAuthStateChange로 재렌더.
+ */
 export async function getCurrentUser() {
-  const { data: { user } } = await supabase.auth.getUser();
-  return user;
+  try {
+    return await Promise.race([
+      supabase.auth.getSession().then(({ data }) => data.session?.user || null),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('getSession timeout')), 500)),
+    ]);
+  } catch {
+    return null;
+  }
 }
 
 /** Google OAuth 로그인. 리다이렉트 복귀 후 자동 동기화되도록 플래그를 심어 둔다. */
@@ -69,6 +80,8 @@ export function initAuthHandler() {
 
   supabase.auth.onAuthStateChange(async (event) => {
     if (event === 'SIGNED_IN') {
+      // 세션이 뒤늦게 복원된 경우를 대비해 현재 라우트 재렌더.
+      rerouteCurrent();
       if (sessionStorage.getItem(PENDING_LOGIN_SYNC_KEY) === '1') {
         sessionStorage.removeItem(PENDING_LOGIN_SYNC_KEY);
         clearSessionExpired();
