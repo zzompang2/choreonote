@@ -3158,6 +3158,37 @@ function setupToolbar(container) {
   }
   overlay.addEventListener('click', closePanel);
 
+  // 모바일 바텀시트: 상단 핸들 잡고 아래로 드래그하면 닫힘
+  const HANDLE_ZONE = 36;
+  const DISMISS_THRESHOLD = 60;
+  let dragState = null;
+  sidebar.addEventListener('touchstart', (e) => {
+    if (window.innerWidth > 768) return;
+    if (sidebar.classList.contains('editor__sidebar--hidden')) return;
+    const touch = e.touches[0];
+    const rect = sidebar.getBoundingClientRect();
+    if (touch.clientY - rect.top > HANDLE_ZONE) return;
+    dragState = { startY: touch.clientY, lastY: touch.clientY };
+    sidebar.style.transition = 'none';
+  }, { passive: true });
+  sidebar.addEventListener('touchmove', (e) => {
+    if (!dragState) return;
+    const touch = e.touches[0];
+    const dy = Math.max(0, touch.clientY - dragState.startY);
+    dragState.lastY = touch.clientY;
+    sidebar.style.transform = `translateY(${dy}px)`;
+  }, { passive: true });
+  const endDrag = () => {
+    if (!dragState) return;
+    const dy = dragState.lastY - dragState.startY;
+    sidebar.style.transition = '';
+    sidebar.style.transform = '';
+    dragState = null;
+    if (dy > DISMISS_THRESHOLD) closePanel();
+  };
+  sidebar.addEventListener('touchend', endDrag);
+  sidebar.addEventListener('touchcancel', endDrag);
+
   // Start hidden on mobile
   if (window.innerWidth <= 768) {
     sidebar.classList.add('editor__sidebar--hidden');
