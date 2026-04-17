@@ -554,10 +554,33 @@ body {
 .note-grid--list .note-card__body {
   flex: 1;
   padding: 10px 14px;
+  padding-right: 56px;
 }
 
 .note-grid--list .note-card__title {
   margin-bottom: 4px;
+}
+
+.note-grid--list .note-card__more {
+  top: 50%;
+  right: 12px;
+  transform: translateY(-50%);
+}
+
+.note-grid--list .note-card__more::before {
+  inset: -12px;
+  top: -12px;
+  bottom: -12px;
+  left: -12px;
+  right: -12px;
+}
+
+.note-grid--list .note-card__more:hover {
+  transform: translateY(-50%) scale(1.08);
+}
+
+.note-grid--list .note-card__more:active {
+  transform: translateY(-50%) scale(0.95);
 }
 
 .btn--icon {

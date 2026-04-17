@@ -160,7 +160,6 @@ function renderFolderSection(grid, notes, folder, user, rootContainer) {
       <div class="note-card__thumbnail">
         <canvas data-thumb="${note.id}" width="200" height="134"></canvas>
         ${pendingBadge}
-        <button class="note-card__more" data-more="${note.id}" title="${t('cardMoreMenu')}" aria-label="${t('cardMoreMenu')}"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button>
       </div>
       <div class="note-card__body">
         <div class="note-card__title">${escapeHtml(note.title)}</div>
@@ -170,6 +169,7 @@ function renderFolderSection(grid, notes, folder, user, rootContainer) {
           <span>${formatTime(note.duration)}</span>
         </div>
       </div>
+      <button class="note-card__more" data-more="${note.id}" title="${t('cardMoreMenu')}" aria-label="${t('cardMoreMenu')}"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button>
     </div>
   `;
   }).join('');
