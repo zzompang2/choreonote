@@ -153,10 +153,13 @@ function renderFolderSection(grid, notes, folder, user, rootContainer) {
     return;
   }
 
-  grid.innerHTML = notes.map((note) => `
+  grid.innerHTML = notes.map((note) => {
+    const pendingBadge = note.cloudUploadPending ? `<span class="note-card__pending" title="${t('cloudUploadPending')}" aria-label="${t('cloudUploadPending')}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><polyline points="21 4 21 10 15 10"/></svg></span>` : '';
+    return `
     <div class="note-card" data-id="${note.id}" data-location="${note.location || 'local'}">
       <div class="note-card__thumbnail">
         <canvas data-thumb="${note.id}" width="200" height="134"></canvas>
+        ${pendingBadge}
         <button class="note-card__more" data-more="${note.id}" title="${t('cardMoreMenu')}" aria-label="${t('cardMoreMenu')}"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button>
       </div>
       <div class="note-card__body">
@@ -168,7 +171,8 @@ function renderFolderSection(grid, notes, folder, user, rootContainer) {
         </div>
       </div>
     </div>
-  `).join('');
+  `;
+  }).join('');
 
   for (const note of notes) {
     renderThumbnail(grid.querySelector(`canvas[data-thumb="${note.id}"]`), note.id);
