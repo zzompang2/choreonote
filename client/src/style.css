@@ -664,40 +664,6 @@ body {
   display: inline-block;
 }
 
-.note-card__delete {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  background: rgba(0,0,0,0.55);
-  backdrop-filter: blur(6px);
-  border: none;
-  color: #fff;
-  cursor: pointer;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  transition: opacity 0.15s, background 0.15s;
-  z-index: 2;
-}
-
-.note-card:hover .note-card__delete {
-  opacity: 1;
-}
-
-@media (hover: none) {
-  .note-card__delete {
-    opacity: 0.75;
-  }
-}
-
-.note-card__delete:hover {
-  background: var(--danger);
-}
-
 .empty-state {
   text-align: center;
   padding: 80px 20px;
@@ -4953,87 +4919,140 @@ html:has(.editor) {
   }
 }
 
-/* ── 클라우드 동기화 아이콘 (썸네일 오버레이) ── */
+/* ── 폴더 섹션 (내 기기 / 클라우드) ── */
 
-.note-card__sync {
-  position: absolute;
-  top: 8px;
-  left: 8px;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(0, 0, 0, 0.55);
-  backdrop-filter: blur(6px);
-  color: #fff;
-  z-index: 2;
-  pointer-events: none;
+.dashboard__folder-section + .dashboard__folder-section {
+  margin-top: 28px;
 }
 
-.note-card__sync--synced {
-  color: var(--accent);
-}
-
-.note-card__sync--unsynced {
-  color: #f0ad4e;
-}
-
-/* ── 클라우드 노트 섹션 ── */
-
-.cloud-section {
-  margin-top: 24px;
-}
-
-.cloud-section__title {
+.dashboard__folder-header {
   font-size: 14px;
   font-weight: 600;
   color: var(--text-secondary);
   margin-bottom: 12px;
+  letter-spacing: 0.2px;
+}
+
+.empty-state--subtle {
+  padding: 28px 16px;
+  font-size: 13px;
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  background: var(--bg-secondary);
+}
+
+.empty-state--subtle p {
+  margin: 0;
+}
+
+/* ── 카드 더보기(⋯) 버튼 + 팝오버 ── */
+
+.note-card__more {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(6px);
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
   display: flex;
   align-items: center;
-  gap: 6px;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.15s, background 0.15s, transform 0.1s;
+  z-index: 2;
 }
 
-.cloud-note-card {
+/* 히트 영역을 썸네일 오른쪽 상단 모서리까지 확장 (시각 크기는 그대로) */
+.note-card__more::before {
+  content: '';
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  bottom: -28px;
+  left: -48px;
+}
+
+.note-card:hover .note-card__more { opacity: 1; }
+
+@media (hover: none) {
+  .note-card__more { opacity: 0.85; }
+}
+
+.note-card__more:hover {
+  background: rgba(0,0,0,0.85);
+  transform: scale(1.08);
+}
+
+.note-card__more:active {
+  transform: scale(0.95);
+}
+
+.card-menu {
+  min-width: 180px;
   background: var(--bg-card);
+  border: 1px solid var(--border);
   border-radius: 10px;
-  padding: 14px;
-  cursor: pointer;
-  border: 1px dashed var(--border-strong);
-  transition: border-color 0.15s;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.18);
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
 }
 
-.cloud-note-card:hover {
-  border-color: var(--accent);
-}
-
-.cloud-note-card__title {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin-bottom: 4px;
-}
-
-.cloud-note-card__meta {
-  font-size: 12px;
-  color: var(--text-secondary);
-  margin-bottom: 8px;
-}
-
-.cloud-note-card__download {
-  font-size: 13px;
-  color: var(--accent);
+.card-menu button {
   background: none;
   border: none;
+  text-align: left;
+  padding: 9px 12px;
+  font-size: 14px;
+  color: var(--text-primary);
   cursor: pointer;
-  padding: 0;
-  font-weight: 600;
+  border-radius: 6px;
 }
 
-.cloud-note-card__download:hover {
-  text-decoration: underline;
+.card-menu button:hover {
+  background: var(--bg-secondary);
+}
+
+.card-menu__danger {
+  color: var(--danger) !important;
+}
+
+.card-menu__danger:hover {
+  background: rgba(220, 53, 69, 0.1) !important;
+}
+
+/* ── 세션 만료 배너 ── */
+
+.session-expired-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: var(--warn-bg, rgba(240,173,78,0.12));
+  border: 1px solid rgba(240,173,78,0.4);
+  color: var(--text-primary);
+  padding: 10px 14px;
+  border-radius: 10px;
+  margin-bottom: 16px;
+  font-size: 13px;
+}
+
+.session-expired-banner__dismiss {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 4px 8px;
+}
+
+.session-expired-banner__dismiss:hover {
+  color: var(--text-primary);
 }
 
 /* ── 충돌 해결 모달 ── */

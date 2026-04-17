@@ -1,11 +1,10 @@
 import { NoteStore } from '../store/NoteStore.js';
-import { db } from '../store/db.js';
 import { navigate } from '../utils/router.js';
 import { formatTime } from '../utils/constants.js';
 import { t } from '../utils/i18n.js';
 import { renderFormationThumbnail } from '../utils/thumbnail.js';
-import { getCurrentUser } from '../utils/auth.js';
-import { getSyncStatus, fetchCloudNotes, downloadCloudNote } from '../utils/cloudSync.js';
+import { getCurrentUser, wasSessionExpired, clearSessionExpired } from '../utils/auth.js';
+import { moveNoteToCloud, moveNoteToLocal } from '../utils/cloudSync.js';
 import { showToast } from '../utils/toast.js';
 import { renderAppLayout } from '../components/AppLayout.js';
 
@@ -16,15 +15,26 @@ export async function renderDashboard(container) {
   });
 }
 
+// 로그인 직후 자동 동기화 완료 시 대시보드 재렌더
+let cloudUpdateListenerBound = false;
+
 async function renderDashboardContent(content, rootContainer) {
-  // Purge notes deleted more than 30 days ago
   await NoteStore.purgeExpiredNotes(30);
 
   const notes = await NoteStore.getAllNotes();
   const user = await getCurrentUser();
 
+  if (!cloudUpdateListenerBound) {
+    cloudUpdateListenerBound = true;
+    document.addEventListener('app:cloud-notes-updated', () => {
+      renderDashboard(rootContainer);
+    });
+  }
+
   const div = document.createElement('div');
   div.className = 'dashboard';
+
+  const showSessionExpired = !user && wasSessionExpired();
 
   div.innerHTML = `
     <div class="dashboard__header">
@@ -48,8 +58,22 @@ async function renderDashboardContent(content, rootContainer) {
     </div>
     <div class="dashboard__body">
       <div class="storage-warning" id="storage-warning" style="display:none"></div>
-      <div class="note-grid" id="note-grid"></div>
-      <div id="cloud-section"></div>
+      ${showSessionExpired ? `
+        <div class="session-expired-banner" id="session-expired-banner">
+          <span>${t('sessionExpiredBanner')}</span>
+          <button class="session-expired-banner__dismiss" id="session-expired-dismiss">${t('sessionExpiredDismiss')}</button>
+        </div>
+      ` : ''}
+      <div class="dashboard__folder-section" data-folder="local">
+        <div class="dashboard__folder-header">💻 ${t('folderLocal')}</div>
+        <div class="note-grid" id="local-grid"></div>
+      </div>
+      ${user ? `
+        <div class="dashboard__folder-section" data-folder="cloud">
+          <div class="dashboard__folder-header">☁ ${t('folderCloud')}</div>
+          <div class="note-grid" id="cloud-grid"></div>
+        </div>
+      ` : ''}
       <input type="file" id="import-file" accept=".json" style="display:none" />
     </div>
   `;
@@ -57,13 +81,27 @@ async function renderDashboardContent(content, rootContainer) {
   content.innerHTML = '';
   content.appendChild(div);
 
-  const grid = div.querySelector('#note-grid');
-  renderNoteCards(grid, notes, user);
+  if (showSessionExpired) {
+    div.querySelector('#session-expired-dismiss').addEventListener('click', () => {
+      clearSessionExpired();
+      div.querySelector('#session-expired-banner').remove();
+    });
+  }
 
-  // 클라우드 노트 섹션 (로그인 시)
-  renderCloudSection(div.querySelector('#cloud-section'), notes, user, rootContainer);
+  const localGrid = div.querySelector('#local-grid');
+  const cloudGrid = div.querySelector('#cloud-grid');
 
-  // Storage usage warning
+  const isListView = localStorage.getItem('choreonote-list-view') === '1';
+  if (isListView) {
+    localGrid.classList.add('note-grid--list');
+    cloudGrid?.classList.add('note-grid--list');
+  }
+
+  renderFolderSection(localGrid, notes.filter(n => n.location !== 'cloud'), 'local', user, rootContainer);
+  if (cloudGrid) {
+    renderFolderSection(cloudGrid, notes.filter(n => n.location === 'cloud'), 'cloud', user, rootContainer);
+  }
+
   checkStorageUsage(div.querySelector('#storage-warning'));
 
   div.querySelector('#create-btn').addEventListener('click', async () => {
@@ -73,17 +111,18 @@ async function renderDashboardContent(content, rootContainer) {
 
   div.querySelector('#sort-select').addEventListener('change', async (e) => {
     const sorted = await NoteStore.getAllNotes(e.target.value);
-    renderNoteCards(grid, sorted, user);
+    renderFolderSection(localGrid, sorted.filter(n => n.location !== 'cloud'), 'local', user, rootContainer);
+    if (cloudGrid) {
+      renderFolderSection(cloudGrid, sorted.filter(n => n.location === 'cloud'), 'cloud', user, rootContainer);
+    }
   });
 
-  // View toggle (grid / list)
   const viewToggleBtn = div.querySelector('#view-toggle-btn');
-  let isListView = localStorage.getItem('choreonote-list-view') === '1';
-  if (isListView) grid.classList.add('note-grid--list');
   viewToggleBtn.addEventListener('click', () => {
-    isListView = !isListView;
-    localStorage.setItem('choreonote-list-view', isListView ? '1' : '0');
-    grid.classList.toggle('note-grid--list', isListView);
+    const next = !localGrid.classList.contains('note-grid--list');
+    localStorage.setItem('choreonote-list-view', next ? '1' : '0');
+    localGrid.classList.toggle('note-grid--list', next);
+    cloudGrid?.classList.toggle('note-grid--list', next);
   });
 
   const importFile = div.querySelector('#import-file');
@@ -101,64 +140,133 @@ async function renderDashboardContent(content, rootContainer) {
   });
 }
 
-function renderNoteCards(grid, notes, user) {
+function renderFolderSection(grid, notes, folder, user, rootContainer) {
   if (notes.length === 0) {
+    let hint;
+    if (folder === 'local') hint = t('folderLocalEmpty');
+    else hint = user ? t('folderCloudEmpty') : t('folderCloudLoginHint');
     grid.innerHTML = `
-      <div class="empty-state" style="grid-column:1/-1">
-        <div class="empty-state__icon">🎵</div>
-        <p>${t('emptyTitle')}</p>
-        <p style="margin-top:8px;font-size:14px">${t('emptyDesc')}</p>
+      <div class="empty-state empty-state--subtle" style="grid-column:1/-1">
+        <p>${hint}</p>
       </div>
     `;
     return;
   }
 
-  grid.innerHTML = notes.map((note) => {
-    const syncIcon = user ? renderSyncIcon(note) : '';
-    return `
-      <div class="note-card" data-id="${note.id}">
-        <div class="note-card__thumbnail">
-          <canvas data-thumb="${note.id}" width="200" height="134"></canvas>
-          ${syncIcon}
-          <button class="note-card__delete" data-delete="${note.id}" title="${t('delete')}" aria-label="${t('delete')}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></svg></button>
-        </div>
-        <div class="note-card__body">
-          <div class="note-card__title">${escapeHtml(note.title)}</div>
-          <div class="note-card__meta">
-            <span>${formatDate(note.createdAt)}</span>
-            <span class="note-card__dot"></span>
-            <span>${formatTime(note.duration)}</span>
-          </div>
+  grid.innerHTML = notes.map((note) => `
+    <div class="note-card" data-id="${note.id}" data-location="${note.location || 'local'}">
+      <div class="note-card__thumbnail">
+        <canvas data-thumb="${note.id}" width="200" height="134"></canvas>
+        <button class="note-card__more" data-more="${note.id}" title="${t('cardMoreMenu')}" aria-label="${t('cardMoreMenu')}"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button>
+      </div>
+      <div class="note-card__body">
+        <div class="note-card__title">${escapeHtml(note.title)}</div>
+        <div class="note-card__meta">
+          <span>${formatDate(note.createdAt)}</span>
+          <span class="note-card__dot"></span>
+          <span>${formatTime(note.duration)}</span>
         </div>
       </div>
-    `;
-  }).join('');
+    </div>
+  `).join('');
 
-  // Render thumbnails asynchronously
   for (const note of notes) {
     renderThumbnail(grid.querySelector(`canvas[data-thumb="${note.id}"]`), note.id);
   }
 
   grid.querySelectorAll('.note-card').forEach((card) => {
     card.addEventListener('click', (e) => {
-      if (e.target.closest('.note-card__delete')) return;
+      if (e.target.closest('.note-card__more')) return;
+      if (e.target.closest('.card-menu')) return;
       navigate(`/edit/${card.dataset.id}`);
     });
   });
 
-  grid.querySelectorAll('.note-card__delete').forEach((btn) => {
-    btn.addEventListener('click', async (e) => {
+  grid.querySelectorAll('.note-card__more').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
       e.stopPropagation();
-      if (!confirm(t('confirmDeleteNote'))) return;
-      await NoteStore.deleteNote(Number(btn.dataset.delete));
-      const updated = await NoteStore.getAllNotes();
-      if (updated.length === 0) {
-        localStorage.removeItem('choreonote-onboarding-done');
-        localStorage.removeItem('choreonote-unlocked-features');
-      }
-      renderNoteCards(grid, updated, user);
+      openCardMenu(btn, Number(btn.dataset.more), folder, user, rootContainer);
     });
   });
+}
+
+function openCardMenu(anchor, noteId, folder, user, rootContainer) {
+  closeAnyCardMenu();
+
+  const menu = document.createElement('div');
+  menu.className = 'card-menu';
+
+  const items = [];
+  if (folder === 'local' && user) {
+    items.push({ action: 'to-cloud', label: t('moveToCloud') });
+  } else if (folder === 'cloud') {
+    items.push({ action: 'to-local', label: t('moveToLocal') });
+  }
+  items.push({ action: 'delete', label: t('delete'), danger: true });
+
+  menu.innerHTML = items.map(it =>
+    `<button data-action="${it.action}"${it.danger ? ' class="card-menu__danger"' : ''}>${it.label}</button>`
+  ).join('');
+
+  const rect = anchor.getBoundingClientRect();
+  menu.style.position = 'fixed';
+  menu.style.top = `${rect.bottom + 4}px`;
+  menu.style.left = `${rect.right - 180}px`;
+  menu.style.zIndex = '1000';
+  document.body.appendChild(menu);
+
+  menu.querySelectorAll('button[data-action]').forEach(b => {
+    b.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const action = b.dataset.action;
+      closeCardMenu(menu);
+      if (action === 'to-cloud') {
+        try {
+          await moveNoteToCloud(noteId);
+          showToast(t('moveToCloudSuccess'));
+          renderDashboard(rootContainer);
+        } catch (err) {
+          console.error('moveToCloud failed:', err);
+          showToast(t('moveFail'), 3000);
+        }
+      } else if (action === 'to-local') {
+        if (!confirm(t('confirmMoveToLocal'))) return;
+        try {
+          await moveNoteToLocal(noteId);
+          showToast(t('moveToLocalSuccess'));
+          renderDashboard(rootContainer);
+        } catch (err) {
+          console.error('moveToLocal failed:', err);
+          showToast(t('moveFail'), 3000);
+        }
+      } else if (action === 'delete') {
+        if (!confirm(t('confirmDeleteNote'))) return;
+        await NoteStore.deleteNote(noteId);
+        const updated = await NoteStore.getAllNotes();
+        if (updated.length === 0) {
+          localStorage.removeItem('choreonote-onboarding-done');
+          localStorage.removeItem('choreonote-unlocked-features');
+        }
+        renderDashboard(rootContainer);
+      }
+    });
+  });
+
+  const onDocClick = (e) => {
+    if (!menu.contains(e.target) && e.target !== anchor) closeCardMenu(menu);
+  };
+  setTimeout(() => document.addEventListener('click', onDocClick, { once: true }), 0);
+  menu.__onDocClick = onDocClick;
+}
+
+function closeCardMenu(menu) {
+  if (!menu) return;
+  if (menu.__onDocClick) document.removeEventListener('click', menu.__onDocClick);
+  menu.remove();
+}
+
+function closeAnyCardMenu() {
+  document.querySelectorAll('.card-menu').forEach(closeCardMenu);
 }
 
 async function renderThumbnail(canvas, noteId) {
@@ -197,85 +305,4 @@ async function checkStorageUsage(el) {
     el.style.display = '';
     el.textContent = t('storageWarning', { used: usedMB, total: totalMB, pct: Math.round(pct * 100) });
   } catch (_) {}
-}
-
-// ── 클라우드 동기화 아이콘 (썸네일 오버레이) ──
-
-function renderSyncIcon(note) {
-  const status = getSyncStatus(note);
-  if (status === 'local') return '';
-  const label = status === 'synced' ? t('cloudSynced') : t('cloudUnsynced');
-  return `<span class="note-card__sync note-card__sync--${status}" title="${label}" aria-label="${label}">
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>
-  </span>`;
-}
-
-// ── 클라우드 노트 섹션 (이 기기에 없는 노트) ──
-
-async function renderCloudSection(el, localNotes, user, dashboardContainer) {
-  if (!el || !user) return;
-
-  try {
-    const cloudNotes = await fetchCloudNotes();
-    const localCloudIds = new Set();
-    const allLocalNotes = await db.notes.toArray();
-    for (const n of allLocalNotes) {
-      if (n.cloudId) localCloudIds.add(n.cloudId);
-    }
-
-    const missingNotes = cloudNotes.filter(cn => !localCloudIds.has(cn.id));
-    if (missingNotes.length === 0) return;
-
-    el.innerHTML = `
-      <div class="cloud-section">
-        <div class="cloud-section__title">☁ ${t('cloudSection')}</div>
-        <div class="note-grid" id="cloud-grid">
-          ${missingNotes.map(cn => {
-            const noteJson = cn.note_json;
-            const dancerCount = noteJson.dancers?.length || 0;
-            const formationCount = noteJson.formations?.length || 0;
-            return `
-              <div class="cloud-note-card" data-cloud-id="${cn.id}">
-                <div class="cloud-note-card__title">${escapeHtml(cn.title)}</div>
-                <div class="cloud-note-card__meta">
-                  ${t('marketDancerCount', { count: dancerCount })} · ${t('marketFormationCount', { count: formationCount })} · ${formatDate(cn.updated_at)}
-                </div>
-                <button class="cloud-note-card__download" data-cloud-download="${cn.id}">${t('cloudDownload')}</button>
-              </div>
-            `;
-          }).join('')}
-        </div>
-      </div>
-    `;
-
-    const cloudGrid = el.querySelector('#cloud-grid');
-    if (localStorage.getItem('choreonote-list-view') === '1') {
-      cloudGrid.classList.add('note-grid--list');
-    }
-
-    el.querySelectorAll('[data-cloud-download]').forEach(btn => {
-      btn.addEventListener('click', async (e) => {
-        e.stopPropagation();
-        const cloudId = btn.dataset.cloudDownload;
-        const cloudNote = missingNotes.find(cn => cn.id === cloudId);
-        if (!cloudNote) return;
-
-        btn.disabled = true;
-        btn.textContent = '...';
-        try {
-          await downloadCloudNote(cloudNote);
-          if (cloudNote.music_name) {
-            showToast(t('cloudMusicNotice'), 5000);
-          }
-          renderDashboard(dashboardContainer);
-        } catch (err) {
-          console.error('Cloud download failed:', err);
-          btn.disabled = false;
-          btn.textContent = t('cloudDownload');
-        }
-      });
-    });
-  } catch (err) {
-    console.warn('Failed to load cloud notes:', err);
-  }
 }
