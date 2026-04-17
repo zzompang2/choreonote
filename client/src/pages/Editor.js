@@ -43,6 +43,19 @@ let copiedDancerPos = null;
 let _focusedArea = 'timeline'; // 'stage' | 'timeline'
 let fitStage = () => {};
 
+function findFormationIdxAtTime(formations, ms) {
+  if (!formations || !formations.length) return -1;
+  for (let i = 0; i < formations.length; i++) {
+    const f = formations[i];
+    if (ms >= f.startTime && ms < f.startTime + f.duration) return i;
+  }
+  let lastIdx = 0;
+  for (let i = 0; i < formations.length; i++) {
+    if (formations[i].startTime <= ms) lastIdx = i;
+  }
+  return lastIdx;
+}
+
 // Onboarding & Feature unlock system
 let _onboardingActive = false;
 const ONBOARDING_KEY = 'choreonote-onboarding-done';
@@ -653,7 +666,7 @@ function setupPlayback(container) {
             noteData.formations.splice(idx, 1);
           }
           selectedFormations.clear();
-          selectedFormation = Math.min(selectedFormation, noteData.formations.length - 1);
+          selectedFormation = findFormationIdxAtTime(noteData.formations, currentMs);
           if (selectedFormation >= 0) selectedFormations.add(selectedFormation);
           engine.setFormations(noteData.formations, noteData.dancers);
           const formationsEl = container.querySelector('#timeline-formations');
@@ -2453,11 +2466,15 @@ function setupToolbar(container) {
       order: noteData.formations.length,
       positions: (() => {
         const currentPositions = engine.calcPositionsAt(currentMs);
-        return noteData.dancers.map((d, i) => ({
-          dancerId: d.id,
-          x: Math.round(currentPositions[i]?.x || 0),
-          y: Math.round(currentPositions[i]?.y || 0),
-        }));
+        return noteData.dancers.map((d, i) => {
+          const cp = currentPositions[i] || {};
+          return {
+            dancerId: d.id,
+            x: Math.round(cp.x || 0),
+            y: Math.round(cp.y || 0),
+            angle: cp.angle || 0,
+          };
+        });
       })(),
     };
     noteData.formations.push(newFormation);
@@ -2480,7 +2497,9 @@ function setupToolbar(container) {
     }
     if (!confirm(t('confirmDeleteFormation'))) return;
     noteData.formations.splice(selectedFormation, 1);
-    selectedFormation = Math.min(selectedFormation, noteData.formations.length - 1);
+    selectedFormation = findFormationIdxAtTime(noteData.formations, currentMs);
+    selectedFormations.clear();
+    if (selectedFormation >= 0) selectedFormations.add(selectedFormation);
     engine.setFormations(noteData.formations, noteData.dancers);
 
     const formationsEl = container.querySelector('#timeline-formations');
