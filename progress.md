@@ -1,40 +1,18 @@
 # 진행 상황
 
-## 현재 상태: OAuth 복귀 첫 렌더 hang 해결 · 실기기 검증 나머지 시나리오 + 바구니 작업 진행 중
+## 현재 상태: 에디터 P2 버그 2건 수정 · 바구니 작업(대열 마켓 2단계) 미커밋 재개 대기
 
-### 최근 완료 (2026-04-17 pm)
+### 최근 완료 (2026-04-17 pm·후반)
+- **에디터 P2 버그 2건 수정** (`4236250`)
+  - 버그 1: 새 대형 생성 시 `calcPositionsAt(currentMs)`에서 x/y만 복사하고 angle이 누락 → 각도가 초기화됨. positions에 `angle: cp.angle || 0` 추가.
+  - 버그 2: 대형 삭제 후 `Math.min(selectedFormation, length-1)` 단순 클램프 → 타임마커와 무관한 대형이 선택됨. `findFormationIdxAtTime(formations, ms)` 헬퍼 추가 (박스 내부면 해당 대형, gap이면 직전 대형). toolbar `-` + 키보드 Delete 양쪽 적용.
+  - 커밋 분리 주의: 바구니 작업이 Editor.js에 섞여있어 HEAD 리셋 → 3개 edit 재적용 → 커밋 → 전체 파일 복원 방식으로 분리함.
+
+### 최근 완료 (2026-04-17 pm·전반)
 - **OAuth 로그인 복귀 직후 첫 렌더 hang 수정** (`3bdff13`)
-  - 증상: 구글 로그인 후 복귀하면 `#app`이 빈 채로 멈춤 (prod는 챗봇만, dev는 완전 백지). 새로고침 시 정상.
   - 원인: PKCE 코드 교환이 수 초 지연되는 구간에서 `getSession`/`getUser`가 resolve 안 됨. `renderAppLayout`이 `innerHTML=''` 후 `await getCurrentUser()`에서 블록 → 아무것도 그려지지 않음.
-  - 해법:
-    - `main.js`: `await getSession()` 제거, 라우터·챗봇 즉시 시작
-    - `auth.js`: `getCurrentUser`에 500ms timeout (지연 시 null 반환 → UI는 로그아웃 상태로 즉시 렌더)
-    - `auth.js`: `SIGNED_IN` 이벤트에서 `rerouteCurrent()` 호출 → 세션 뒤늦게 복원 시 자동 재렌더
-    - `router.js`: `rerouteCurrent` export (현재 라우트 핸들러 재실행)
-  - 모바일 메타 태그 `mobile-web-app-capable` 추가 (`f3953c1`, 표준화, apple- prefix는 호환 유지)
-
-### 최근 완료 (2026-04-17 am)
-- **마켓 UI 개선**
-  - 모든 마켓 썸네일/미리보기에서 `showWings: false` 강제 (퇴장영역 숨김)
-  - 상세 모달 캔버스에 관객석 좌석 strip 추가 — `renderFormationThumbnail`의 `showAudience: 'top'|'bottom'` 옵션, 무대 바깥에 2줄 seat 박스 (`wingBg` 배경)
-  - 상세 모달 애니메이션 총 길이 **대형 수 × 1초**로 정규화 (상대 비율 유지)
-  - 단일 대형은 재생 컨트롤 숨기고 정적 캔버스만
-  - 관객 방향 토글: 이모지 → `관객석 ↓/↑` 텍스트 버튼
-  - 모바일 필터 한 줄: `[인원수 드롭다운] [태그 (N)] [정렬 ▼] [관객석 ↓]` — 태그는 모달로, 인원수는 select로 전환
-  - 필터 그룹핑: 좌(필터: 인원수+태그) / 우(뷰: 정렬+관객석), `market__filter-left/-right` 구조
-- **클라우드/로컬 폴더 모델 — 스캐폴딩 + UI 연결 완료**
-  - `db.js` v3: `location` 필드 추가 + 기존 노트 백필(`cloudId` 있으면 cloud)
-  - `NoteStore`: createNote/importJSON 기본 `location='local'`
-  - `auth.js`: `initAuthHandler` — 명시적 로그아웃/세션 만료 분기, `SIGNED_IN` 시 pending 플래그 기반 자동 동기화, `wasSessionExpired()` 배너 상태
-  - `cloudSync`: `uploadNote` → `uploadOnSave` 이름 변경, `moveNoteToCloud/Local`, `downloadAllOnLogin`
-  - `Editor`: 저장 시 `location==='cloud'`만 자동 업로드
-  - `Dashboard`: 💻 내 기기 / ☁ 클라우드 두 섹션 그리드, 빈 섹션 힌트, 카드 ⋯ 메뉴(이동/삭제 통합, 히트 영역 확장, 리스트뷰에선 카드 오른쪽 중앙에 anchor), 세션 만료 배너, `app:cloud-notes-updated` 이벤트 재렌더
-  - 업로드 실패 `↺` 배지: `uploadOnSave`/`moveNoteToCloud` 실패 시 `cloudUploadPending` 플래그 세움, 다음 성공 시 자동 해제. 카드 썸네일 좌상단에 주황색 오버레이
-- **사이드바 레이아웃 도입**
-  - `components/AppLayout.js` — 220px 고정 사이드바 + 모바일(≤840px) 햄버거 drawer
-  - 메뉴: 내 노트 / 마켓 / 커뮤니티(준비 중) / 휴지통
-  - Trash 독립 `/trash` 라우트
-  - 에디터·랜딩·공유뷰어는 풀스크린 유지
+  - 해법: `main.js`에서 `await getSession()` 제거, `getCurrentUser`에 500ms timeout, `SIGNED_IN` 이벤트에서 `rerouteCurrent()`.
+  - 모바일 메타 태그 `mobile-web-app-capable` 추가 (`f3953c1`).
 
 ### 결정사항 (유효)
 - **마켓 업로드**: 체크박스 대신 연속 범위 선택 (단일 or 최대 5개 연속)
@@ -57,21 +35,17 @@
   - 재로그인 시 cloudId 매칭 병합으로 중복 방지
 
 ## 다음 할 일
-- [x] ~~**사이드바 브라우저 검증**~~ — /dashboard /market /trash 전환, 활성 하이라이트, 모바일 drawer + scrim 확인 완료 (2026-04-17 QA)
-- [x] ~~**마켓 브라우저 검증**~~ — 프리셋 목록, 인원수/태그/정렬/관객석 토글, 상세 모달(관객석 strip + 재생 + 점프 칩), 모바일 필터 모달 확인 완료. **버그 1건 수정** (ISSUE-001 상세 모달 재생 컨트롤 잘림 — `b185aca`)
-- [x] ~~**폴더 모델 — 비로그인 시나리오**~~ — 💻 내 기기 단독 표시, ↺ 배지 렌더/해제 검증 완료
-- [x] ~~**OAuth 로그인 후 첫 렌더 이슈**~~ — hang 원인 파악 및 수정 완료 (`3bdff13`)
+- [ ] **대열 마켓 2단계 이어서** (바구니 작업 진행 중, **미커밋 상태**):
+  - 신규 파일: `utils/basket.js`, `store/user-baskets.sql`, `components/PresetDetailModal.js`
+  - 수정 중: `pages/Market.js`, `pages/Editor.js`(Editor는 에디터 사이드바 내 바구니 섹션 + `_renderBasket` / `applyBasketItem` / `pickAndMatch` 로직), `locales/*`, `style.css`
+  - "내 바구니에 저장" + 에디터 대형 모음 연동
+  - 마켓 카드 디자인 대시보드 카드와 차별화 재검토
 - [ ] **폴더 모델 — 실기기 수동 검증 남은 시나리오** (OAuth 기본 flow는 통과)
   - `downloadAllOnLogin` 자동 다운로드 + 충돌 모달 동작
   - 명시적 로그아웃 vs 세션 만료 분기 (캐시 삭제 / 재로그인 배너)
   - 기기 전환 (A에서 수정 → B에서 로그인 → 다운로드)
   - 폴더 이동 (로컬→클라우드 업로드, 클라우드→로컬 확인 모달 + 서버 삭제)
   - 오프라인 편집 → `↺` 배지 → 온라인 복구 후 배지 자동 해제
-- [ ] **대열 마켓 2단계 이어서** (바구니 작업 진행 중, 미커밋):
-  - 신규 파일: `utils/basket.js`, `store/user-baskets.sql`, `components/PresetDetailModal.js`
-  - 수정 중: `pages/Market.js`, `pages/Editor.js`, `locales/*`, `style.css`
-  - "내 바구니에 저장" + 에디터 대형 모음 연동
-  - 마켓 카드 디자인 대시보드 카드와 차별화 재검토
 - [ ] 대열 마켓 3단계: 좋아요/인기순, 검색
 - [ ] 공유 뷰어 미세 조정
 
@@ -81,7 +55,7 @@
 
 ## 컨텍스트
 - Supabase: `gflnxqrvzlydyjmokyep.supabase.co` (서울 리전)
-- 테이블: shares(공유), market_presets(마켓), notes(클라우드)
+- 테이블: shares(공유), market_presets(마켓), notes(클라우드), user_baskets(바구니 — 미배포)
 - Google OAuth 활성화 완료
 - preset_data JSONB 구조: version, note, dancers, dancerCount, formations, tags, thumbnailIndex
-
+- `findFormationIdxAtTime(formations, ms)` 헬퍼는 `Editor.js` 모듈 스코프 (line 46 부근) — 다른 곳에서도 재사용 여지 있음
