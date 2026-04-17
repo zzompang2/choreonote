@@ -4031,6 +4031,20 @@ function updateTimelineMarker() {
   if (marker) {
     marker.style.left = `${TIMELINE_PADDING + currentMs / 1000 * pixelsPerSec}px`;
   }
+
+  // 재생 중 타임마커가 뷰포트를 벗어나려 하면 다음 페이지로 스크롤
+  if (!engine.isPlaying) return;
+  const timelineScroll = document.querySelector('#timeline-scroll');
+  if (!timelineScroll) return;
+  const markerPx = TIMELINE_PADDING + currentMs / 1000 * pixelsPerSec;
+  const viewLeft = timelineScroll.scrollLeft;
+  const viewRight = viewLeft + timelineScroll.clientWidth;
+  const margin = 60;
+  if (markerPx < viewLeft + margin) {
+    timelineScroll.scrollLeft = markerPx - margin;
+  } else if (markerPx > viewRight - margin) {
+    timelineScroll.scrollLeft = markerPx - timelineScroll.clientWidth + margin;
+  }
 }
 
 function highlightFormation() {
