@@ -47,6 +47,12 @@ let copiedDancerPos = null;
 let _focusedArea = 'timeline'; // 'stage' | 'timeline'
 let fitStage = () => {};
 
+// 렌더 토큰: OAuth SIGNED_IN → rerouteCurrent로 await 중 동시 렌더가 겹치면
+// setupSidebar/setupTimeline 등이 두 번 실행돼 모든 리스너가 이중 바인딩된다.
+// (증상: 레일 클릭 시 openPanel 2회 호출 → 열렸다 즉시 닫힘)
+// 각 await 재개 직후 토큰이 바뀌었으면 오래된 렌더를 폐기한다.
+let _renderToken = 0;
+
 function findFormationIdxAtTime(formations, ms) {
   if (!formations || !formations.length) return -1;
   for (let i = 0; i < formations.length; i++) {
@@ -82,8 +88,11 @@ function isExistingUser() {
 }
 
 export async function renderEditor(container, noteId) {
+  const myToken = ++_renderToken;
   noteId = Number(noteId);
-  noteData = await NoteStore.loadNote(noteId);
+  const loadedNote = await NoteStore.loadNote(noteId);
+  if (myToken !== _renderToken) return; // 더 새로운 렌더가 시작됨 — 폐기
+  noteData = loadedNote;
   if (!noteData) {
     showToast(t('noteNotFound'));
     navigate('/dashboard');
@@ -104,12 +113,18 @@ export async function renderEditor(container, noteId) {
   selectedTransition = null;
 
   // Init engine
-  engine = new PlaybackEngine();
+  const localEngine = new PlaybackEngine();
+  engine = localEngine;
   engine.duration = noteData.note.duration;
   engine.setFormations(noteData.formations, noteData.dancers);
 
   if (noteData.musicBlob) {
-    await engine.loadAudio(noteData.musicBlob);
+    await localEngine.loadAudio(noteData.musicBlob);
+    if (myToken !== _renderToken) {
+      // 우리 engine이 이미 다른 렌더로 대체됐을 수 있으니 로컬 참조로 파기
+      try { localEngine.destroy(); } catch (_) {}
+      return;
+    }
   }
 
   // Init renderer
