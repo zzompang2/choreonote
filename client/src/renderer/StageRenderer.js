@@ -14,6 +14,7 @@ export class StageRenderer {
     this._drawGridCache();
 
     this.is3D = false;
+    this.focusMode = false; // 집중 모드 — true면 편집 차단 (재생 전용 뷰)
     this._3dTopPad = 0;
     this.isSnap = false;
     this.showNames = false;
@@ -873,6 +874,7 @@ export class StageRenderer {
     let _ptrLongFired = false;
     this.canvas.addEventListener('pointerdown', (e) => {
       if (e.pointerType === 'mouse') return; // handled by dblclick/mousedown
+      if (this.is3D || this.focusMode) return;
       const pos = this._getCanvasPos(e);
       const now = Date.now();
 
@@ -916,6 +918,8 @@ export class StageRenderer {
     this.canvas.addEventListener('touchstart', (e) => {
       e.preventDefault();
       _longPressFired = false;
+      // 집중 모드: 핀치줌만 허용, 단일 터치는 편집이므로 차단
+      if (this.focusMode && e.touches.length === 1) return;
       // Pinch zoom: two fingers
       if (e.touches.length === 2) {
         const t0 = e.touches[0], t1 = e.touches[1];
@@ -1032,7 +1036,7 @@ export class StageRenderer {
 
   _onMouseDown(e) {
     if (!this._positions || !this._dancers) return;
-    if (this.is3D) return;
+    if (this.is3D || this.focusMode) return;
     const { x, y } = this._getCanvasPos(e);
 
     // Marker edit mode: handle marker interactions

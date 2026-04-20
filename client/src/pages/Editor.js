@@ -668,8 +668,23 @@ function setupPlayback(container) {
     editorRoot.classList.toggle('editor--focus', entering);
     fullscreenBtn.setAttribute('title', t(entering ? 'fullscreenExit' : 'fullscreenEnter'));
     fullscreenBtn.setAttribute('aria-label', t(entering ? 'fullscreenExit' : 'fullscreenEnter'));
-    // 레이아웃 변경 후 캔버스 fit 재계산
+    // 집중 모드는 재생 전용 → 스테이지 편집 차단 (3D/교환 모드와 동일 처리)
+    renderer.focusMode = entering;
+    if (entering) {
+      renderer._selectedDancers.clear();
+      renderer.onDancerSelect?.(-1);
+      selectedFormations.clear();
+      selectedFormation = -1;
+      selectedTransition = null;
+      highlightFormation();
+      highlightTransition();
+      updateStage();
+    }
+    // 레이아웃 변경 후 캔버스 fit 재계산 — grid-template-columns transition 0.25s + 여유
+    // (이전: rAF 1회만 돌려서 transition 중간값으로 fit 계산 → 전환 끝나도 스테이지가 안 커짐.
+    //  창 크기 변경 시엔 resize로 재fit 되어 정상. 동일 문제 방지 위해 250ms 후 한 번 더)
     requestAnimationFrame(() => { try { fitStage?.(); } catch (_) {} });
+    setTimeout(() => { try { fitStage?.(); } catch (_) {} }, 260);
   });
 
   // Keyboard shortcuts (remove previous listener to avoid duplicates)

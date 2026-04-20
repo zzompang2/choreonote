@@ -893,6 +893,11 @@ body {
 .editor--focus .editor__timeline-wrap {
   display: none !important;
 }
+/* 편집 툴바(undo/redo/add/del/snap/swap)는 집중 모드에서 숨김 — 재생 전용 */
+.editor--focus .player-bar .toolbar__separator,
+.editor--focus .player-bar__row:not(:first-child) {
+  display: none !important;
+}
 
 .player-bar__fullscreen {
   margin-left: auto;
@@ -1001,6 +1006,7 @@ html:has(.editor) {
 }
 
 .player-bar {
+  grid-row: 3;
   grid-column: 1 / -1;
   display: flex;
   align-items: center;
@@ -1922,6 +1928,7 @@ html:has(.editor) {
 }
 
 .editor__timeline-wrap {
+  grid-row: 4;
   grid-column: 1 / -1;
   display: flex;
   flex-direction: column;
@@ -3681,10 +3688,9 @@ html:has(.editor) {
     grid-row: 5;
     grid-column: 1;
   }
-  .stage-canvas {
-    width: 100% !important;
-    height: auto !important;
-  }
+  /* stage-canvas 크기는 fitStage가 inline style로 계산해 적용 */
+  /* 이전: width: 100% !important 가 inline style을 덮어써 canvas가
+     intrinsic 760px로 그려지며 viewport 470-765px 범위에서 오른쪽으로 넘침 */
   .editor__header {
     grid-row: 1;
     grid-column: 1;
