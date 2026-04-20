@@ -1427,11 +1427,12 @@ export class StageRenderer {
           const maxX = Math.max(...corners.map(c => c.x));
           const minY = Math.min(...corners.map(c => c.y));
           const maxY = Math.max(...corners.map(c => c.y));
-          const span = maxX - minX + maxY - minY;
+          const pw = maxX - minX;
+          const ph = maxY - minY;
           ctx.beginPath();
-          for (let d = -span; d < span; d += 8) {
+          for (let d = -ph; d < pw; d += 8) {
             ctx.moveTo(minX + Math.max(0, d), minY + Math.max(0, -d));
-            ctx.lineTo(minX + Math.min(maxX - minX, d + (maxY - minY)), minY + Math.min(maxY - minY, (maxY - minY) - d));
+            ctx.lineTo(minX + Math.min(pw, d + ph), minY + Math.min(ph, pw - d));
           }
           ctx.stroke();
           ctx.restore();
@@ -1478,10 +1479,11 @@ export class StageRenderer {
             ctx.ellipse(cx, cy, w / 2, h / 2, 0, 0, Math.PI * 2);
             ctx.clip();
           }
+          // 45° 빗금 (y = x + c, c는 -w..h 범위). d = -c 기준으로 루프.
           ctx.beginPath();
-          for (let d = -w - h; d < w + h; d += 8) {
+          for (let d = -h; d < w; d += 8) {
             ctx.moveTo(rx + Math.max(0, d), ry + Math.max(0, -d));
-            ctx.lineTo(rx + Math.min(w, d + h), ry + Math.min(h, h - d));
+            ctx.lineTo(rx + Math.min(w, d + h), ry + Math.min(h, w - d));
           }
           ctx.stroke();
           ctx.restore();
