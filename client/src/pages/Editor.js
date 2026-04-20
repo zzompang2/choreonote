@@ -2587,9 +2587,18 @@ function setupFocusArea(container) {
 
   // 스테이지 클릭 = 편집 의도 → 재생 자동 정지 (드래그가 메인 스레드 점유해 정지 버튼 먹통 되는 시나리오 차단)
   // 룰러/플레이어바는 timelineEl/별도 영역이라 영향 없음
+  // 재생 중엔 selectedFormation이 마지막 진입 대형을 유지하므로, 전환 영역에서 일시정지하면
+  // 실제 marker 위치와 불일치 → 전환 영역에서 드래그해도 이전 대형이 편집되는 버그 방지 위해 재계산
   stageEl.addEventListener('pointerdown', () => {
     setFocus('stage');
-    if (engine?.isPlaying) engine.pause();
+    if (engine?.isPlaying) {
+      engine.pause();
+      const ms = currentMs;
+      const idxInside = noteData.formations.findIndex(f => ms >= f.startTime && ms < f.startTime + f.duration);
+      selectedFormation = idxInside;
+      selectedFormations = idxInside >= 0 ? new Set([idxInside]) : new Set();
+      highlightFormation();
+    }
   });
   timelineEl.addEventListener('pointerdown', () => setFocus('timeline'));
 
